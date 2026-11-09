@@ -11,8 +11,11 @@ import {
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { QrScanner } from "./src/components/QrScanner";
+import { GeaFontsProvider } from "./src/design/typography";
 import type { PoiSummary, Visit } from "./src/domain/contracts";
 import { LandingScreen } from "./src/features/landing/LandingScreen";
+import { OnboardingScreen } from "./src/features/onboarding/OnboardingScreen";
+import { useOnboarding } from "./src/features/onboarding/useOnboarding";
 import { PoiListScreen } from "./src/features/stories/PoiListScreen";
 import { usePois } from "./src/features/stories/usePois";
 import { useVisitSession } from "./src/hooks/useVisitSession";
@@ -77,6 +80,7 @@ function Home(): ReactElement {
     { readonly [poiId: string]: PoiProgress }
   >({});
 
+  const onboarding = useOnboarding();
   const scroller = useRef<ScrollView>(null);
   const screenKey: string = pois === null
     ? "landing"
@@ -105,6 +109,22 @@ function Home(): ReactElement {
     setDummyVisit(created);
     setProgress({});
     await openStories(created);
+  }
+
+  if (onboarding.state === "loading") return <View style={styles.safe} />;
+  if (onboarding.state === "show") {
+    return (
+      <>
+        <StatusBar style="dark" />
+        <OnboardingScreen
+          checkingLocation={busy === "location"}
+          onCheckLocation={(): void => {
+            void checkLocation();
+          }}
+          onDone={onboarding.complete}
+        />
+      </>
+    );
   }
 
   return (
@@ -208,7 +228,9 @@ function Home(): ReactElement {
 export default function App(): ReactElement {
   return (
     <SafeAreaProvider>
-      <Home />
+      <GeaFontsProvider>
+        <Home />
+      </GeaFontsProvider>
     </SafeAreaProvider>
   );
 }
