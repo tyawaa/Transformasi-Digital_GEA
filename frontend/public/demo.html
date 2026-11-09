@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GEA · Demo Mobile</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        display: grid;
+        place-content: center;
+        justify-items: center;
+        gap: 14px;
+        padding: 16px;
+        background: #ede9e2;
+        color: #645c50;
+        font: 12px system-ui, sans-serif;
+      }
+      .phone {
+        height: min(860px, calc(100dvh - 76px), calc((100vw - 32px) * 844 / 390));
+        aspect-ratio: 390 / 844;
+        overflow: hidden;
+        border: 8px solid #242424;
+        border-radius: 36px;
+        background: #fff;
+        box-shadow: 0 20px 60px #30291d26;
+      }
+      iframe { display: block; width: 100%; height: 100%; border: 0; }
+      p { margin: 0; letter-spacing: 0.08em; }
+    </style>
+  </head>
+  <body>
+    <main class="phone" aria-label="Tampilan aplikasi mobile GEA">
+      <iframe src="/" title="Aplikasi GEA" allow="camera; geolocation; autoplay; fullscreen"></iframe>
+    </main>
+    <p>GEA · DEMO MOBILE</p>
+  </body>
+</html>
