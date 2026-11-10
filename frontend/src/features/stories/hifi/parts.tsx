@@ -78,23 +78,29 @@ export function StoryButton(
         style,
       ]}
     >
-      <GeaText variant="label16" color={componentColors.bodyDark} style={styles.center}>
+      <GeaText variant="bold16" color={componentColors.bodyDark} style={styles.center}>
         {label}
       </GeaText>
     </Pressable>
   );
 }
 
-export function BackButton({ onPress }: { readonly onPress: () => void }): ReactElement {
+/** Tombol kembali desain terbaru: lingkaran krem berisi panah + tulisan "Keluar". */
+export function BackButton(
+  { onPress, label = "Keluar" }: { readonly onPress: () => void; readonly label?: string | null },
+): ReactElement {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel="Kembali"
-      hitSlop={12}
+      accessibilityLabel={label ?? "Kembali"}
+      hitSlop={8}
       onPress={onPress}
-      style={styles.back}
+      style={({ pressed }) => [styles.back, pressed && styles.pressed]}
     >
-      <Image accessible={false} source={backArrow} style={styles.backIcon} />
+      <View style={styles.backCircle}>
+        <Image accessible={false} source={backArrow} style={styles.backIcon} />
+      </View>
+      {label !== null && <GeaText variant="body16" color={colors.primary[700]}>{label}</GeaText>}
     </Pressable>
   );
 }
@@ -143,8 +149,17 @@ const styles = StyleSheet.create({
     borderRadius: radius.control,
   },
   center: { textAlign: "center" },
-  back: { position: "absolute", left: 15, top: 44, width: 28, height: 28 },
-  backIcon: { width: 28, height: 28, transform: [{ scaleX: -1 }] },
+  back: { position: "absolute", left: 16, top: 48, flexDirection: "row", alignItems: "center", gap: 8, zIndex: 2 },
+  backCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.secondaryYellow[100],
+  },
+  backIcon: { width: 24, height: 24, transform: [{ scaleX: -1 }] },
+  pressed: { opacity: 0.7 },
   photoBox: { position: "absolute", alignItems: "center", justifyContent: "center" },
   photo: {
     overflow: "hidden",

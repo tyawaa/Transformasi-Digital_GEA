@@ -1,114 +1,193 @@
 import { randomUUID } from "expo-crypto";
 import { StatusBar } from "expo-status-bar";
-import { type ReactElement, useEffect, useRef, useState } from "react";
-import {
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
-import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-import { QrScanner } from "./src/components/QrScanner";
+import { type ReactElement, useEffect, useMemo, useState } from "react";
+import { View } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { colors } from "./src/design/tokens";
 import { GeaFontsProvider } from "./src/design/typography";
 import type { PoiSummary, Visit } from "./src/domain/contracts";
-import { LandingScreen } from "./src/features/landing/LandingScreen";
+import { type BadgeId, earnedBadges, poiStatus, type PoiRef, totalPoints } from "./src/domain/points";
+import {
+  activePois,
+  museumPoiById,
+  museumPoiFor,
+  museumPois,
+  type Wing,
+  type ZoneInfo,
+  zones,
+} from "./src/data/museum";
+import { type MapPoi, MapScreen } from "./src/features/map/MapScreen";
 import { OnboardingScreen } from "./src/features/onboarding/OnboardingScreen";
 import { useOnboarding } from "./src/features/onboarding/useOnboarding";
-import { PoiListScreen } from "./src/features/stories/PoiListScreen";
-import { usePois } from "./src/features/stories/usePois";
-import { useVisitSession } from "./src/hooks/useVisitSession";
-import { useAuthRefresh } from "./src/hooks/useAuthRefresh";
-import { useOperation } from "./src/hooks/useOperation";
-import { mockPoiSummaries, mockPoiToken } from "./src/mocks/stories";
+import { ProgressScreen } from "./src/features/progress/ProgressScreen";
+import { wingEnabled, wingsMode } from "./src/config/wings";
+import { badges as allBadges, type BadgeDef } from "./src/domain/points";
+import { useVisitProgress } from "./src/features/progress/useVisitProgress";
+import { type ParsedQr, qrErrorMessage, wrapQr } from "./src/features/qr/qrPayload";
+import { type DummyScan, ScanQrScreen, type ScanState } from "./src/features/stories/hifi/ScanQrScreen";
 import { StoryFlow } from "./src/features/stories/hifi/StoryFlow";
-import { emptyProgress, type PoiProgress } from "./src/features/stories/progress";
-import { GeaApi } from "./src/services/api";
-import {
-  ApiStoriesSource,
-  MockStoriesSource,
-  type StoriesSource,
-  storiesMockEnabled,
-} from "./src/services/stories";
+import { useOperation } from "./src/hooks/useOperation";
+import { useAuthRefresh } from "./src/hooks/useAuthRefresh";
+import { useVisitSession } from "./src/hooks/useVisitSession";
+import { MOCK_ENTRANCE_QR, MOCK_ENTRANCE_TOKEN, mockPoiQr, mockZoneToken } from "./src/mocks/stories";
+import { GeaApi, readableError } from "./src/services/api";
+import { ApiStoriesSource, MockStoriesSource, type StoriesSource, storiesMockEnabled } from "./src/services/stories";
 import { publicConfig, supabase } from "./src/services/supabase";
-import { styles } from "./src/theme/styles";
+
 
 const api: GeaApi = new GeaApi(publicConfig.url, supabase);
-// E7: layar Stories memakai backend asli; data dummy (E4) hanya jika mode mock aktif.
-const storiesSource: StoriesSource = storiesMockEnabled
-  ? new MockStoriesSource()
-  : new ApiStoriesSource(api);
+// E20: backend asli; data lokal dari Excel (E14) hanya jika EXPO_PUBLIC_STORIES_SOURCE=mock.
+const storiesSource: StoriesSource = storiesMockEnabled ? new MockStoriesSource() : new ApiStoriesSource(api);
 
-function dummyTokenFor(poiId: string): string | null {
-  if (storiesSource.kind !== "mock") return null;
-  const index: number = mockPoiSummaries.findIndex(
-    (poi: PoiSummary): boolean => poi.id_poi === poiId,
-  );
-  return index < 0 ? null : mockPoiToken(index + 1);
+// Tombol uji di layar scan (hanya mode mock).
+const INVALID_QR: string = wrapQr("poi", "P99", "00".repeat(32));
+const mapDummies: readonly DummyScan[] = storiesMockEnabled
+  ? [
+    { label: "Uji: QR pintu masuk", payload: MOCK_ENTRANCE_QR },
+    { label: "Uji: QR zona sayap kiri", payload: wrapQr("zone", "ZL", mockZoneToken("ZL")) },
+    ...activePois.filter((poi) => wingEnabled(poi.wing)).map((poi) => ({ label: `Uji: QR koleksi ${poi.code}`, payload: mockPoiQr(poi) })),
+    { label: "Uji: QR tidak dikenal", payload: INVALID_QR },
+  ]
+  : [];
+
+function storyDummies(poiId: string): readonly DummyScan[] {
+  if (!storiesMockEnabled) return [];
+  const poi = museumPoiById(poiId);
+  return [
+    ...(poi === undefined ? [] : [{ label: `Uji: QR koleksi ${poi.code}`, payload: mockPoiQr(poi) }]),
+    { label: "Uji: QR tidak dikenal", payload: INVALID_QR },
+  ];
 }
+
+type Screen =
+  | { readonly name: "map" }
+  | { readonly name: "scan" }
+  | { readonly name: "progress" }
+  | { readonly name: "story"; readonly poiId: string; readonly token: string | null };
 
 function Home(): ReactElement {
   useAuthRefresh();
-  const { busy, error, clearError, runOperation } = useOperation();
-  const {
-    notice,
-    decision,
-    visit,
-    scannerOpen,
-    connection,
-    locationLabel,
-    locationSettingsAction,
-    openScanner,
-    closeScanner,
-    checkConnection,
-    checkLocation,
-    useEntranceQr,
-  } = useVisitSession(api, runOperation);
-  const { pois, openStories, closeStories } = usePois(
-    storiesSource,
-    runOperation,
-  );
-  // Kunjungan uji tanpa backend, hanya pada mode data dummy.
-  const [dummyVisit, setDummyVisit] = useState<Visit | null>(null);
-  const activeVisit: Visit | null = visit ?? dummyVisit;
-  const [detailPoiId, setDetailPoiId] = useState<string | null>(null);
-  const [progress, setProgress] = useState<
-    { readonly [poiId: string]: PoiProgress }
-  >({});
-
   const onboarding = useOnboarding();
-  const scroller = useRef<ScrollView>(null);
-  const screenKey: string = pois === null
-    ? "landing"
-    : detailPoiId === null
-    ? "list"
-    : `detail:${detailPoiId}`;
+  const { busy, error: operationError, runOperation } = useOperation();
+  const session = useVisitSession(api, runOperation);
+  const visitState = useVisitProgress(storiesSource);
+  const { visit, progress, progressOf } = visitState;
+
+  const [screen, setScreen] = useState<Screen>({ name: "map" });
+  const [summaries, setSummaries] = useState<readonly PoiSummary[] | null>(null);
+  const [poisError, setPoisError] = useState<string | null>(null);
+  const [scanState, setScanState] = useState<ScanState>("scanning");
+  const [scanMessage, setScanMessage] = useState<string | null>(null);
+  const [scanNotice, setScanNotice] = useState<string | null>(null);
+  const [zone, setZone] = useState<ZoneInfo | null>(null);
+  const [zoneIntro, setZoneIntro] = useState<ZoneInfo | null>(null);
+
+  async function loadPois(): Promise<void> {
+    setPoisError(null);
+    try {
+      setSummaries(await storiesSource.pois());
+    } catch (cause: unknown) {
+      setPoisError(readableError(cause));
+    }
+  }
   useEffect((): void => {
-    scroller.current?.scrollTo({ y: 0, animated: false });
-  }, [screenKey]);
+    void loadPois();
+  }, []);
 
-  function updateProgress(poiId: string, patch: Partial<PoiProgress>): void {
-    setProgress((current) => ({
-      ...current,
-      [poiId]: { ...(current[poiId] ?? emptyProgress), ...patch },
-    }));
+  // Kunjungan dari GPS (useVisitSession) ikut disimpan sebagai kunjungan aktif.
+  useEffect((): void => {
+    if (session.visit !== null && session.visit.id_sesi !== visit?.id_sesi) visitState.startVisit(session.visit);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.visit]);
+
+  const mapPois: readonly MapPoi[] = useMemo((): readonly MapPoi[] =>
+    museumPois.filter((museum) => wingEnabled(museum.wing)).map((museum): MapPoi => {
+      const match: PoiSummary | undefined = summaries?.find((s: PoiSummary): boolean =>
+        museumPoiFor(s.id_poi, s.nama)?.code === museum.code
+      );
+      const id: string | null = match?.id_poi ?? null;
+      const state = id === null ? undefined : progress[id];
+      const verified: boolean = state?.verifiedUntil != null && state.verifiedUntil > Date.now();
+      return { museum, id, status: poiStatus(state, verified) };
+    }), [summaries, progress]);
+
+  const refs: readonly PoiRef[] = mapPois
+    .filter((poi: MapPoi): boolean => poi.id !== null)
+    .map((poi: MapPoi): PoiRef => ({ id: poi.id ?? "", wing: poi.museum.wing }));
+  const badges: readonly BadgeId[] = earnedBadges(refs, progress);
+  const points: number = totalPoints(refs, progress);
+  const allDone: boolean = refs.length > 0 && mapPois.every((poi: MapPoi): boolean => poi.id === null || poi.status === "selesai");
+
+  // Ruang aktif: QR zona terakhir, atau sayap POI yang terakhir diverifikasi.
+  const activeWing: Wing | null = useMemo((): Wing | null => {
+    if (zone !== null) return zone.wing;
+    let latest: { wing: Wing; until: number } | null = null;
+    for (const [poiId, state] of Object.entries(progress)) {
+      const wing: Wing | undefined = mapPois.find((poi: MapPoi): boolean => poi.id === poiId)?.museum.wing;
+      if (wing !== undefined && state.verifiedUntil !== null && (latest === null || state.verifiedUntil > latest.until)) {
+        latest = { wing, until: state.verifiedUntil };
+      }
+    }
+    return latest?.wing ?? null;
+  }, [zone, progress, mapPois]);
+
+  async function beginVisit(token: string): Promise<Visit> {
+    const created: Visit = await storiesSource.startQrVisit(randomUUID(), token);
+    visitState.startVisit(created);
+    return created;
   }
 
-  async function startDummyVisit(): Promise<void> {
-    const created: Visit = {
-      id_sesi: randomUUID(),
-      bahasa: "id",
-      profil: "umum",
-      verification_method: "entrance_qr",
-      status: "aktif",
-    };
-    setDummyVisit(created);
-    setProgress({});
-    await openStories(created);
+  function failScan(message: string): void {
+    setScanMessage(message);
+    setScanState("failed");
   }
 
-  if (onboarding.state === "loading") return <View style={styles.safe} />;
+  async function handleScan(result: ParsedQr): Promise<void> {
+    if (!result.ok) {
+      failScan(qrErrorMessage(result.reason));
+      return;
+    }
+    setScanState("detected");
+    try {
+      // QR pintu masuk / zona: kunjungan dimulai, tetap di layar scan untuk QR koleksi berikutnya.
+      if (result.kind === "entrance" || (result.kind === null && visit === null)) {
+        await beginVisit(result.token);
+        setScanNotice("Kunjungan dimulai! Sekarang scan QR di dekat koleksi untuk membuka ceritanya.");
+        return;
+      }
+      if (result.kind === "zone") {
+        if (visit === null) await beginVisit(result.token);
+        const info: ZoneInfo | undefined = zones.find((z: ZoneInfo): boolean => z.code === result.code);
+        setZone(info ?? null);
+        setZoneIntro(info ?? null);
+        setScanNotice(`Kamu di ${info?.name ?? "zona ini"}. Scan QR di dekat koleksi untuk membuka ceritanya.`);
+        return;
+      }
+      // QR koleksi: langsung buka template cerita POI tersebut.
+      if (visit === null) {
+        if (storiesSource.kind !== "mock") {
+          failScan("Scan QR pintu masuk dulu untuk memulai kunjungan.");
+          return;
+        }
+        await beginVisit(MOCK_ENTRANCE_TOKEN);
+      }
+      setZone(null);
+      const target = result.poiId === null ? undefined : museumPoiById(result.poiId);
+      if (target !== undefined && !wingEnabled(target.wing)) {
+        failScan("Koleksi ini ada di Sayap Kanan, yang belum dibuka di versi ini.");
+        return;
+      }
+      setScreen({ name: "story", poiId: result.poiId ?? "", token: result.token });
+    } catch (cause: unknown) {
+      failScan(readableError(cause));
+    } finally {
+      setScanState((current: ScanState): ScanState => (current === "detected" ? "scanning" : current));
+    }
+  }
+
+  if (onboarding.state === "loading" || !visitState.ready) {
+    return <View style={{ flex: 1, backgroundColor: colors.primary[300] }} />;
+  }
   if (onboarding.state === "show") {
     return (
       <>
@@ -116,7 +195,7 @@ function Home(): ReactElement {
         <OnboardingScreen
           checkingLocation={busy === "location"}
           onCheckLocation={(): void => {
-            void checkLocation();
+            void session.checkLocation();
           }}
           onDone={onboarding.complete}
         />
@@ -124,112 +203,107 @@ function Home(): ReactElement {
     );
   }
 
-  // E5: alur Story hi-fi tampil layar penuh.
-  if (pois !== null && detailPoiId !== null && activeVisit !== null) {
-    const list: readonly PoiSummary[] = pois;
+  if (screen.name === "story" && visit !== null) {
     return (
       <>
         <StatusBar style="dark" />
         <StoryFlow
-          key={detailPoiId}
+          key={`${screen.poiId}:${screen.token ?? ""}`}
           source={storiesSource}
-          visit={activeVisit}
-          poiId={detailPoiId}
-          progressOf={(poiId: string): PoiProgress => progress[poiId] ?? emptyProgress}
-          onProgress={updateProgress}
-          allCompleted={(justCompleted: string): boolean =>
-            list.every((poi: PoiSummary): boolean =>
-              poi.id_poi === justCompleted || progress[poi.id_poi]?.completed === true
-            )}
-          dummyTokenFor={dummyTokenFor}
-          onExit={(): void => setDetailPoiId(null)}
+          visit={visit}
+          poiId={screen.poiId}
+          initialToken={screen.token}
+          progressOf={progressOf}
+          onProgress={visitState.update}
+          totalPoints={points}
+          earnedBadges={badges}
+          allCompleted={allDone}
+          dummyScans={storyDummies(screen.poiId)}
+          onExit={(): void => setScreen({ name: "map" })}
         />
       </>
     );
   }
 
-  return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar style="dark" />
-      <ScrollView ref={scroller} contentContainerStyle={styles.page}>
-        <View style={styles.header}>
-          <View style={styles.brand}>
-            <Text style={styles.brandName}>GEA</Text>
-            <Text style={styles.brandLabel}>museum companion</Text>
-          </View>
-          <View style={styles.tag}>
-            <Text style={styles.tagText}>
-              {activeVisit === null ? "JELAJAH MUSEUM" : "KUNJUNGAN AKTIF"}
-            </Text>
-          </View>
-        </View>
-        {pois === null
-          ? (
-            <>
-              <LandingScreen
-                visit={activeVisit}
-                busy={busy}
-                notice={notice}
-                decision={decision}
-                error={error}
-                connection={connection}
-                locationLabel={locationLabel}
-                locationSettingsAction={locationSettingsAction}
-                onPrimary={(): void => {
-                  void (activeVisit === null
-                    ? checkLocation()
-                    : openStories(activeVisit));
-                }}
-                onOpenScanner={(): void => {
-                  clearError();
-                  openScanner();
-                }}
-                onCheckConnection={(): void => {
-                  void checkConnection();
-                }}
-              />
-              {activeVisit === null && storiesSource.kind === "mock" && (
-                <Pressable
-                  accessibilityRole="button"
-                  disabled={busy !== null}
-                  style={local.dummy}
-                  onPress={(): void => {
-                    void startDummyVisit();
-                  }}
-                >
-                  <Text style={local.dummyText}>Coba Stories (data dummy)</Text>
-                </Pressable>
-              )}
-            </>
-          )
-          : (
-            <PoiListScreen
-              pois={pois}
-              progress={progress}
-              onOpen={(poiId: string): void => setDetailPoiId(poiId)}
-              onBack={(): void => {
-                setDetailPoiId(null);
-                closeStories();
-              }}
-            />
+  if (screen.name === "scan") {
+    return (
+      <>
+        <StatusBar style="light" />
+        <ScanQrScreen
+          state={scanState}
+          failMessage={scanMessage}
+          notice={scanNotice}
+          onResult={(result: ParsedQr): void => void handleScan(result)}
+          onRetry={(): void => setScanState("scanning")}
+          onBack={(): void => setScreen({ name: "map" })}
+          dummies={mapDummies}
+        />
+      </>
+    );
+  }
+
+  if (screen.name === "progress") {
+    return (
+      <>
+        <StatusBar style="dark" />
+        <ProgressScreen
+          pois={mapPois}
+          progressOf={progressOf}
+          totalPoints={points}
+          earned={badges}
+          available={allBadges.filter((badge: BadgeDef): boolean =>
+            !(badge.id === "BD-01" && !wingEnabled("left")) && !(badge.id === "BD-02" && !wingEnabled("right"))
           )}
-        <Text style={styles.footer}>GEA · Cerita yang menemani langkahmu.</Text>
-      </ScrollView>
-      <Modal
-        visible={scannerOpen}
-        animationType="slide"
-        onRequestClose={(): void => closeScanner()}
-      >
-        <SafeAreaView style={styles.safe}>
-          <QrScanner
-            onToken={(token: string): void => {
-              void useEntranceQr(token);
-            }}
-            onClose={(): void => closeScanner()}
-          />
-        </SafeAreaView>
-      </Modal>
-    </SafeAreaView>
+          onBack={(): void => setScreen({ name: "map" })}
+          onEndVisit={(): void => {
+            visitState.endVisit();
+            setZone(null);
+            setScreen({ name: "map" });
+          }}
+        />
+      </>
+    );
+  }
+
+  const notice = operationError !== null
+    ? { title: "Belum berhasil", description: operationError }
+    : session.notice;
+
+  return (
+    <>
+      <StatusBar style="dark" />
+      <MapScreen
+        wingsMode={wingsMode}
+        pois={mapPois}
+        loading={summaries === null && poisError === null}
+        error={poisError ?? (summaries !== null && summaries.length === 0
+          ? "Data koleksi belum tersedia di server. Hubungi tim untuk mengisi data POI."
+          : null)}
+        hasVisit={visit !== null}
+        totalPoints={points}
+        completedCount={mapPois.filter((poi: MapPoi): boolean => poi.id !== null && poi.status === "selesai").length}
+        activeWing={activeWing}
+        zoneIntro={zoneIntro}
+        notice={visit === null ? notice : null}
+        checkingLocation={busy === "location"}
+        onDismissZone={(): void => setZoneIntro(null)}
+        onScan={(): void => {
+          setScanMessage(null);
+          setScanNotice(null);
+          setScanState("scanning");
+          setScreen({ name: "scan" });
+        }}
+        onCheckLocation={(): void => {
+          void session.checkLocation();
+        }}
+        onRetry={(): void => {
+          setSummaries(null);
+          void loadPois();
+        }}
+        onOpenPoi={(poiId: string): void => setScreen({ name: "story", poiId, token: null })}
+        onOpenProgress={(): void => setScreen({ name: "progress" })}
+      />
+    </>
   );
 }
 
@@ -242,15 +316,3 @@ export default function App(): ReactElement {
     </SafeAreaProvider>
   );
 }
-
-const local = StyleSheet.create({
-  dummy: {
-    alignItems: "center",
-    padding: 12,
-    borderWidth: 1,
-    borderStyle: "dashed",
-    borderColor: "#C9A26A",
-    borderRadius: 14,
-  },
-  dummyText: { color: "#8A5A1C", fontWeight: "600", fontSize: 13 },
-});

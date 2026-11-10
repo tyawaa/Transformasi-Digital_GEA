@@ -6,6 +6,7 @@ import {
   useContext,
 } from "react";
 import {
+  Platform,
   StyleSheet,
   Text as NativeText,
   type TextProps,
@@ -60,7 +61,7 @@ export function GeaFontsProvider(
     console.error("gea_font_load_failed", { error: error.message });
   }
   return (
-    <FontsReady.Provider value={loaded && error === null}>
+    <FontsReady.Provider value={loaded}>
       {children}
     </FontsReady.Provider>
   );
@@ -68,7 +69,9 @@ export function GeaFontsProvider(
 
 export function useFont(name: FontName): TextStyle {
   const ready: boolean = useContext(FontsReady);
-  if (!ready) return { fontWeight: fallbackWeight[name] };
+  // Web: browser sendiri menukar font begitu file selesai dimuat (@font-face), jadi nama font
+  // selalu dipakai. Tanpa ini, satu font yang lambat/gagal membuat semua teks jatuh ke font sistem.
+  if (!ready && Platform.OS !== "web") return { fontWeight: fallbackWeight[name] };
   if (name in fontFiles) return { fontFamily: name };
   const substitute: FontName | undefined = substitutes[name];
   if (substitute !== undefined && substitute in fontFiles) {

@@ -7,3 +7,7 @@ supabase/.branches/
 coverage/
 *.token.txt
 backend/.local/
+
+# Bahan desain dan foto survei lokal (tidak masuk Git)
+gambar_ui/
+POI/

@@ -39,3 +39,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Foto survei POI (besar, tidak masuk Git). Buat ulang dengan scripts/sync-poi-photos.ps1
+/assets/poi/
+/src/data/poiPhotos.local.ts

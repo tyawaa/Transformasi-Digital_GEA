@@ -233,6 +233,18 @@ npm run qr:create -- entrance ZONA_UUID 2026-12-01T00:00:00Z .local/entrance
 npm run qr:create -- poi POI_UUID 2026-12-01T00:00:00Z .local/poi-1
 ```
 
+Beri nama prefix sesuai kode PM agar aplikasi mengenali jenis QR: `.local/P03` untuk koleksi
+P03 (target UUID `30000000-0000-4000-8000-000000000003`), `.local/ZL`/`.local/ZR` untuk zona, dan
+`.local/ENTRANCE` untuk pintu masuk. Setelah semua token dibuat:
+
+```powershell
+npm run qr:sheet            # baca .local/*.token.txt
+```
+
+Hasilnya di `.local/qr/`: satu PNG per QR berisi `GEA1:POI:P03:<token>` (format yang dibaca
+aplikasi tanpa internet) dan `lembar-qr.html` untuk dicetak A4 (Ctrl+P → simpan PDF). Folder
+`.local` tidak masuk Git karena QR berisi token.
+
 Buat folder `.local` terlebih dahulu. Jalankan SQL yang dihasilkan sebagai admin melalui migrasi/SQL
 Editor, lalu ubah isi `.token.txt` menjadi QR fisik melalui alat tim. Token tidak dicetak ke log dan
 file token diabaikan Git. UUID/expiry contoh wajib diganti. Untuk mencabut, isi `revoked_at` pada
