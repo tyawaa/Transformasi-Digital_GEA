@@ -113,6 +113,9 @@ export const answerResultSchema = z.object({
   attemptCount: z.number().int().positive(),
   completed: z.boolean(),
   hint: z.string().nullable(),
+  // Sprint 2 (E12, C-2). Opsional agar backend Sprint 1 tetap terbaca.
+  failed: z.boolean().optional(),
+  pointsAwarded: z.number().int().nonnegative().optional(),
 });
 export type AnswerResult = z.infer<typeof answerResultSchema>;
 
