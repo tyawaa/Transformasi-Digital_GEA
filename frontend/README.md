@@ -50,24 +50,80 @@ diterima. Periksa sertifikat/jalur jaringan sebelum menambahkan CA apa pun.
 Salinan konfigurasi asal ada di `.expo/ngrok.original.yml`; file profil dan
 backup dapat berisi kredensial ngrok sehingga tidak boleh dimasukkan Git.
 
-## Perilaku yang tersedia
+## Coba di browser tanpa `expo start`
 
-- Landing GEA dengan tombol pemeriksaan lokasi dan status koneksi layanan.
-- Permintaan izin GPS foreground hanya setelah tombol ditekan.
-- Akurasi GPS dikirim sebagai `accuracyMeters`, termasuk penanganan akurasi yang
-  tidak tersedia.
-- Keputusan akses ditentukan backend. Tidak ada mode yang otomatis meloloskan
-  lokasi simulasi.
-- QR pintu masuk diperiksa backend; aplikasi hanya memvalidasi format token saat
-  scan.
-- Setelah sesi berhasil dibuat, daftar POI published diambil dari backend.
-- Identitas Auth anonim dipertahankan dengan AsyncStorage dan refresh mengikuti
-  AppState.
+Jika `expo start` macet, buat build web lalu sajikan secara statis di PowerShell:
 
-Ini fondasi integrasi, bukan hi-fi final PD1/PD2. Detail Stories, pemutar audio,
-pilgan, QR checkpoint koleksi, dan pemulihan sesi kunjungan setelah restart
-masih perlu dilanjutkan. Sesi Auth dipertahankan, tetapi ID sesi kunjungan saat
-ini hanya disimpan selama aplikasi hidup.
+```powershell
+cd frontend
+.\scripts\serve-web.ps1          # build ulang lalu buka http://localhost:8082
+.\scripts\serve-web.ps1 -NoBuild # pakai build terakhir
+```
+
+Di layar lebar (>600 px) aplikasi otomatis dibuka di bingkai HP (`demo.html`); tambahkan
+`?full` ke URL untuk melewatinya. Server hanya hidup selama jendela terminal itu terbuka (Ctrl+C untuk berhenti). Setelah kode
+diubah, jalankan lagi tanpa `-NoBuild`. Kamera tidak tersedia di browser; pakai menu "Mode uji".
+
+## Alur aplikasi (Sprint 2, C-3)
+
+Onboarding → **peta lantai 1** → scan QR → cerita POI → Kisah Selesai → Side Quest → kuis →
+hasil poin. Progres (poin, lencana) bisa dilihat dari tombol poin di peta.
+
+- **Peta** (`src/features/map`): denah P01–P21 dari dokumen survei. Warna ruangan = status POI
+  (belum/sebagian/selesai), abu-abu = belum ada konten. Sayap aktif diambil dari QR zona atau QR
+  koleksi terakhir. Hi-fi peta (D3) belum ada, jadi tampilan masih memakai token design system.
+- **QR scanner bersama (E13)** (`src/features/qr`, `ScanQrScreen`): dipakai untuk QR pintu masuk,
+  zona, dan koleksi; ada tombol "Mulai tanpa scan" (cerita boleh dibaca, quest tetap terkunci).
+- **Quest (E14)**: terkunci sampai QR koleksi terverifikasi, maksimal 3 percobaan, hint setelah
+  salah, poin 20/10/5/0. Aturan ada di `src/domain/points.ts` dan diuji dengan `npm test`.
+- **Progres tersimpan (E20)**: sesi kunjungan dan progres disimpan di AsyncStorage, lalu
+  dicocokkan dengan `GET /sessions/{id}/progress` saat app dibuka lagi.
+- Layar "Kisah Selesai" dan "Side Quest" ada di `StoryEndScreens.tsx` dan masih **sementara**
+  (desain belum final). Ilustrasi ikan belum diekspor dari Figma.
+
+### Foto survei POI (tidak masuk Git)
+
+Foto asli disimpan di folder `POI/P01 … P14` (di luar repo). Untuk memakainya di aplikasi:
+
+```powershell
+cd frontend
+.\scripts\sync-poi-photos.ps1                  # sumber bawaan: ..\..\POI
+.\scripts\sync-poi-photos.ps1 -Source "D:\POI"  # sumber lain
+```
+
+Skrip memperkecil foto (maks. 1200 px) ke `assets/poi/` dan membuat
+`src/data/poiPhotos.local.ts`. Keduanya ada di `.gitignore`. Tanpa keduanya aplikasi tetap
+bisa di-build dan memakai ilustrasi sementara. Foto ditentukan dengan nomor urut nama file:
+`fotoUtama` (layar ringkasan) dan `fotoKedua` (layar isi cerita) di `src/data/museum.ts`.
+
+### Dua versi peta
+
+- `EXPO_PUBLIC_MAP_WINGS=left` (bawaan): hanya Sayap Kiri (P01–P11), denah lebih besar, Sayap
+  Kanan ditandai "segera hadir". Lencana Penjelajah Sayap Kanan disembunyikan, dan QR koleksi
+  sayap kanan ditolak dengan pesan yang jelas.
+- `EXPO_PUBLIC_MAP_WINGS=both`: Sayap Kiri + Sayap Kanan.
+- Versi web bisa diganti tanpa build ulang: `http://localhost:8082/?wings=both` atau `?wings=left`.
+
+### Data POI
+
+`src/data/museum.ts` berisi 21 POI dari `Template_Scratch_Data_Museum_Geologi.xlsx` (nama,
+sayap, koordinat, posisi denah). 14 POI aktif (P01–P14, dari foto survei 10 Nov 2026; P15–P21 belum ada data) sudah punya teks cerita dan soal **draft** yang wajib dicek kurator (B4). PM bisa mengganti
+POI aktif dengan mengisi/menghapus `content`. Mode mock (`EXPO_PUBLIC_STORIES_SOURCE=mock`)
+memakai data ini, termasuk tombol "Uji: QR ..." di layar scan.
+
+### Yang dibutuhkan dari tim
+
+- **C-1 (A9/B6/D5)**: pakai ID stabil per kode POI saat seed, `30000000-0000-4000-8000-0000000000NN`
+  (NN = nomor POI) dan quest `40000000-...NN`, agar peta mencocokkan POI dari database. Jika ID
+  lain dipakai, peta mencocokkan lewat nama POI. Isi QR cetak disarankan berlabel:
+  `GEA1:POI:P03:<token64hex>`, `GEA1:ZONE:ZL:<token>`, `GEA1:ENTRANCE:-:<token>`. Token 64 hex
+  polos juga tetap diterima. Yang dikirim ke backend tetap hanya token.
+- **C-2 (E11/E12)**: backend sekarang belum membatasi 3 percobaan dan belum punya poin/lencana.
+  Aplikasi sudah membaca field opsional `failed` dan `pointsAwarded` pada respons jawaban, dan
+  sementara menghitung poin dari jumlah percobaan. Mohon jawaban ke-4 ditolak dengan kode
+  `QUEST_ATTEMPTS_EXHAUSTED` (409).
+- **Data**: per 9 Nov, `GET /pois` di cloud masih kosong, jadi mode API menampilkan "Data
+  koleksi belum tersedia". Kosongkan `EXPO_PUBLIC_STORIES_SOURCE` setelah B6 selesai.
 
 ## Koneksi Supabase dan database
 
@@ -92,6 +148,7 @@ Kondisi tersebut tidak digantikan data museum buatan.
 
 ```powershell
 npm run typecheck
+npm test
 npm run doctor
 npm run export:android
 npm run export:web
