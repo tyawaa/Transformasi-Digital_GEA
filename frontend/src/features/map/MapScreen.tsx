@@ -1,11 +1,13 @@
 // Peta lantai 1 (layar utama setelah onboarding). Denah dari "Survey Docs" (P01–P21).
 // Frame HP 390 × 844 tanpa gulir, gaya sama dengan layar Story hi-fi (latar Scan QR, Ellak + Qanelas).
-// SEMENTARA: hi-fi peta (D3, PD-1) belum ada. Geofence/banner GPS (E10/E16) masuk lewat prop notice.
+// SEMENTARA: hi-fi peta (D3, PD-1) belum ada. Geofence (E10): kartu "Kamu di dekat", banner GPS lemah,
+// pilih ruang manual ("Saya di sini"), dan Mode uji GPS (hanya mode mock).
 import { type ReactElement, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { colors, componentColors, radius, shadows, spacing } from "../../design/tokens";
 import { GeaText } from "../../design/typography";
 import type { MuseumPoi, Wing, ZoneInfo } from "../../data/museum";
+import type { Fix } from "../../domain/geofence";
 import type { PoiStatus } from "../../domain/points";
 import { ScanBackground } from "../stories/hifi/backgrounds";
 import { FrameStage, StoryButton } from "../stories/hifi/parts";
@@ -18,6 +20,9 @@ export type MapPoi = {
 };
 
 type Notice = { readonly title: string; readonly description: string };
+
+/** Pilihan Mode uji GPS; fix null = kembali ke GPS asli. */
+export type GpsTest = { readonly label: string; readonly fix: Fix | null };
 
 type Props = {
   /** "left" = hanya Sayap Kiri (denah lebih besar), "both" = dua sayap. Lihat src/config/wings.ts. */
@@ -33,6 +38,14 @@ type Props = {
   readonly notice: Notice | null;
   readonly checkingLocation: boolean;
   readonly onDismissZone: () => void;
+  /** Kartu geofence: POI yang radiusnya baru dimasuki. */
+  readonly nearby: MapPoi | null;
+  readonly onDismissNearby: () => void;
+  /** Akurasi GPS > 20 m selama kunjungan: tawarkan scan QR. */
+  readonly gpsWeak: boolean;
+  readonly gpsTests: readonly GpsTest[];
+  readonly onGpsTest: (fix: Fix | null) => void;
+  readonly onPickWing: (wing: Wing) => void;
   readonly onScan: () => void;
   readonly onCheckLocation: () => void;
   readonly onRetry: () => void;
@@ -57,6 +70,10 @@ export function MapScreen(props: Props): ReactElement {
   const picked: MapPoi | undefined = props.pois.find((poi: MapPoi): boolean => poi.museum.code === selected);
   const active: number = props.pois.filter((poi: MapPoi): boolean => poi.id !== null).length;
   const leftOnly: boolean = props.wingsMode === "left";
+  const [testsOpen, setTestsOpen] = useState(false);
+  const [testLabel, setTestLabel] = useState<string | null>(null);
+  const showTests: boolean = props.hasVisit && props.gpsTests.length > 0;
+  const pickWing = props.hasVisit ? props.onPickWing : null;
 
   return (
     <FrameStage background={colors.primary[300]}>
@@ -79,6 +96,31 @@ export function MapScreen(props: Props): ReactElement {
         </Pressable>
       </View>
 
+      {/* Banner GPS lemah (PB04/PB05): tetap tampil selama akurasi buruk */}
+      {props.gpsWeak && (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="GPS lemah. Scan QR di dekat koleksi"
+          onPress={props.onScan}
+          style={[styles.weak, showTests && styles.weakShort]}
+        >
+          <GeaText variant="caption12" color={colors.white} numberOfLines={1}>
+            GPS lemah · ketuk untuk scan QR koleksi
+          </GeaText>
+        </Pressable>
+      )}
+      {showTests && (
+        <Pressable
+          accessibilityRole="button"
+          onPress={(): void => setTestsOpen((open: boolean): boolean => !open)}
+          style={styles.testPill}
+        >
+          <GeaText variant="caption12" color={colors.primary[900]} numberOfLines={1}>
+            {testLabel ?? "Uji GPS"} {testsOpen ? "▴" : "▾"}
+          </GeaText>
+        </Pressable>
+      )}
+
       {/* Denah: versi sayap kiri saja (lebih besar) atau dua sayap */}
       <WingPlan
         top={150}
@@ -89,6 +131,7 @@ export function MapScreen(props: Props): ReactElement {
         wing="left"
         pois={props.pois}
         here={props.activeWing === "left"}
+        onPickHere={pickWing}
         selected={selected}
         onSelect={setSelected}
       />
@@ -109,6 +152,7 @@ export function MapScreen(props: Props): ReactElement {
             wing="right"
             pois={props.pois}
             here={props.activeWing === "right"}
+            onPickHere={pickWing}
             selected={selected}
             onSelect={setSelected}
           />
@@ -128,6 +172,28 @@ export function MapScreen(props: Props): ReactElement {
 
       {props.hasVisit && (
         <StoryButton label="Scan QR" onPress={props.onScan} style={styles.scan} />
+      )}
+
+      {showTests && testsOpen && (
+        <View style={styles.testMenu}>
+          <ScrollView>
+            {props.gpsTests.map((test: GpsTest): ReactElement => (
+              <Pressable
+                key={test.label}
+                accessibilityRole="button"
+                onPress={(): void => {
+                  setTestsOpen(false);
+                  setSelected(null);
+                  setTestLabel(test.fix === null ? null : test.label);
+                  props.onGpsTest(test.fix);
+                }}
+                style={({ pressed }) => [styles.testItem, pressed && styles.pressed]}
+              >
+                <GeaText variant="body14" color={colors.primary[900]}>{test.label}</GeaText>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
       )}
     </FrameStage>
   );
@@ -202,6 +268,34 @@ function BottomCard(
       </>
     );
   }
+  if (props.nearby !== null && props.nearby.id !== null) {
+    const poi: MapPoi = props.nearby;
+    return (
+      <>
+        <View style={styles.cardRow}>
+          <View style={[styles.codeBadge, { backgroundColor: roomFill[poi.status] }]}>
+            <GeaText variant="bold16" color={poi.status === "selesai" ? colors.white : colors.primary[900]}>
+              {poi.museum.code}
+            </GeaText>
+          </View>
+          <View style={styles.flex}>
+            <GeaText variant="caption12" color={colors.secondaryGreen[900]}>KAMU DI DEKAT</GeaText>
+            <GeaText variant="heading20" color={colors.primary[900]} numberOfLines={2}>{poi.museum.name}</GeaText>
+          </View>
+          <Pressable accessibilityRole="button" accessibilityLabel="Tutup" hitSlop={12} onPress={props.onDismissNearby}>
+            <GeaText variant="bold16" color={colors.primary[700]}>✕</GeaText>
+          </Pressable>
+        </View>
+        <StoryButton
+          label={poi.status === "selesai" ? "Lihat hasil" : "Buka cerita"}
+          onPress={(): void => {
+            if (poi.id !== null) props.onOpenPoi(poi.id);
+          }}
+          style={styles.full}
+        />
+      </>
+    );
+  }
   if (props.zoneIntro !== null) {
     return (
       <>
@@ -244,7 +338,7 @@ function Legend(
 }
 
 function WingPlan(
-  { top, maxHeight, stretch, title, subtitle, wing, pois, here, selected, onSelect }: {
+  { top, maxHeight, stretch, title, subtitle, wing, pois, here, onPickHere, selected, onSelect }: {
     readonly top: number;
     /** Tinggi maksimum denah di frame 390 × 844. */
     readonly maxHeight: number;
@@ -255,6 +349,8 @@ function WingPlan(
     readonly wing: Wing;
     readonly pois: readonly MapPoi[];
     readonly here: boolean;
+    /** null = tombol "Saya di sini" disembunyikan (belum ada kunjungan). */
+    readonly onPickHere: ((wing: Wing) => void) | null;
     readonly selected: string | null;
     readonly onSelect: (code: string) => void;
   },
@@ -272,11 +368,23 @@ function WingPlan(
       <View style={styles.wingHead}>
         <GeaText variant="heading20" color={colors.primary[900]}>{title}</GeaText>
         <GeaText variant="caption12" color={colors.primary[700]} style={styles.flex}>· {subtitle}</GeaText>
-        {here && (
-          <View style={styles.hereChip}>
-            <GeaText variant="caption12" color={colors.white}>Kamu di sini</GeaText>
-          </View>
-        )}
+        {here
+          ? (
+            <View style={styles.hereChip}>
+              <GeaText variant="caption12" color={colors.white}>Kamu di sini</GeaText>
+            </View>
+          )
+          : onPickHere !== null && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Tandai saya di ${title}`}
+              hitSlop={8}
+              onPress={(): void => onPickHere(wing)}
+              style={styles.pickChip}
+            >
+              <GeaText variant="caption12" color={colors.primary[800]}>Saya di sini</GeaText>
+            </Pressable>
+          )}
       </View>
       <View style={{ width: width * scaleX, height: height * sy, alignSelf: "center" }}>
         {rooms.map((poi: MapPoi): ReactElement => {
@@ -370,6 +478,59 @@ const styles = StyleSheet.create({
     borderWidth: 2.5,
     borderColor: colors.primary[800],
     borderRadius: 4,
+  },
+  pickChip: {
+    paddingHorizontal: spacing[8],
+    paddingVertical: 2,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: colors.primary[700],
+  },
+  weak: {
+    position: "absolute",
+    left: 16,
+    top: 114,
+    width: 358,
+    height: 30,
+    justifyContent: "center",
+    paddingHorizontal: spacing[12],
+    borderRadius: radius.pill,
+    backgroundColor: colors.tertiary[200],
+    zIndex: 2,
+  },
+  weakShort: { width: 248 },
+  testPill: {
+    position: "absolute",
+    right: 16,
+    top: 114,
+    maxWidth: 104,
+    height: 30,
+    justifyContent: "center",
+    paddingHorizontal: spacing[8],
+    borderRadius: radius.pill,
+    borderWidth: 2,
+    borderColor: colors.primary[700],
+    backgroundColor: colors.secondaryYellow[0],
+    zIndex: 3,
+  },
+  testMenu: {
+    position: "absolute",
+    right: 16,
+    top: 148,
+    width: 220,
+    maxHeight: 420,
+    borderRadius: radius.control,
+    borderWidth: 2,
+    borderColor: colors.primary[700],
+    backgroundColor: colors.secondaryYellow[0],
+    boxShadow: shadows.drop,
+    zIndex: 4,
+  },
+  testItem: {
+    paddingHorizontal: spacing[12],
+    paddingVertical: spacing[8],
+    borderBottomWidth: 1,
+    borderBottomColor: colors.primary[300],
   },
   roomSelected: { borderWidth: 4, borderColor: colors.tertiary[200] },
   soon: { backgroundColor: colors.primary[400], borderStyle: "dashed", borderColor: colors.primary[600] },

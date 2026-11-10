@@ -284,3 +284,10 @@ koleksi yang diverifikasi, sedangkan ERD saat ini hanya punya posisi denah.
 Pembacaan GPS dan gating landing awal tersedia di aplikasi Expo. E3 masih memerlukan uji mock
 location/perangkat dan integrasi cloud yang berhasil. E7/E8 memerlukan frontend Stories lengkap. B3
 belum selesai sebelum konten asli dan media terunggah serta URL diperiksa.
+
+### Draft data POI dari frontend
+
+`npm run poi:draft` menulis `data/poi-sprint2-draft.json` (14 POI P01–P14, format sama dengan
+`poi-template.json`) dari konten frontend. Status `approved:false`, audio masih `null` (B5), dan foto
+harus diunggah ke `images/Pxx/NN.jpg`. `prepare-seed.ts` saat ini hanya menerima tepat 6 POI, jadi
+batas itu perlu diubah C-1 sebelum draft ini dipakai.
