@@ -1,4 +1,17 @@
 import { registerRootComponent } from 'expo';
+import { Platform } from 'react-native';
+
+// Aplikasi ini untuk HP. Di browser layar lebar, buka di dalam bingkai HP (public/demo.html)
+// agar semua layar tampil seukuran HP. Tambahkan ?full ke URL untuk melewati bingkai.
+if (
+  Platform.OS === 'web' &&
+  typeof window !== 'undefined' &&
+  window.self === window.top &&
+  window.innerWidth > 600 &&
+  !window.location.search.includes('full')
+) {
+  window.location.replace('/demo.html' + window.location.search);
+}
 
 import App from './App';
 import DesignSystemPreview from './src/design/DesignSystemPreview';
