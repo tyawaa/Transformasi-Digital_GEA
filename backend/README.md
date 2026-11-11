@@ -107,7 +107,7 @@ Publishable key bukan pengganti access token pengunjung.
 | GET    | `/health`                                 | Tidak membutuhkan token; pemeriksaan proses, bukan seluruh layanan                |
 | POST   | `/geofence/evaluate`                      | `location` berupa koordinat+akurasi, atau `null`                                  |
 | GET    | `/pois`                                   | Daftar POI published, urut prioritas                                              |
-| GET    | `/pois/{id}?language=id&profile=umum`     | Varian wajib eksplisit; tidak ada fallback terjemahan                             |
+| GET    | `/pois/{id}?language=id&profile=dewasa`   | Bahasa wajib ada; usia tanpa teks sendiri memakai versi `dewasa`                  |
 | POST   | `/sessions`                               | `idSesi`, `language`, `profile`, `location`; GPS wajib inside                     |
 | POST   | `/sessions/qr`                            | `idSesi`, `language`, `profile`, `token` QR pintu masuk                           |
 | POST   | `/sessions/{id}/verify-qr`                | `token` QR koleksi, `language`, `profile`; mengembalikan POI dan bukti verifikasi |
@@ -115,7 +115,7 @@ Publishable key bukan pengganti access token pengunjung.
 | POST   | `/sessions/{id}/pois/{poiId}/close`       | Menyimpan kartu ditutup pada sesi ini                                             |
 | GET    | `/sessions/{id}/progress`                 | Sesi, kartu, dan hasil quest milik pengunjung                                     |
 
-Bahasa: `id`/`en`. Profil: `umum`/`pelajar`. Detail POI mengembalikan `cards` dengan jenis
+Bahasa: `id`/`en`. Profil (kelompok usia): `anak` (7–12), `remaja` (13–17), `dewasa` (18+); nilai lama `umum`/`pelajar` diterima sebagai `dewasa`/`anak`. Detail POI mengembalikan `cards` dengan jenis
 `description` dan `audio`, ditambah satu `quest` dengan empat opsi. Kunci jawaban dan hint tidak
 dikirim di detail; hint hanya dikirim setelah jawaban salah. Field domain mengikuti nama ERD
 (`id_poi`, `id_zona`, dsb); objek request dan keputusan menggunakan camelCase seperti tabel di atas.

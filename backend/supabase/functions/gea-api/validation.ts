@@ -2,7 +2,8 @@ import { ValidationError } from "./errors.ts";
 
 export type JsonObject = { readonly [key: string]: unknown };
 export type Language = "id" | "en";
-export type Profile = "umum" | "pelajar";
+/** Kelompok usia pengunjung: anak 7–12, remaja 13–17, dewasa 18+. */
+export type Profile = "anak" | "remaja" | "dewasa";
 
 export function object(value: unknown, field: string): JsonObject {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
@@ -41,8 +42,11 @@ export function language(value: unknown): Language {
 }
 
 export function profile(value: unknown): Profile {
-  if (value !== "umum" && value !== "pelajar") {
-    throw new ValidationError("profile harus umum atau pelajar.");
+  // Nilai lama dari aplikasi versi sebelumnya.
+  if (value === "umum") return "dewasa";
+  if (value === "pelajar") return "anak";
+  if (value !== "anak" && value !== "remaja" && value !== "dewasa") {
+    throw new ValidationError("profile harus anak, remaja, atau dewasa.");
   }
   return value;
 }

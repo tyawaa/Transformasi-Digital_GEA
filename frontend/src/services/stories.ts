@@ -22,6 +22,7 @@ import {
   MOCK_ENTRANCE_TOKEN,
   mockAnswerKeys,
   mockPoiDetails,
+  mockPoiForProfile,
   mockPoiSummaries,
   mockTokenToPoi,
   mockZoneToken,
@@ -34,7 +35,8 @@ import { type GeaApi, GeaServiceError } from "./api";
  */
 export interface StoriesSource {
   readonly kind: "mock" | "api";
-  startQrVisit(idSesi: string, token: string): Promise<Visit>;
+  /** profile: kelompok usia dari preferensi (anak 7–12, remaja 13–17, dewasa 18+). */
+  startQrVisit(idSesi: string, token: string, profile: Profile): Promise<Visit>;
   pois(): Promise<readonly PoiSummary[]>;
   poiDetail(idPoi: string, language: Language, profile: Profile): Promise<PoiDetail>;
   verifyPoiQr(idSesi: string, token: string, language: Language, profile: Profile): Promise<PoiVerification>;
@@ -70,12 +72,12 @@ export class MockStoriesSource implements StoriesSource {
   readonly kind = "mock" as const;
   private state: MockState | null = null;
 
-  async startQrVisit(idSesi: string, token: string): Promise<Visit> {
+  async startQrVisit(idSesi: string, token: string, profile: Profile): Promise<Visit> {
     await delay();
     if (token !== MOCK_ENTRANCE_TOKEN && token !== mockZoneToken("ZL") && token !== mockZoneToken("ZR")) {
       throw new GeaServiceError(403, "ENTRANCE_QR_INVALID", "QR pintu masuk tidak valid.");
     }
-    return { id_sesi: idSesi, bahasa: "id", profil: "umum", verification_method: "entrance_qr", status: "aktif" };
+    return { id_sesi: idSesi, bahasa: "id", profil: profile, verification_method: "entrance_qr", status: "aktif" };
   }
 
   async pois(): Promise<readonly PoiSummary[]> {
@@ -83,12 +85,12 @@ export class MockStoriesSource implements StoriesSource {
     return poiListSchema.parse(mockPoiSummaries);
   }
 
-  async poiDetail(idPoi: string): Promise<PoiDetail> {
+  async poiDetail(idPoi: string, _language: Language, profile: Profile): Promise<PoiDetail> {
     await delay();
-    return poiDetailSchema.parse(this.findPoi(idPoi));
+    return poiDetailSchema.parse(mockPoiForProfile(this.findPoi(idPoi), profile));
   }
 
-  async verifyPoiQr(idSesi: string, token: string): Promise<PoiVerification> {
+  async verifyPoiQr(idSesi: string, token: string, _language: Language, profile: Profile): Promise<PoiVerification> {
     await delay();
     const idPoi: string | undefined = mockTokenToPoi.get(token);
     if (idPoi === undefined) {
@@ -102,7 +104,7 @@ export class MockStoriesSource implements StoriesSource {
       idPoi,
       verified: true,
       expiresAt: new Date(expiresAt).toISOString(),
-      poi: this.findPoi(idPoi),
+      poi: mockPoiForProfile(this.findPoi(idPoi), profile),
     });
   }
 
@@ -195,8 +197,8 @@ export class ApiStoriesSource implements StoriesSource {
 
   constructor(private readonly api: GeaApi) {}
 
-  startQrVisit(idSesi: string, token: string): Promise<Visit> {
-    return this.api.startQrVisit(idSesi, token);
+  startQrVisit(idSesi: string, token: string, profile: Profile): Promise<Visit> {
+    return this.api.startQrVisit(idSesi, token, profile);
   }
 
   pois(): Promise<readonly PoiSummary[]> {

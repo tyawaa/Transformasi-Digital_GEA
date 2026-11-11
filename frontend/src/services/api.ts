@@ -155,23 +155,24 @@ export class GeaApi {
   async startGpsVisit(
     idSesi: string,
     location: DeviceLocation,
+    profile: Profile = "dewasa",
   ): Promise<Visit> {
     return visitSchema.parse(
       await this.post("/sessions", {
         idSesi,
         language: "id",
-        profile: "umum",
+        profile,
         location,
       }),
     );
   }
 
-  async startQrVisit(idSesi: string, token: string): Promise<Visit> {
+  async startQrVisit(idSesi: string, token: string, profile: Profile = "dewasa"): Promise<Visit> {
     return visitSchema.parse(
       await this.post("/sessions/qr", {
         idSesi,
         language: "id",
-        profile: "umum",
+        profile,
         token,
       }),
     );

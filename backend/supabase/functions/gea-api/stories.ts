@@ -13,6 +13,23 @@ function requireSingle(rows: readonly JsonObject[], code: string): JsonObject {
   return row;
 }
 
+/** Profil yang dicari: kelompok usia diminta dulu, lalu "dewasa" sebagai cadangan. */
+function profileFilter(profile: Profile): string {
+  return profile === "dewasa" ? "eq.dewasa" : `in.(${profile},dewasa)`;
+}
+
+/**
+ * Pilih varian usia yang diminta; bila belum ada (mis. teks remaja belum ditulis),
+ * pakai varian "dewasa" agar pengunjung tetap bisa membaca cerita.
+ */
+function pickProfile(rows: readonly JsonObject[], profile: Profile, code: string): JsonObject {
+  const exact: readonly JsonObject[] = rows.filter((row: JsonObject): boolean => row.profil === profile);
+  return requireSingle(
+    exact.length > 0 ? exact : rows.filter((row: JsonObject): boolean => row.profil === "dewasa"),
+    code,
+  );
+}
+
 export async function listPois(gateway: SupabaseGateway): Promise<readonly JsonObject[]> {
   const rows: readonly JsonObject[] = await gateway.query(
     "poi",
@@ -51,10 +68,10 @@ export async function poiDetail(
     gateway.query(
       "konten",
       new URLSearchParams({
-        select: "teks_cerita,path_audio,durasi_audio",
+        select: "profil,teks_cerita,path_audio,durasi_audio",
         id_poi: `eq.${poiId}`,
         bahasa: `eq.${language}`,
-        profil: `eq.${profile}`,
+        profil: profileFilter(profile),
       }),
     ),
     gateway.query(
@@ -63,17 +80,17 @@ export async function poiDetail(
     ),
   ]);
   const poi: JsonObject = requireSingle(pois, "POI_NOT_FOUND");
-  const content: JsonObject = requireSingle(contents, "CONTENT_VARIANT_NOT_AVAILABLE");
+  const content: JsonObject = pickProfile(contents, profile, "CONTENT_VARIANT_NOT_AVAILABLE");
   const quest: JsonObject = requireSingle(quests, "QUEST_NOT_AVAILABLE");
   const questId: string = uuid(quest.id_quest, "id_quest");
   const [questions, options]: [readonly JsonObject[], readonly JsonObject[]] = await Promise.all([
     gateway.query(
       "quest_teks",
       new URLSearchParams({
-        select: "instruksi,pertanyaan",
+        select: "profil,instruksi,pertanyaan",
         id_quest: `eq.${questId}`,
         bahasa: `eq.${language}`,
-        profil: `eq.${profile}`,
+        profil: profileFilter(profile),
       }),
     ),
     gateway.query(
@@ -86,7 +103,11 @@ export async function poiDetail(
       }),
     ),
   ]);
-  const question: JsonObject = requireSingle(questions, "QUEST_VARIANT_NOT_AVAILABLE");
+  const { profil: _questProfile, ...question }: JsonObject = pickProfile(
+    questions,
+    profile,
+    "QUEST_VARIANT_NOT_AVAILABLE",
+  );
   if (options.length !== 4) {
     throw new ApiError(
       503,

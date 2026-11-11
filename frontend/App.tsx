@@ -19,6 +19,9 @@ import {
 import { type MapPoi, MapScreen } from "./src/features/map/MapScreen";
 import { OnboardingScreen } from "./src/features/onboarding/OnboardingScreen";
 import { useOnboarding } from "./src/features/onboarding/useOnboarding";
+import { PreferencesScreen } from "./src/features/preferences/PreferencesScreen";
+import { usePreferences } from "./src/features/preferences/usePreferences";
+import { matchedTopics, profileForAge, recommendRoute, type Route } from "./src/features/preferences/recommend";
 import { ProgressScreen } from "./src/features/progress/ProgressScreen";
 import { wingEnabled, wingsMode } from "./src/config/wings";
 import { badges as allBadges, type BadgeDef } from "./src/domain/points";
@@ -89,8 +92,10 @@ type Screen =
 function Home(): ReactElement {
   useAuthRefresh();
   const onboarding = useOnboarding();
+  const preferences = usePreferences();
   const { busy, error: operationError, runOperation } = useOperation();
-  const session = useVisitSession(api, runOperation);
+  const profile = profileForAge(preferences.preferences);
+  const session = useVisitSession(api, runOperation, profile);
   const visitState = useVisitProgress(storiesSource);
   const { visit, progress, progressOf } = visitState;
 
@@ -138,6 +143,21 @@ function Home(): ReactElement {
     .map((poi: MapPoi): PoiRef => ({ id: poi.id ?? "", wing: poi.museum.wing }));
   const badges: readonly BadgeId[] = earnedBadges(refs, progress);
   const points: number = totalPoints(refs, progress);
+  // Rute rekomendasi dari preferensi, hanya dari ruangan yang ceritanya sudah tersedia.
+  const route: Route | null = useMemo((): Route | null =>
+    recommendRoute(
+      preferences.preferences,
+      mapPois.filter((poi: MapPoi): boolean => poi.id !== null).map((poi: MapPoi): string => poi.museum.code),
+    ), [preferences.preferences, mapPois]);
+  /** Ruangan berikutnya di rute yang belum selesai (selain ruangan yang sedang dibuka). */
+  function nextStop(exceptPoiId: string): string | null {
+    const next: MapPoi | undefined = route?.codes
+      .map((code: string): MapPoi | undefined => mapPois.find((poi: MapPoi): boolean => poi.museum.code === code))
+      .find((poi: MapPoi | undefined): boolean =>
+        poi !== undefined && poi.id !== exceptPoiId && poi.status !== "selesai" && progress[poi.id ?? ""]?.closed !== true
+      );
+    return next === undefined ? null : `${next.museum.code} · ${next.museum.name}`;
+  }
   const allDone: boolean = refs.length > 0 && mapPois.every((poi: MapPoi): boolean => poi.id === null || poi.status === "selesai");
 
   // E10: geofence POI + zona selama kunjungan aktif. id checkpoint = kode (P03, ZL).
@@ -173,7 +193,7 @@ function Home(): ReactElement {
   }, [gpsWing, manualWing, zone, progress, mapPois]);
 
   async function beginVisit(token: string): Promise<Visit> {
-    const created: Visit = await storiesSource.startQrVisit(randomUUID(), token);
+    const created: Visit = await storiesSource.startQrVisit(randomUUID(), token, profile);
     visitState.startVisit(created);
     return created;
   }
@@ -226,7 +246,7 @@ function Home(): ReactElement {
     }
   }
 
-  if (onboarding.state === "loading" || !visitState.ready) {
+  if (onboarding.state === "loading" || preferences.state === "loading" || !visitState.ready) {
     return <View style={{ flex: 1, backgroundColor: colors.primary[300] }} />;
   }
   if (onboarding.state === "show") {
@@ -240,6 +260,15 @@ function Home(): ReactElement {
           }}
           onDone={onboarding.complete}
         />
+      </>
+    );
+  }
+  // Setelah onboarding: preferensi (usia → waktu → minat), baru masuk peta.
+  if (preferences.state === "show") {
+    return (
+      <>
+        <StatusBar style="light" />
+        <PreferencesScreen onDone={preferences.save} />
       </>
     );
   }
@@ -260,6 +289,7 @@ function Home(): ReactElement {
           earnedBadges={badges}
           allCompleted={allDone}
           dummyScans={storyDummies(screen.poiId)}
+          nextStop={nextStop(screen.poiId)}
           onExit={(): void => setScreen({ name: "map" })}
         />
       </>
@@ -355,6 +385,8 @@ function Home(): ReactElement {
         }}
         onOpenPoi={(poiId: string): void => setScreen({ name: "story", poiId, token: null })}
         onOpenProgress={(): void => setScreen({ name: "progress" })}
+        route={route}
+        topicsFor={(code: string): readonly string[] => matchedTopics(preferences.preferences, code)}
       />
     </>
   );
