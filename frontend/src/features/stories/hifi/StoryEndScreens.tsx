@@ -2,7 +2,8 @@
 // Semua teks dan tata letak dikumpulkan di file ini supaya mudah diganti saat hi-fi final keluar.
 import { Image } from "expo-image";
 import type { ReactElement } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Linking, Pressable, Share, StyleSheet, View } from "react-native";
+import { Button } from "../../../design/Button";
 import { colors, componentColors, radius, shadows, spacing } from "../../../design/tokens";
 import { GeaText } from "../../../design/typography";
 import { StoryBackground } from "./backgrounds";
@@ -50,6 +51,49 @@ export function QuizFinishedScreen(
       onAction={onResult}
       onSkip={onSkip}
     />
+  );
+}
+
+/** Figma "Final": layar penutup cerita dengan tombol bagikan dan kembali ke halaman utama. */
+export function StoryFinalScreen(
+  { poiName, nextStop, onHome }: {
+    readonly poiName: string;
+    /** Ruangan berikutnya di rute rekomendasi; null = rute selesai / tanpa preferensi. */
+    readonly nextStop: string | null;
+    readonly onHome: () => void;
+  },
+): ReactElement {
+  async function share(): Promise<void> {
+    const message = `Aku baru saja menamatkan cerita tentang ${poiName} di Museum Geologi Bandung bersama GEA!`;
+    try {
+      await Share.share({ message });
+    } catch {
+      // Browser tanpa Web Share API: buka Instagram saja.
+      void Linking.openURL("https://www.instagram.com/");
+    }
+  }
+
+  return (
+    <FrameStage background={colors.primary[800]}>
+      <Image accessible={false} source={background} style={finished.bg} contentFit="fill" />
+      <View style={finished.card}>
+        <GeaText variant="heading28" color={colors.tertiary[100]} style={finished.center}>
+          Kisah selesai. Lanjutkan penjelajahanmu!
+        </GeaText>
+        <GeaText variant="body16" color={componentColors.bodyDark} style={finished.center}>
+          Selamat explorer, kamu baru saja menamatkan cerita tentang {poiName}. Bagikan petualanganmu dan lanjutkan ke koleksi berikutnya!
+        </GeaText>
+        {nextStop !== null && (
+          <GeaText variant="label16" color={colors.secondaryGreen[900]} style={finished.center}>
+            Berikutnya di rutemu: {nextStop}
+          </GeaText>
+        )}
+      </View>
+      <StoryButton label="Bagikan ke Instagram" onPress={(): void => void share()} style={finished.button} />
+      <View style={finished.homeButton}>
+        <Button appearance="outline" tone="primary" label="Kembali ke Halaman Utama" onPress={onHome} style={finished.stretch} />
+      </View>
+    </FrameStage>
   );
 }
 
@@ -162,6 +206,8 @@ const finished = StyleSheet.create({
   },
   center: { textAlign: "center" },
   button: { position: "absolute", left: 17, top: 696, width: 358, boxShadow: shadows.drop },
+  homeButton: { position: "absolute", left: 17, top: 752, width: 358 },
+  stretch: { alignSelf: "stretch" },
 });
 
 const side = StyleSheet.create({
