@@ -146,7 +146,7 @@ Deno.test("integrasi SQL: migrasi, enam POI, hak akses, QR, jawaban, idempotensi
       const generated: string = prepareInitialSeed({
         approved: true,
         language: "id",
-        profile: "umum",
+        profile: "dewasa",
         zones: [{
           idZona: "21000000-0000-4000-8000-000000000001",
           name: "SIMULASI",
@@ -219,7 +219,7 @@ Deno.test("integrasi SQL: migrasi, enam POI, hak akses, QR, jawaban, idempotensi
     });
     await test.step("QR pintu masuk valid membuka sesi, QR invalid ditolak", async (): Promise<void> => {
       await rejects(
-        database.query("select public.buat_sesi_qr($1,$2,$3,'id','umum')", [
+        database.query("select public.buat_sesi_qr($1,$2,$3,'id','dewasa')", [
           userId,
           visitId,
           "invalid",
@@ -228,7 +228,7 @@ Deno.test("integrasi SQL: migrasi, enam POI, hak akses, QR, jawaban, idempotensi
       );
       const visit: JsonObject = await resultObject(
         database,
-        "select public.buat_sesi_qr($1,$2,$3,'id','umum') as result",
+        "select public.buat_sesi_qr($1,$2,$3,'id','dewasa') as result",
         [userId, visitId, "a".repeat(64)],
       );
       equal(visit.id_sesi, visitId);
@@ -236,7 +236,7 @@ Deno.test("integrasi SQL: migrasi, enam POI, hak akses, QR, jawaban, idempotensi
       equal("user_id" in visit, false);
       const repeated: JsonObject = await resultObject(
         database,
-        "select public.buat_sesi_qr($1,$2,$3,'id','umum') as result",
+        "select public.buat_sesi_qr($1,$2,$3,'id','dewasa') as result",
         [userId, visitId, "a".repeat(64)],
       );
       deepStrictEqual(repeated, visit);
@@ -294,6 +294,27 @@ Deno.test("integrasi SQL: migrasi, enam POI, hak akses, QR, jawaban, idempotensi
         ]),
         /IDEMPOTENCY_CONFLICT/,
       );
+    });
+    await test.step("sesi anak tanpa teks anak memakai hint versi dewasa", async (): Promise<void> => {
+      const studentVisitId: string = "50000000-0000-4000-8000-000000000002";
+      const visit: JsonObject = await resultObject(
+        database,
+        "select public.buat_sesi_qr($1,$2,$3,'id','anak') as result",
+        [otherUserId, studentVisitId, "a".repeat(64)],
+      );
+      equal(visit.profil, "anak");
+      await resultObject(database, "select public.verifikasi_qr_poi($1,$2,$3) as result", [
+        otherUserId,
+        studentVisitId,
+        "1".repeat(64),
+      ]);
+      const wrong: JsonObject = await resultObject(
+        database,
+        "select public.jawab_quest($1,$2,$3,'B',$4) as result",
+        [otherUserId, studentVisitId, questId, crypto.randomUUID()],
+      );
+      equal(wrong.answerCorrect, false);
+      equal(wrong.hint, "Petunjuk simulasi.");
     });
     await test.step("jawaban benar menyelesaikan quest; percobaan berikutnya ditolak", async (): Promise<void> => {
       const correct: JsonObject = await resultObject(

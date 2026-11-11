@@ -5,6 +5,7 @@ import {
   type OptionLabel,
   type PoiDetail,
   type PoiSummary,
+  type Profile,
 } from "../domain/contracts";
 import { activePois, type MuseumPoi, poiIdFor, questIdFor } from "../data/museum";
 import { wrapQr } from "../features/qr/qrPayload";
@@ -54,7 +55,7 @@ export const mockPoiDetails: readonly PoiDetail[] = pois.map((poi, index: number
   prioritas: index + 1,
   estimasi_durasi: 5,
   language: "id",
-  profile: "umum",
+  profile: "dewasa",
   cards: [
     { type: "description", text: poi.content.cerita, photoUrl: mainPhoto(poi) },
     { type: "audio", audioUrl: mockMediaUrl("/narasi.wav"), durationSeconds: 30 },
@@ -70,6 +71,19 @@ export const mockPoiDetails: readonly PoiDetail[] = pois.map((poi, index: number
     })),
   },
 }));
+
+/**
+ * Teks cerita sesuai kelompok usia (ceritaAnak / ceritaRemaja). Seperti backend,
+ * usia yang belum punya teks sendiri memakai versi dewasa.
+ */
+export function mockPoiForProfile(detail: PoiDetail, profile: Profile): PoiDetail {
+  if (profile === "dewasa") return detail;
+  const content = pois.find((poi): boolean => poiIdFor(poi.number) === detail.id_poi)?.content;
+  const text: string | undefined = profile === "anak" ? content?.ceritaAnak : content?.ceritaRemaja;
+  if (text === undefined) return detail;
+  const [description, audio] = detail.cards;
+  return { ...detail, profile, cards: [{ ...description, text }, audio] };
+}
 
 /** Token koleksi → POI. Hanya dipakai sumber data mock untuk meniru backend. */
 export const mockTokenToPoi: ReadonlyMap<string, string> = new Map(

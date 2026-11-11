@@ -6,6 +6,7 @@ import {
   type BackendHealth,
   type DecisionMessage,
   decisionMessage,
+  type Profile,
   type Visit,
 } from "../domain/contracts";
 import type { RunOperation } from "./useOperation";
@@ -65,6 +66,8 @@ type VisitSessionState = {
 export function useVisitSession(
   api: GeaApi,
   runOperation: RunOperation,
+  /** Kelompok usia dari preferensi (anak / remaja / dewasa). */
+  profile: Profile = "dewasa",
 ): VisitSessionState {
   const [notice, setNotice] = useState<DecisionMessage | null>(null);
   const [decision, setDecision] = useState<AccessDecision | null>(null);
@@ -136,6 +139,7 @@ export function useVisitSession(
         const created: Visit = await api.startGpsVisit(
           randomUUID(),
           reading.location,
+          profile,
         );
         setVisit(created);
       }
@@ -147,7 +151,7 @@ export function useVisitSession(
     setDecision(null);
     setLocationIssue(null);
     await runOperation("qr", async (): Promise<void> => {
-      const created: Visit = await api.startQrVisit(randomUUID(), token);
+      const created: Visit = await api.startQrVisit(randomUUID(), token, profile);
       setVisit(created);
       setNotice({
         title: "Selamat datang di museum",
