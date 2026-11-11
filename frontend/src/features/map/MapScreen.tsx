@@ -9,6 +9,7 @@ import { GeaText } from "../../design/typography";
 import type { MuseumPoi, Wing, ZoneInfo } from "../../data/museum";
 import type { Fix } from "../../domain/geofence";
 import type { PoiStatus } from "../../domain/points";
+import type { Route } from "../preferences/recommend";
 import { ScanBackground } from "../stories/hifi/backgrounds";
 import { FrameStage, StoryButton } from "../stories/hifi/parts";
 
@@ -51,6 +52,10 @@ type Props = {
   readonly onRetry: () => void;
   readonly onOpenPoi: (id: string) => void;
   readonly onOpenProgress: () => void;
+  /** Rute dari preferensi (usia, waktu, minat); null = belum ada preferensi. */
+  readonly route: Route | null;
+  /** Topik minat pengguna yang cocok dengan ruangan ini. */
+  readonly topicsFor: (code: string) => readonly string[];
 };
 
 const statusLabel: Record<PoiStatus, string> = {
@@ -134,6 +139,7 @@ export function MapScreen(props: Props): ReactElement {
         onPickHere={pickWing}
         selected={selected}
         onSelect={setSelected}
+        route={props.route?.codes ?? []}
       />
       {leftOnly
         ? (
@@ -155,6 +161,7 @@ export function MapScreen(props: Props): ReactElement {
             onPickHere={pickWing}
             selected={selected}
             onSelect={setSelected}
+            route={props.route?.codes ?? []}
           />
         )}
 
@@ -167,7 +174,7 @@ export function MapScreen(props: Props): ReactElement {
 
       {/* Kartu bawah: satu informasi saja pada satu waktu */}
       <View style={[styles.card, leftOnly && { top: 580 }]}>
-        <BottomCard {...props} picked={picked} onClosePick={(): void => setSelected(null)} />
+        <BottomCard {...props} picked={picked} onClosePick={(): void => setSelected(null)} onSelect={setSelected} />
       </View>
 
       {props.hasVisit && (
@@ -200,7 +207,11 @@ export function MapScreen(props: Props): ReactElement {
 }
 
 function BottomCard(
-  props: Props & { readonly picked: MapPoi | undefined; readonly onClosePick: () => void },
+  props: Props & {
+    readonly picked: MapPoi | undefined;
+    readonly onClosePick: () => void;
+    readonly onSelect: (code: string) => void;
+  },
 ): ReactElement {
   if (props.loading) {
     return (
@@ -226,6 +237,11 @@ function BottomCard(
         <GeaText variant="body14" color={componentColors.bodyDark}>
           {props.notice?.description ?? "Scan QR di pintu masuk museum. Setelah itu, scan QR di dekat koleksi untuk membuka ceritanya."}
         </GeaText>
+        {props.route !== null && props.route.codes.length > 0 && (
+          <GeaText variant="caption12" color={colors.secondaryGreen[900]}>
+            Rute untukmu sudah siap: {props.route.codes.length} ruangan (lihat nomor di peta).
+          </GeaText>
+        )}
         <StoryButton label="Scan QR pintu masuk" onPress={props.onScan} style={styles.full} />
         <TextLink
           label={props.checkingLocation ? "Memeriksa lokasi..." : "Atau periksa lokasi dengan GPS"}
@@ -251,6 +267,11 @@ function BottomCard(
             <GeaText variant="caption12" color={colors.primary[700]}>
               {available ? statusLabel[poi.status] : "Ceritanya segera hadir"}
             </GeaText>
+            {routeNote(props, poi.museum.code) !== null && (
+              <GeaText variant="caption12" color={colors.secondaryGreen[900]} numberOfLines={2}>
+                {routeNote(props, poi.museum.code)}
+              </GeaText>
+            )}
           </View>
           <Pressable accessibilityRole="button" accessibilityLabel="Tutup" hitSlop={12} onPress={props.onClosePick}>
             <GeaText variant="bold16" color={colors.primary[700]}>✕</GeaText>
@@ -306,6 +327,40 @@ function BottomCard(
       </>
     );
   }
+  if (props.route !== null && props.route.codes.length > 0) {
+    const route: Route = props.route;
+    const stops: readonly MapPoi[] = route.codes
+      .map((code: string): MapPoi | undefined => props.pois.find((poi: MapPoi): boolean => poi.museum.code === code))
+      .filter((poi: MapPoi | undefined): poi is MapPoi => poi !== undefined);
+    const allDone: boolean = stops.every((poi: MapPoi): boolean => poi.status === "selesai");
+    return (
+      <>
+        <GeaText variant="heading20" color={colors.primary[900]}>
+          {allDone ? "Rutemu selesai!" : "Rute untukmu"}
+        </GeaText>
+        <GeaText variant="body14" color={componentColors.bodyDark} numberOfLines={2}>
+          {allDone
+            ? "Hebat! Masih ada waktu? Ketuk ruangan lain di peta."
+            : `${stops.length} ruangan · ${route.duration}${route.topics.length > 0 ? ` · ${route.topics.join(", ")}` : ""}`}
+        </GeaText>
+        <View style={styles.stops}>
+          {stops.map((poi: MapPoi, index: number): ReactElement => (
+            <Pressable
+              key={poi.museum.code}
+              accessibilityRole="button"
+              accessibilityLabel={`Rute ${index + 1}: ${poi.museum.name}`}
+              onPress={(): void => props.onSelect(poi.museum.code)}
+              style={({ pressed }) => [styles.stop, poi.status === "selesai" && styles.stopDone, pressed && styles.pressed]}
+            >
+              <GeaText variant="caption12" color={poi.status === "selesai" ? colors.white : colors.primary[900]}>
+                {index + 1}. {poi.museum.code}{poi.status === "selesai" ? " ✓" : ""}
+              </GeaText>
+            </Pressable>
+          ))}
+        </View>
+      </>
+    );
+  }
   return (
     <>
       <GeaText variant="heading20" color={colors.primary[900]}>Mau jelajah ke mana?</GeaText>
@@ -314,6 +369,17 @@ function BottomCard(
       </GeaText>
     </>
   );
+}
+
+/** "Rute untukmu #2 · cocok dengan minatmu: Gunung Api" untuk kartu ruangan. */
+function routeNote(props: Props, code: string): string | null {
+  const index: number = props.route?.codes.indexOf(code) ?? -1;
+  const matches: readonly string[] = props.topicsFor(code);
+  if (index === -1 && matches.length === 0) return null;
+  const parts: string[] = [];
+  if (index !== -1) parts.push(`Rute untukmu #${index + 1}`);
+  if (matches.length > 0) parts.push(`cocok dengan minatmu: ${matches.join(", ")}`);
+  return parts.join(" · ");
 }
 
 function TextLink(
@@ -338,7 +404,7 @@ function Legend(
 }
 
 function WingPlan(
-  { top, maxHeight, stretch, title, subtitle, wing, pois, here, onPickHere, selected, onSelect }: {
+  { top, maxHeight, stretch, title, subtitle, wing, pois, here, onPickHere, selected, onSelect, route }: {
     readonly top: number;
     /** Tinggi maksimum denah di frame 390 × 844. */
     readonly maxHeight: number;
@@ -353,6 +419,8 @@ function WingPlan(
     readonly onPickHere: ((wing: Wing) => void) | null;
     readonly selected: string | null;
     readonly onSelect: (code: string) => void;
+    /** Kode POI rute rekomendasi; nomor urut tampil di pojok ruangan. */
+    readonly route: readonly string[];
   },
 ): ReactElement {
   const rooms: readonly MapPoi[] = pois.filter((poi: MapPoi): boolean => poi.museum.wing === wing);
@@ -415,6 +483,11 @@ function WingPlan(
                 {poi.museum.code}
               </GeaText>
               {done && <GeaText variant="caption12" color={colors.white}>✓</GeaText>}
+              {route.includes(poi.museum.code) && (
+                <View style={styles.routeBadge}>
+                  <GeaText variant="caption12" color={colors.white}>{route.indexOf(poi.museum.code) + 1}</GeaText>
+                </View>
+              )}
             </Pressable>
           );
         })}
@@ -585,4 +658,26 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   scan: { position: "absolute", left: 16, width: 358, top: 772, boxShadow: shadows.drop },
+  routeBadge: {
+    position: "absolute",
+    left: 2,
+    top: 2,
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 4,
+    borderRadius: 9,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.tertiary[200],
+  },
+  stops: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  stop: {
+    paddingHorizontal: spacing[8],
+    paddingVertical: 4,
+    borderRadius: radius.pill,
+    borderWidth: 2,
+    borderColor: colors.tertiary[200],
+    backgroundColor: colors.secondaryYellow[0],
+  },
+  stopDone: { backgroundColor: colors.secondaryGreen[700], borderColor: colors.secondaryGreen[700] },
 });

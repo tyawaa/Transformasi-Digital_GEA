@@ -34,9 +34,9 @@ import { isiPanelLayer, StoryBackground } from "./backgrounds";
 import { BackButton, FrameStage, PhotoFrame, StoryButton } from "./parts";
 import { type DummyScan, ScanQrScreen, type ScanState } from "./ScanQrScreen";
 import { StoryAudio } from "./StoryAudio";
-import { QuizFinishedScreen, SideQuestScreen, StoryFinishedScreen } from "./StoryEndScreens";
+import { QuizFinishedScreen, SideQuestScreen, StoryFinalScreen, StoryFinishedScreen } from "./StoryEndScreens";
 
-type Step = "scan" | "loading" | "summary" | "story" | "story2" | "narration" | "storyDone" | "sideQuest" | "quiz" | "quizDone" | "questDone";
+type Step = "scan" | "loading" | "summary" | "story" | "story2" | "narration" | "storyDone" | "sideQuest" | "quiz" | "quizDone" | "questDone" | "final";
 
 type ToastMessage = { readonly tone: ToastTone; readonly title: string; readonly description: string };
 
@@ -52,6 +52,8 @@ type Props = {
   readonly earnedBadges: readonly BadgeId[];
   readonly allCompleted: boolean;
   readonly dummyScans: readonly DummyScan[];
+  /** Ruangan berikutnya di rute rekomendasi, mis. "P08 · Terjadinya Tenaga Tektonik". */
+  readonly nextStop?: string | null;
   readonly onExit: () => void;
 };
 
@@ -210,9 +212,13 @@ export function StoryFlow(props: Props): ReactElement {
       <StoryFinishedScreen
         poiName={poi.nama}
         onSideQuest={(): void => setStep("sideQuest")}
-        onSkip={props.onExit}
+        onSkip={(): void => setStep("final")}
       />
     );
+  }
+
+  if (step === "final") {
+    return <StoryFinalScreen poiName={poi.nama} nextStop={props.nextStop ?? null} onHome={props.onExit} />;
   }
 
   if (step === "quizDone") {
@@ -221,7 +227,7 @@ export function StoryFlow(props: Props): ReactElement {
         poiName={poi.nama}
         completed={progress.completed}
         onResult={(): void => setStep("questDone")}
-        onSkip={props.onExit}
+        onSkip={(): void => setStep("final")}
       />
     );
   }
@@ -427,8 +433,8 @@ export function StoryFlow(props: Props): ReactElement {
               description={props.allCompleted
                 ? "Kamu sudah menyelesaikan semua cerita dan side quest. Hebat!"
                 : "Kembali ke peta dan temukan koleksi berikutnya."}
-              actionLabel="Kembali ke peta"
-              onAction={props.onExit}
+              actionLabel="Lanjut"
+              onAction={(): void => setStep("final")}
             />
           </View>
         </>

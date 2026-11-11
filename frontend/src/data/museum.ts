@@ -46,6 +46,12 @@ export const zones: readonly ZoneInfo[] = [
 
 export type StoryContent = {
   readonly cerita: string;
+  // `cerita` di atas = versi dewasa (18+). Versi usia lain DRAFT, cek ke kurator;
+  // kosong = pengunjung usia itu melihat versi dewasa.
+  /** Anak 7–12: kalimat pendek, istilah dijelaskan dengan kata sehari-hari. */
+  readonly ceritaAnak?: string;
+  /** Remaja 13–17: istilah ilmiah tetap dipakai dan dijelaskan singkat. */
+  readonly ceritaRemaja?: string;
   readonly instruksi: string;
   readonly pertanyaan: string;
   readonly opsi: readonly [string, string, string, string];
@@ -126,6 +132,10 @@ const contents: { readonly [n: number]: StoryContent } = {
     judul: "Jembatan Darat Zaman Es",
     cerita:
       "Saat zaman es, air laut membeku di kutub sehingga muka air laut turun lebih dari 100 meter. Dasar laut dangkal di barat Indonesia muncul menjadi daratan luas, Paparan Sunda, yang menyambungkan Sumatra, Jawa, dan Kalimantan dengan Asia. Lewat jembatan darat ini, hewan dari Asia bermigrasi ke Nusantara dalam tiga tahap: sekitar 2,6 juta, 0,8 juta, dan 250 ribu tahun lalu. Buktinya ada di vitrin: rahang Sinomastodon dari Bumiayu, gading Elephas celebensis dari Sangihe, dan gigi Elephas maximus dari Cipeundeuy.",
+    ceritaAnak:
+      "Dulu, saat zaman es, banyak air laut membeku jadi es di kutub. Akibatnya laut jadi lebih dangkal, turun lebih dari 100 meter! Dasar laut di barat Indonesia pun muncul jadi daratan, namanya Paparan Sunda. Daratan ini seperti jembatan yang menyambungkan Sumatra, Jawa, dan Kalimantan dengan Asia. Hewan dari Asia, seperti kerabat gajah, berjalan melewatinya ke Nusantara. Buktinya ada di vitrin: rahang Sinomastodon dari Bumiayu dan gading gajah purba dari Sangihe.",
+    ceritaRemaja:
+      "Saat zaman es, banyak air laut membeku di kutub sehingga muka air laut turun lebih dari 100 meter. Dasar laut dangkal di barat Indonesia pun muncul menjadi daratan luas bernama Paparan Sunda. Daratan ini menjadi jembatan yang menyambungkan Sumatra, Jawa, dan Kalimantan dengan Asia. Hewan dari Asia bermigrasi lewat jembatan ini dalam tiga gelombang: sekitar 2,6 juta, 0,8 juta, dan 250 ribu tahun lalu. Buktinya ada di vitrin: rahang Sinomastodon dari Bumiayu dan gading Elephas celebensis dari Sangihe.",
     fakta:
       "Garis Wallace adalah garis khayal antara Bali–Lombok dan Kalimantan–Sulawesi yang memisahkan fauna bercorak Asia di barat dan fauna bercorak Australia di timur.",
     sorotan: "Rahang bawah Sinomastodon bumiayuensis, gading Elephas celebensis, gigi Elephas maximus, panel peta glasiasi",
@@ -145,6 +155,10 @@ const contents: { readonly [n: number]: StoryContent } = {
     judul: "Dari Terumbu Karang Menjadi Bukit Kars",
     cerita:
       "Batugamping sebagian besar berasal dari cangkang dan kerangka hewan laut, seperti terumbu karang yang tumbuh di laut hangat Indonesia. Gerakan tektonik lalu mengangkat terumbu dan batugamping itu menjadi daratan. Di sana air hujan perlahan melarutkannya, proses yang disebut karstifikasi. Di permukaan terbentuk bukit dan lembah kars, sedangkan di bawah tanah terbentuk gua, sungai bawah tanah, dan stalaktit. Contohnya Kars Gunung Sewu, Maros-Pangkep, dan Gombong. Karang di vitrin ini adalah bahan dasar kars!",
+    ceritaAnak:
+      "Tahukah kamu, batugamping kebanyakan berasal dari kerangka hewan laut, misalnya terumbu karang? Karang tumbuh di laut hangat Indonesia. Lalu gerakan Bumi mengangkatnya jadi daratan. Air hujan pelan-pelan melarutkan batugamping itu. Proses ini disebut karstifikasi. Hasilnya ada bukit-bukit kars di permukaan, dan gua serta sungai bawah tanah di dalamnya. Contohnya Kars Gunung Sewu dan Maros-Pangkep. Karang di vitrin ini adalah bahan dasar kars!",
+    ceritaRemaja:
+      "Batugamping sebagian besar terbentuk dari cangkang dan kerangka hewan laut, terutama terumbu karang di laut hangat Indonesia. Gerakan tektonik kemudian mengangkat batugamping itu menjadi daratan. Air hujan yang sedikit asam lalu melarutkannya perlahan, proses yang disebut karstifikasi. Hasilnya bentang alam kars: bukit dan lembah di permukaan, serta gua, sungai bawah tanah, dan stalaktit di dalamnya. Contohnya Kars Gunung Sewu, Maros-Pangkep, dan Gombong. Karang di vitrin ini adalah bahan dasar kars!",
     fakta:
       "Kars Gunung Sewu membentang dari Pantai Parangtritis sampai Teluk Pacitan, luasnya sekitar 100 × 40 km².",
     sorotan:
@@ -165,6 +179,10 @@ const contents: { readonly [n: number]: StoryContent } = {
     judul: "Indonesia di Cincin Api",
     cerita:
       "Indonesia berada di jalur pertemuan lempeng yang disebut Cincin Api Pasifik. Pertemuan lempeng inilah yang membentuk deretan gunung api dari Sumatra sampai Maluku. Saat meletus, gunung api menghasilkan beragam batuan. Lava yang membeku sangat cepat menjadi obsidian, kaca vulkanik yang hitam mengilap. Gas yang terperangkap meninggalkan banyak lubang, seperti pada batuapung dan basalt vesikuler. Gumpalan lava yang terlempar ke udara lalu membeku disebut bom gunung api.",
+    ceritaAnak:
+      "Indonesia berada di Cincin Api Pasifik, tempat lempeng-lempeng Bumi bertemu. Lempeng adalah potongan besar kulit Bumi. Pertemuan lempeng inilah yang membuat banyak gunung api, dari Sumatra sampai Maluku. Saat meletus, gunung api menghasilkan batu yang berbeda-beda. Lava yang cepat dingin jadi obsidian, batu hitam mengilap seperti kaca. Batuapung punya banyak lubang dari gelembung gas, jadi sangat ringan. Gumpalan lava yang terlempar lalu membeku disebut bom gunung api.",
+    ceritaRemaja:
+      "Indonesia berada di Cincin Api Pasifik, jalur tempat lempeng-lempeng Bumi saling bertemu. Pertemuan lempeng inilah yang membentuk deretan gunung api dari Sumatra sampai Maluku. Saat meletus, gunung api menghasilkan batuan yang beragam. Lava yang membeku sangat cepat menjadi obsidian, kaca vulkanik yang hitam mengilap. Gas yang terperangkap meninggalkan banyak rongga, seperti pada batuapung dan basalt vesikuler. Gumpalan lava yang terlempar ke udara lalu membeku sebelum jatuh disebut bom gunung api.",
     fakta: "Batuapung penuh rongga udara sehingga sangat ringan, bahkan bisa mengapung di air.",
     sorotan:
       "Obsidian (Bukit Rejeng, Garut), batuapung (G. Galunggung, Tasikmalaya), basalt vesikuler (Subang), bom kerak roti (Purwokerto), bom gunung api (Magelang), aliran lava",
@@ -184,6 +202,10 @@ const contents: { readonly [n: number]: StoryContent } = {
     judul: "Bumi yang Retak dan Terlipat",
     cerita:
       "Rona muka Bumi Indonesia terus berubah karena tenaga dari dalam Bumi. Saat batuan ditekan perlahan, lapisannya bisa melengkung menjadi lipatan, seperti sekis terlipat dari Pegunungan Cyclop, Papua. Jika tekanannya terlalu besar, batuan patah dan bergeser menjadi sesar. Gesekannya meninggalkan bidang halus yang disebut cermin sesar, sedangkan pecahan batuan yang menyatu kembali disebut breksi sesar. Di dekat Bandung pun ada sesar: Sesar Lembang di Gunung Batu, yang retakannya memanjang lebih dari 22 km.",
+    ceritaAnak:
+      "Muka Bumi Indonesia terus berubah karena ada tenaga dari dalam Bumi. Kalau batuan ditekan pelan-pelan, lapisannya bisa melengkung. Ini disebut lipatan. Kalau tekanannya terlalu kuat, batuan patah lalu bergeser. Ini disebut sesar. Gesekan sesar bisa membuat permukaan batu jadi halus seperti cermin, namanya cermin sesar. Dekat Bandung juga ada sesar, lho: Sesar Lembang, panjangnya lebih dari 22 km!",
+    ceritaRemaja:
+      "Muka Bumi Indonesia terus berubah karena tenaga dari dalam Bumi. Saat batuan ditekan perlahan, lapisannya melengkung membentuk lipatan, seperti sekis terlipat dari Pegunungan Cyclop, Papua. Jika tekanannya melebihi kekuatan batuan, batuan patah dan bergeser membentuk sesar. Gesekan di bidang sesar bisa menghasilkan permukaan licin yang disebut cermin sesar, sementara pecahan batuan yang menyatu kembali disebut breksi sesar. Bandung juga punya sesar aktif: Sesar Lembang, yang panjangnya lebih dari 22 km.",
     fakta:
       "Genes dan sekis biotit dari Donggala, Sulawesi Tengah, adalah batuan metamorf, yaitu batuan yang berubah karena panas dan tekanan tinggi di dalam Bumi.",
     sorotan:
@@ -204,6 +226,10 @@ const contents: { readonly [n: number]: StoryContent } = {
     judul: "Menonton Kepulauan Indonesia Lahir",
     cerita:
       "Di ruang animasi ini kamu bisa melihat bagaimana Kepulauan Indonesia terbentuk. Animasi buatan Robert Hall, geolog dari Inggris yang tertarik pada geologi Indonesia, memutar ulang waktu hingga puluhan juta tahun lalu. Pulau-pulau bergeser sedikit demi sedikit karena lempeng-lempeng Bumi terus bergerak dan bertumbukan. Sampai sekarang Indonesia masih diapit lempeng Eurasia, Indo-Australia, dan Pasifik. Hasilnya adalah negeri kepulauan dengan garis pantai yang sangat panjang.",
+    ceritaAnak:
+      "Di ruang animasi ini kamu bisa menonton bagaimana Kepulauan Indonesia terbentuk. Animasinya dibuat Robert Hall, geolog dari Inggris. Geolog adalah ilmuwan yang mempelajari Bumi dan batuan. Animasi ini memutar ulang waktu sampai puluhan juta tahun lalu. Kamu akan melihat pulau-pulau bergeser sedikit demi sedikit, karena lempeng Bumi terus bergerak. Sampai sekarang Indonesia masih diapit tiga lempeng: Eurasia, Indo-Australia, dan Pasifik.",
+    ceritaRemaja:
+      "Ruang animasi ini memperlihatkan bagaimana Kepulauan Indonesia terbentuk. Animasinya dibuat oleh Robert Hall, geolog asal Inggris yang meneliti geologi Indonesia. Animasi ini memutar ulang waktu hingga puluhan juta tahun lalu. Kamu bisa melihat pulau-pulau bergeser sedikit demi sedikit karena lempeng-lempeng Bumi terus bergerak dan bertumbukan. Sampai sekarang Indonesia masih diapit tiga lempeng besar: Eurasia, Indo-Australia, dan Pasifik. Hasilnya adalah negara kepulauan dengan garis pantai yang sangat panjang.",
     fakta:
       "Tayangan di ruangan ini menyebut garis pantai Indonesia sepanjang 80.791 km, kira-kira dua kali keliling Bumi.",
     sorotan: "Layar animasi Robert Hall, layar morfologi Indonesia, panel perkembangan Kepulauan Indonesia, peta relief bercahaya",
@@ -224,6 +250,10 @@ const contents: { readonly [n: number]: StoryContent } = {
     judul: "Batu yang Pelan-Pelan Berubah",
     cerita:
       "Batuan yang terangkat menjadi daratan tidak abadi. Panas, hujan, akar tumbuhan, dan hewan pelan-pelan melapukkannya hingga menjadi tanah. Air, angin, dan es lalu mengikis serta membawa material itu ke tempat lain. Saat tenaganya habis, material diendapkan dan membentuk roman muka Bumi yang baru. Panel di sini menunjukkan sembilan bentukan muka Bumi, dari vulkanik, sungai, pantai, angin, sampai es. Lihat batugamping dari Wonogiri: rongganya terbentuk karena batuan larut oleh air.",
+    ceritaAnak:
+      "Batu ternyata bisa berubah, walau sangat pelan! Panas, hujan, akar tumbuhan, dan hewan membuat batu rapuh lalu hancur jadi tanah. Ini disebut pelapukan. Lalu air, angin, dan es membawa butiran itu ke tempat lain. Ini disebut erosi. Saat berhenti, butiran itu menumpuk dan membentuk daratan baru. Ini disebut pengendapan. Coba lihat batugamping dari Wonogiri: lubang-lubangnya terbentuk karena batu larut oleh air.",
+    ceritaRemaja:
+      "Batuan yang terangkat ke permukaan tidak bertahan selamanya. Panas, hujan, akar tumbuhan, dan hewan perlahan menghancurkannya menjadi tanah. Proses ini disebut pelapukan. Air, angin, dan es lalu mengikis dan memindahkan material itu, yang disebut erosi. Ketika tenaga pengangkutnya habis, material diendapkan dan membentuk muka Bumi yang baru. Panel di sini menunjukkan sembilan bentukan muka Bumi, dari vulkanik, sungai, pantai, angin, sampai es. Rongga pada batugamping Wonogiri terbentuk karena batuan larut oleh air.",
     fakta:
       "Gumuk pasir Parangtritis, Yogyakarta, satu-satunya di Asia Tenggara, ditetapkan sebagai kawasan cagar alam geologi pada Oktober 2014.",
     sorotan:
@@ -244,6 +274,10 @@ const contents: { readonly [n: number]: StoryContent } = {
     judul: "Pelangi di Dalam Batu",
     cerita:
       "Semua batuan tersusun dari mineral, yaitu bahan padat alami dengan susunan kimia tertentu dan bentuk kristal yang khas. Vitrin di sini memamerkan mineral dari berbagai kelompok, dari unsur murni seperti emas, sulfida seperti pirit, hingga silikat. Warnanya pun beragam: ungu pada kristal ametis, biru tua pada lapis lazuli, dan merah muda pada rhodochrosite. Mineral bergabung membentuk tiga jenis batuan: batuan beku dari magma, batuan sedimen dari endapan, dan batuan metamorf yang berubah karena panas dan tekanan.",
+    ceritaAnak:
+      "Semua batu tersusun dari mineral. Mineral adalah bahan padat dari alam yang punya bentuk kristal khas. Di vitrin ini ada emas, pirit yang berkilau seperti emas, dan banyak lagi. Warnanya juga cantik: ametis berwarna ungu, lapis lazuli biru tua, dan rhodochrosite merah muda. Mineral bergabung jadi tiga jenis batuan. Batuan beku berasal dari magma, batuan sedimen dari endapan, dan batuan metamorf berubah karena panas dan tekanan.",
+    ceritaRemaja:
+      "Semua batuan tersusun dari mineral, yaitu benda padat alami dengan susunan kimia tertentu dan bentuk kristal yang khas. Vitrin ini menampilkan mineral dari berbagai kelompok: unsur murni seperti emas, sulfida seperti pirit, sampai silikat. Warnanya beragam, misalnya ungu pada ametis, biru tua pada lapis lazuli, dan merah muda pada rhodochrosite. Mineral membentuk tiga jenis batuan: batuan beku dari magma yang membeku, batuan sedimen dari endapan, dan batuan metamorf yang berubah karena panas dan tekanan.",
     fakta:
       "Batuan terus berputar dalam siklus batuan: batuan beku, sedimen, dan metamorf bisa berubah satu menjadi yang lain selama jutaan tahun.",
     sorotan:
@@ -264,6 +298,10 @@ const contents: { readonly [n: number]: StoryContent } = {
     judul: "Mesin Panas di Perut Bumi",
     cerita:
       "Inti Bumi menyimpan energi panas yang memunculkan arus konveksi di dalam magma. Arus ini menyeret kerak Bumi di atasnya sehingga kulit Bumi terkoyak menjadi lempeng-lempeng yang bergerak sekitar 7 cm per tahun. Lempeng bisa saling mendekat (konvergen), saling menjauh (divergen), atau saling berpapasan (transform). Akibatnya muncul lipatan, patahan, gempa bumi, dan gunung api. Peridotit dari Ciletuh di depanmu adalah batuan dari kedalaman yang terangkat ke permukaan karena tenaga tektonik.",
+    ceritaAnak:
+      "Di dalam Bumi sangat panas. Panas ini membuat magma bergerak berputar, seperti air mendidih di panci. Gerakan itu menyeret kulit Bumi sehingga terpecah jadi lempeng-lempeng. Lempeng bergerak sekitar 7 cm setiap tahun. Lempeng bisa saling mendekat, saling menjauh, atau saling berpapasan. Akibatnya muncul lipatan, patahan, gempa bumi, dan gunung api. Peridotit dari Ciletuh di depanmu dulunya batu dari dalam Bumi.",
+    ceritaRemaja:
+      "Inti Bumi menyimpan panas yang memicu arus konveksi, yaitu aliran berputar di dalam lapisan Bumi yang panas. Arus ini menyeret kerak Bumi sehingga terpecah menjadi lempeng-lempeng yang bergerak sekitar 7 cm per tahun. Lempeng bisa saling mendekat (konvergen), saling menjauh (divergen), atau saling berpapasan (transform). Akibatnya terbentuk lipatan, patahan, gempa bumi, dan gunung api. Peridotit dari Ciletuh di depanmu berasal dari kedalaman Bumi dan terangkat ke permukaan karena tenaga tektonik.",
     fakta:
       "Meski hanya sekitar 7 cm per tahun, gerakan lempeng selama ratusan juta tahun sanggup menggeser benua sejauh ribuan kilometer.",
     sorotan:
@@ -284,6 +322,10 @@ const contents: { readonly [n: number]: StoryContent } = {
     judul: "Batu Tamu dari Luar Angkasa",
     cerita:
       "Menurut Teori Big Bang di panel ini, alam semesta berawal dari ledakan dahsyat sekitar 13,7 miliar tahun lalu. Tata surya lalu terbentuk dari kabut raksasa berisi gas dan debu yang berputar, sesuai Teori Kabut dari Kant dan Laplace. Bumi awalnya masih berpijar, lalu permukaannya perlahan mendingin dan memadat. Batu dari luar angkasa yang jatuh ke Bumi disebut meteorit. Di vitrin ada meteorit batu, meteorit besi, dan meteorit Namibia yang berukuran besar.",
+    ceritaAnak:
+      "Menurut Teori Big Bang, alam semesta berawal dari ledakan besar sekitar 13,7 miliar tahun lalu. Tata surya lalu terbentuk dari awan raksasa berisi gas dan debu yang berputar. Dulu Bumi masih panas membara, lalu pelan-pelan mendingin dan mengeras. Kadang ada batu dari luar angkasa yang jatuh ke Bumi. Batu itu disebut meteorit. Di vitrin ada meteorit batu, meteorit besi, dan meteorit besar dari Namibia.",
+    ceritaRemaja:
+      "Menurut Teori Big Bang, alam semesta berawal dari ledakan dahsyat sekitar 13,7 miliar tahun lalu. Tata surya kemudian terbentuk dari kabut raksasa berisi gas dan debu yang berputar, sesuai Teori Kabut dari Kant dan Laplace. Awalnya Bumi masih berpijar, lalu permukaannya perlahan mendingin dan memadat. Batu dari luar angkasa yang jatuh ke Bumi disebut meteorit. Di vitrin ada meteorit batu, meteorit besi, dan meteorit Namibia yang berukuran besar.",
     fakta:
       "Sejak 2006 para ahli tidak lagi menggolongkan Pluto sebagai planet, karena garis edarnya sangat berbeda dengan planet-planet lain.",
     sorotan:
@@ -304,6 +346,10 @@ const contents: { readonly [n: number]: StoryContent } = {
     judul: "Batuan Nusantara yang Beragam",
     cerita:
       "Indonesia menyimpan batuan yang sangat beragam karena sejarah geologinya panjang dan rumit. Di ruang ini ada rijang dari Karangsambung, batugamping hitam dari Bayah, sekis biotit dari Sigi, dan peridotit dari Ciletuh. Ada juga granit, batuan beku berbutir kasar yang terkenal di Bangka Belitung. Granit di sana membawa timah. Saat granit lapuk dan tererosi, timahnya ikut terbawa lalu mengendap kembali menjadi endapan timah sekunder.",
+    ceritaAnak:
+      "Batuan di Indonesia sangat beragam karena sejarah Buminya panjang. Di ruang ini ada rijang dari Karangsambung, batugamping hitam dari Bayah, dan peridotit dari Ciletuh. Ada juga granit, batu yang butirannya besar-besar. Granit di Bangka Belitung membawa timah. Saat granit hancur dan terbawa air, timahnya ikut terbawa. Timah itu lalu mengumpul lagi di tempat lain. Itulah endapan timah yang ditambang di sana.",
+    ceritaRemaja:
+      "Indonesia memiliki batuan yang sangat beragam karena sejarah geologinya panjang dan rumit. Di ruang ini ada rijang dari Karangsambung, batugamping hitam dari Bayah, sekis biotit dari Sigi, dan peridotit dari Ciletuh. Ada juga granit, batuan beku berbutir kasar yang terkenal di Bangka Belitung karena membawa timah. Saat granit lapuk dan tererosi, timahnya ikut terbawa air lalu mengendap di tempat lain. Endapan inilah yang disebut endapan timah sekunder.",
     fakta: "Granit Bangka Belitung termasuk jalur granit timah Asia Tenggara.",
     sorotan:
       "Rijang (Karangsambung, Jawa Tengah), batugamping hitam (Bayah, Banten), sekis biotit (Sigi, Sulawesi Tengah), peridotit (Ciletuh, Sukabumi), panel granit pembawa timah",
@@ -323,6 +369,10 @@ const contents: { readonly [n: number]: StoryContent } = {
     judul: "Harta Karun di Bawah Tanah",
     cerita:
       "Proses geologi yang berlangsung jutaan tahun membuat Indonesia kaya sumber daya mineral dan energi. Peta di panel menunjukkan sebarannya: minyak dan gas di Minas, Riau, batubara di Bukit Asam, Sumatra Selatan, hingga panas bumi di Kamojang, Jawa Barat. Di vitrin ada batubara dari Ombilin, bijih besi dari Kalimantan Selatan, dan bijih tembaga dari Tembagapura, Papua. Sumber daya ini harus dikelola dengan bijak karena tidak bisa terbentuk kembali dalam waktu singkat.",
+    ceritaAnak:
+      "Karena proses Bumi selama jutaan tahun, Indonesia punya banyak harta di bawah tanah. Lihat peta di panel: ada minyak dan gas di Riau, batubara di Sumatra Selatan, dan panas bumi di Kamojang, Jawa Barat. Di vitrin ada batubara, bijih besi, dan bijih tembaga dari Papua. Bijih adalah batuan yang mengandung logam. Kita harus memakainya dengan bijak, karena butuh jutaan tahun untuk terbentuk lagi.",
+    ceritaRemaja:
+      "Proses geologi selama jutaan tahun membuat Indonesia kaya sumber daya mineral dan energi. Peta di panel menunjukkan sebarannya: minyak dan gas di Minas, Riau, batubara di Bukit Asam, Sumatra Selatan, dan panas bumi di Kamojang, Jawa Barat. Di vitrin ada batubara dari Ombilin, bijih besi dari Kalimantan Selatan, dan bijih tembaga dari Tembagapura, Papua. Bijih adalah batuan yang mengandung logam. Semua ini harus dikelola dengan bijak karena tidak bisa terbentuk kembali dalam waktu singkat.",
     fakta: "Bijih tembaga dari Tembagapura di vitrin ini mengandung tembaga sekitar 15%.",
     sorotan:
       "Batubara (Ombilin, Sumatera Barat), bijih besi (Harujan, Kalimantan Selatan), bijih tembaga (Tembagapura, Papua), bijih timbal pembawa emas dan perak (Bogor, Jawa Barat), panel peta sumber daya",
@@ -342,6 +392,10 @@ const contents: { readonly [n: number]: StoryContent } = {
     judul: "Awal Perjalanan Kehidupan",
     cerita:
       "Selamat datang di sayap Sejarah Kehidupan! Bumi berumur sekitar 4,6 miliar tahun, tetapi kehidupan tidak langsung muncul. Makhluk pertama berupa makhluk bersel satu yang hidup di laut. Perlahan muncul hewan bercangkang, ikan, tumbuhan darat, dinosaurus, mamalia, hingga manusia. Ahli geologi membagi perjalanan panjang ini menjadi beberapa masa: Prakambrium, Paleozoikum, Mesozoikum, dan Kenozoikum. Jejaknya tersimpan sebagai fosil di dalam batuan. Ikuti ruangan berikutnya untuk menelusuri tiap masa!",
+    ceritaAnak:
+      "Selamat datang di sayap Sejarah Kehidupan! Umur Bumi sekitar 4,6 miliar tahun. Tapi makhluk hidup tidak langsung ada. Makhluk pertama sangat kecil, hanya satu sel, dan hidup di laut. Lalu muncul hewan bercangkang, ikan, tumbuhan, dinosaurus, mamalia, sampai manusia. Ilmuwan membagi perjalanan panjang ini jadi beberapa masa. Jejaknya tersimpan sebagai fosil, yaitu sisa makhluk hidup yang membatu. Yuk telusuri ruangan berikutnya!",
+    ceritaRemaja:
+      "Selamat datang di sayap Sejarah Kehidupan! Bumi berumur sekitar 4,6 miliar tahun, tetapi kehidupan tidak langsung muncul. Makhluk pertama adalah makhluk bersel satu yang hidup di laut. Perlahan muncul hewan bercangkang, ikan, tumbuhan darat, dinosaurus, mamalia, hingga manusia. Ahli geologi membagi perjalanan ini menjadi beberapa masa: Prakambrium, Paleozoikum, Mesozoikum, dan Kenozoikum. Jejaknya tersimpan sebagai fosil di dalam batuan. Telusuri ruangan berikutnya untuk mengenal tiap masa!",
     fakta: "Fosil adalah sisa atau jejak makhluk hidup purba yang terawetkan di dalam batuan.",
     sorotan: "Ruang pengantar sejarah kehidupan (display kosong saat survei 10 Nov 2026)",
     instruksi: "Baca kembali cerita pengantar ini, lalu perhatikan urutan masa kehidupan di Bumi.",
@@ -360,6 +414,10 @@ const contents: { readonly [n: number]: StoryContent } = {
     judul: "Ketika Bumi Masih Membara",
     cerita:
       "Kurun Prakambrium berlangsung dari sekitar 4,5 miliar sampai 541 juta tahun lalu. Awalnya Bumi sangat panas, sekitar 1.000°C, dan udaranya kaya karbon dioksida tanpa oksigen. Sekitar 3,5 miliar tahun lalu muncul makhluk bersel satu di samudra, seperti bakteri dan ganggang biru-hijau (sianofit). Mereka berfotosintesis dan menghasilkan oksigen, sampai akhirnya terbentuk lapisan ozon. Jejak mereka tersimpan sebagai stromatolit, batuan berlapis-lapis di vitrin ini. Di akhir kurun ini barulah muncul ubur-ubur, cacing, dan koral.",
+    ceritaAnak:
+      "Kurun Prakambrium adalah masa paling awal Bumi, dari 4,5 miliar sampai 541 juta tahun lalu. Awalnya Bumi sangat panas, sekitar 1.000°C, dan belum ada oksigen untuk bernapas. Sekitar 3,5 miliar tahun lalu muncul makhluk bersel satu di laut, seperti ganggang biru-hijau. Mereka membuat oksigen dari sinar matahari. Jejak mereka berupa batu berlapis-lapis bernama stromatolit, ada di vitrin ini.",
+    ceritaRemaja:
+      "Kurun Prakambrium berlangsung dari sekitar 4,5 miliar sampai 541 juta tahun lalu. Awalnya Bumi sangat panas, sekitar 1.000°C, dan atmosfernya kaya karbon dioksida tanpa oksigen. Sekitar 3,5 miliar tahun lalu muncul makhluk bersel satu di samudra, seperti bakteri dan ganggang biru-hijau. Lewat fotosintesis mereka menghasilkan oksigen, hingga akhirnya terbentuk lapisan ozon. Jejaknya tersimpan sebagai stromatolit, batuan berlapis di vitrin ini. Di akhir kurun ini muncul ubur-ubur, cacing, dan koral.",
     fakta:
       "Prakambrium dibagi menjadi dua masa: Arkean (4,6–2,5 miliar tahun lalu) dan Proterozoikum (2,5 miliar–540 juta tahun lalu).",
     sorotan:
@@ -380,6 +438,10 @@ const contents: { readonly [n: number]: StoryContent } = {
     judul: "Lautan Penuh Kehidupan",
     cerita:
       "Masa Paleozoikum berlangsung sekitar 540 sampai 245 juta tahun lalu. Di awal masa ini terjadi ledakan Kambrium: jumlah makhluk hidup bertambah sangat pesat, dan lautan dihuni arthropoda berlapis baja seperti trilobit. Lalu muncul ikan primitif, kalajengking laut Eurypterus, dan hiu purba. Pada zaman Devon, ikan mulai berkaki dan berjalan ke darat. Zaman Karbon dipenuhi rawa dan pohon yang kelak menjadi batubara. Masa ini ditutup zaman Perem, ketika amonit hidup di laut.",
+    ceritaAnak:
+      "Masa Paleozoikum terjadi sekitar 540 sampai 245 juta tahun lalu. Di awal masa ini jumlah makhluk hidup bertambah sangat cepat. Laut dihuni trilobit, hewan bercangkang keras seperti baju besi. Lalu muncul ikan purba, kalajengking laut, dan hiu purba. Ada ikan yang mulai punya kaki dan berjalan ke darat! Hutan rawa saat itu kelak berubah jadi batubara. Di akhir masa ini, amonit yang bercangkang spiral hidup di laut.",
+    ceritaRemaja:
+      "Masa Paleozoikum berlangsung sekitar 540 sampai 245 juta tahun lalu. Di awalnya terjadi ledakan Kambrium, saat jumlah makhluk hidup bertambah sangat pesat. Lautan dihuni trilobit, arthropoda bercangkang keras. Lalu muncul ikan primitif, kalajengking laut Eurypterus, dan hiu purba. Pada zaman Devon, sebagian ikan mulai memiliki kaki dan berjalan ke darat. Zaman Karbon dipenuhi rawa dan pohon yang kelak menjadi batubara. Masa ini ditutup zaman Perem, ketika amonit hidup di laut.",
     fakta:
       "Coelacanth, ikan purba yang muncul sekitar 380 juta tahun lalu, masih hidup sampai sekarang. Salah satu jenisnya, Latimeria manadoensis, ditemukan di perairan Manado, Sulawesi.",
     sorotan:

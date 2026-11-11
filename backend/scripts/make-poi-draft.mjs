@@ -32,6 +32,12 @@ const pois = activePois.map((poi, index) => {
     estimatedMinutes: 5,
     description: c.cerita,
     descriptionWords: wordCount(c.cerita),
+    // Varian usia: masuk ke tabel konten dengan profil='anak' (7–12) dan 'remaja' (13–17).
+    // description di atas = profil 'dewasa'. quest_teks anak/remaja boleh kosong (memakai versi dewasa).
+    descriptionAnak: c.ceritaAnak ?? null,
+    descriptionAnakWords: c.ceritaAnak === undefined ? null : wordCount(c.ceritaAnak),
+    descriptionRemaja: c.ceritaRemaja ?? null,
+    descriptionRemajaWords: c.ceritaRemaja === undefined ? null : wordCount(c.ceritaRemaja),
     audioPath: null,
     audioDurationSeconds: null,
     question: {
@@ -46,7 +52,7 @@ const pois = activePois.map((poi, index) => {
 const draft = {
   approved: false,
   language: "id",
-  profile: "umum",
+  profile: "dewasa",
   note: "DRAFT dari frontend (C-3). Perlu cek PM, audio B5, unggah foto, dan batas 6 POI di prepare-seed.ts.",
   zones: zones.map((z) => ({
     idZona: ZONE_IDS[z.code],
