@@ -18,6 +18,9 @@ import {
 import { type MapPoi, MapScreen } from "./src/features/map/MapScreen";
 import { OnboardingScreen } from "./src/features/onboarding/OnboardingScreen";
 import { useOnboarding } from "./src/features/onboarding/useOnboarding";
+import { PreferencesScreen } from "./src/features/preferences/PreferencesScreen";
+import { usePreferences } from "./src/features/preferences/usePreferences";
+import { matchedTopics, profileForAge, recommendRoute, type Route } from "./src/features/preferences/recommend";
 import { ProgressScreen } from "./src/features/progress/ProgressScreen";
 import { wingEnabled, wingsMode } from "./src/config/wings";
 import { badges as allBadges, type BadgeDef } from "./src/domain/points";
@@ -28,6 +31,9 @@ import { StoryFlow } from "./src/features/stories/hifi/StoryFlow";
 import { useOperation } from "./src/hooks/useOperation";
 import { useAuthRefresh } from "./src/hooks/useAuthRefresh";
 import { useVisitSession } from "./src/hooks/useVisitSession";
+import { useGeofence } from "./src/hooks/useGeofence";
+import type { Checkpoint, Fix } from "./src/domain/geofence";
+import type { GpsTest } from "./src/features/map/MapScreen";
 import { MOCK_ENTRANCE_QR, MOCK_ENTRANCE_TOKEN, mockPoiQr, mockZoneToken } from "./src/mocks/stories";
 import { GeaApi, readableError } from "./src/services/api";
 import { ApiStoriesSource, MockStoriesSource, type StoriesSource, storiesMockEnabled } from "./src/services/stories";
@@ -50,6 +56,24 @@ const mapDummies: readonly DummyScan[] = storiesMockEnabled
   ]
   : [];
 
+// Mode uji GPS di peta (hanya mode mock): posisi buatan untuk uji geofence di web/laptop.
+const OUTSIDE: Fix = { latitude: -6.90150, longitude: 107.62250, accuracyMeters: 5 };
+const gpsTests: readonly GpsTest[] = storiesMockEnabled
+  ? [
+    { label: "Pakai GPS asli", fix: null },
+    { label: "Di luar museum", fix: OUTSIDE },
+    { label: "GPS lemah (35 m)", fix: { ...OUTSIDE, accuracyMeters: 35 } },
+    ...zones.filter((z) => wingEnabled(z.wing)).map((z): GpsTest => ({
+      label: `Masuk ${z.name.split(" · ")[0] ?? z.code}`,
+      fix: { latitude: z.latitude, longitude: z.longitude, accuracyMeters: 5 },
+    })),
+    ...activePois.filter((poi) => wingEnabled(poi.wing)).map((poi): GpsTest => ({
+      label: `Di dekat ${poi.code}`,
+      fix: { latitude: poi.latitude, longitude: poi.longitude, accuracyMeters: 5 },
+    })),
+  ]
+  : [];
+
 function storyDummies(poiId: string): readonly DummyScan[] {
   if (!storiesMockEnabled) return [];
   const poi = museumPoiById(poiId);
@@ -68,8 +92,10 @@ type Screen =
 function Home(): ReactElement {
   useAuthRefresh();
   const onboarding = useOnboarding();
+  const preferences = usePreferences();
   const { busy, error: operationError, runOperation } = useOperation();
-  const session = useVisitSession(api, runOperation);
+  const profile = profileForAge(preferences.preferences);
+  const session = useVisitSession(api, runOperation, profile);
   const visitState = useVisitProgress(storiesSource);
   const { visit, progress, progressOf } = visitState;
 
@@ -80,7 +106,8 @@ function Home(): ReactElement {
   const [scanMessage, setScanMessage] = useState<string | null>(null);
   const [scanNotice, setScanNotice] = useState<string | null>(null);
   const [zone, setZone] = useState<ZoneInfo | null>(null);
-  const [zoneIntro, setZoneIntro] = useState<ZoneInfo | null>(null);
+  const [manualWing, setManualWing] = useState<Wing | null>(null);
+  const [qrZoneIntro, setQrZoneIntro] = useState<ZoneInfo | null>(null);
 
   async function loadPois(): Promise<void> {
     setPoisError(null);
@@ -116,10 +143,44 @@ function Home(): ReactElement {
     .map((poi: MapPoi): PoiRef => ({ id: poi.id ?? "", wing: poi.museum.wing }));
   const badges: readonly BadgeId[] = earnedBadges(refs, progress);
   const points: number = totalPoints(refs, progress);
+  // Rute rekomendasi dari preferensi, hanya dari ruangan yang ceritanya sudah tersedia.
+  const route: Route | null = useMemo((): Route | null =>
+    recommendRoute(
+      preferences.preferences,
+      mapPois.filter((poi: MapPoi): boolean => poi.id !== null).map((poi: MapPoi): string => poi.museum.code),
+    ), [preferences.preferences, mapPois]);
+  /** Ruangan berikutnya di rute yang belum selesai (selain ruangan yang sedang dibuka). */
+  function nextStop(exceptPoiId: string): string | null {
+    const next: MapPoi | undefined = route?.codes
+      .map((code: string): MapPoi | undefined => mapPois.find((poi: MapPoi): boolean => poi.museum.code === code))
+      .find((poi: MapPoi | undefined): boolean =>
+        poi !== undefined && poi.id !== exceptPoiId && poi.status !== "selesai" && progress[poi.id ?? ""]?.closed !== true
+      );
+    return next === undefined ? null : `${next.museum.code} · ${next.museum.name}`;
+  }
   const allDone: boolean = refs.length > 0 && mapPois.every((poi: MapPoi): boolean => poi.id === null || poi.status === "selesai");
 
-  // Ruang aktif: QR zona terakhir, atau sayap POI yang terakhir diverifikasi.
+  // E10: geofence POI + zona selama kunjungan aktif. id checkpoint = kode (P03, ZL).
+  const checkpoints: readonly Checkpoint[] = useMemo((): readonly Checkpoint[] => [
+    ...zones.filter((z: ZoneInfo): boolean => wingEnabled(z.wing)).map((z: ZoneInfo): Checkpoint => ({
+      id: z.code, latitude: z.latitude, longitude: z.longitude, radiusMeters: z.radiusMeters,
+    })),
+    ...mapPois.filter((poi: MapPoi): boolean => poi.id !== null).map((poi: MapPoi): Checkpoint => ({
+      id: poi.museum.code, latitude: poi.museum.latitude, longitude: poi.museum.longitude, radiusMeters: poi.museum.radiusMeters,
+    })),
+  ], [mapPois]);
+  const geofence = useGeofence({ visitId: visit?.id_sesi ?? null, checkpoints });
+  const gpsWing: Wing | null = geofence.active === null
+    ? null
+    : zones.find((z: ZoneInfo): boolean => z.code === geofence.active?.id)?.wing ??
+      mapPois.find((poi: MapPoi): boolean => poi.museum.code === geofence.active?.id)?.museum.wing ?? null;
+  const cardZone: ZoneInfo | null = zones.find((z: ZoneInfo): boolean => z.code === geofence.card) ?? null;
+  const cardPoi: MapPoi | null = mapPois.find((poi: MapPoi): boolean => poi.museum.code === geofence.card) ?? null;
+
+  // Ruang aktif: GPS (bila kuat), pilihan manual, QR zona terakhir, atau sayap POI yang terakhir diverifikasi.
   const activeWing: Wing | null = useMemo((): Wing | null => {
+    if (gpsWing !== null) return gpsWing;
+    if (manualWing !== null) return manualWing;
     if (zone !== null) return zone.wing;
     let latest: { wing: Wing; until: number } | null = null;
     for (const [poiId, state] of Object.entries(progress)) {
@@ -129,10 +190,10 @@ function Home(): ReactElement {
       }
     }
     return latest?.wing ?? null;
-  }, [zone, progress, mapPois]);
+  }, [gpsWing, manualWing, zone, progress, mapPois]);
 
   async function beginVisit(token: string): Promise<Visit> {
-    const created: Visit = await storiesSource.startQrVisit(randomUUID(), token);
+    const created: Visit = await storiesSource.startQrVisit(randomUUID(), token, profile);
     visitState.startVisit(created);
     return created;
   }
@@ -159,7 +220,7 @@ function Home(): ReactElement {
         if (visit === null) await beginVisit(result.token);
         const info: ZoneInfo | undefined = zones.find((z: ZoneInfo): boolean => z.code === result.code);
         setZone(info ?? null);
-        setZoneIntro(info ?? null);
+        setQrZoneIntro(info ?? null);
         setScanNotice(`Kamu di ${info?.name ?? "zona ini"}. Scan QR di dekat koleksi untuk membuka ceritanya.`);
         return;
       }
@@ -185,7 +246,7 @@ function Home(): ReactElement {
     }
   }
 
-  if (onboarding.state === "loading" || !visitState.ready) {
+  if (onboarding.state === "loading" || preferences.state === "loading" || !visitState.ready) {
     return <View style={{ flex: 1, backgroundColor: colors.primary[300] }} />;
   }
   if (onboarding.state === "show") {
@@ -199,6 +260,15 @@ function Home(): ReactElement {
           }}
           onDone={onboarding.complete}
         />
+      </>
+    );
+  }
+  // Setelah onboarding: preferensi (usia → waktu → minat), baru masuk peta.
+  if (preferences.state === "show") {
+    return (
+      <>
+        <StatusBar style="light" />
+        <PreferencesScreen onDone={preferences.save} />
       </>
     );
   }
@@ -219,6 +289,7 @@ function Home(): ReactElement {
           earnedBadges={badges}
           allCompleted={allDone}
           dummyScans={storyDummies(screen.poiId)}
+          nextStop={nextStop(screen.poiId)}
           onExit={(): void => setScreen({ name: "map" })}
         />
       </>
@@ -258,6 +329,7 @@ function Home(): ReactElement {
           onEndVisit={(): void => {
             visitState.endVisit();
             setZone(null);
+            setManualWing(null);
             setScreen({ name: "map" });
           }}
         />
@@ -283,10 +355,21 @@ function Home(): ReactElement {
         totalPoints={points}
         completedCount={mapPois.filter((poi: MapPoi): boolean => poi.id !== null && poi.status === "selesai").length}
         activeWing={activeWing}
-        zoneIntro={zoneIntro}
+        zoneIntro={cardZone ?? qrZoneIntro}
+        nearby={cardPoi}
+        gpsWeak={visit !== null && geofence.weak}
+        gpsTests={gpsTests}
+        onGpsTest={geofence.simulate}
+        onPickWing={setManualWing}
+        onDismissNearby={(): void => {
+          if (cardPoi !== null) geofence.dismiss(cardPoi.museum.code);
+        }}
         notice={visit === null ? notice : null}
         checkingLocation={busy === "location"}
-        onDismissZone={(): void => setZoneIntro(null)}
+        onDismissZone={(): void => {
+          if (cardZone !== null) geofence.dismiss(cardZone.code);
+          else setQrZoneIntro(null);
+        }}
         onScan={(): void => {
           setScanMessage(null);
           setScanNotice(null);
@@ -302,6 +385,8 @@ function Home(): ReactElement {
         }}
         onOpenPoi={(poiId: string): void => setScreen({ name: "story", poiId, token: null })}
         onOpenProgress={(): void => setScreen({ name: "progress" })}
+        route={route}
+        topicsFor={(code: string): readonly string[] => matchedTopics(preferences.preferences, code)}
       />
     </>
   );

@@ -1,7 +1,7 @@
 import { randomUUID } from "expo-crypto";
 import { Image } from "expo-image";
 import { type ReactElement, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 import { SheetContent } from "../../../design/SheetModal";
 import { Toast, type ToastTone } from "../../../design/Toast";
 import { colors, componentColors, radius, shadows, spacing } from "../../../design/tokens";
@@ -31,14 +31,24 @@ import { SceneLayer } from "../../onboarding/scene";
 import { type ParsedQr, qrErrorMessage } from "../../qr/qrPayload";
 import type { PoiProgress } from "../progress";
 import { isiPanelLayer, StoryBackground } from "./backgrounds";
-import { BackButton, FrameStage, PhotoFrame, StoryButton } from "./parts";
+import { BackButton, FRAME_H, FrameStage, PhotoFrame, StoryButton } from "./parts";
 import { type DummyScan, ScanQrScreen, type ScanState } from "./ScanQrScreen";
 import { StoryAudio } from "./StoryAudio";
-import { QuizFinishedScreen, SideQuestScreen, StoryFinishedScreen } from "./StoryEndScreens";
+import { QuizFinishedScreen, SideQuestScreen, StoryFinalScreen, StoryFinishedScreen } from "./StoryEndScreens";
 
-type Step = "scan" | "loading" | "summary" | "story" | "story2" | "narration" | "storyDone" | "sideQuest" | "quiz" | "quizDone" | "questDone";
+type Step = "scan" | "loading" | "summary" | "story" | "story2" | "narration" | "storyDone" | "sideQuest" | "quiz" | "quizDone" | "questDone" | "final";
 
-type ToastMessage = { readonly tone: ToastTone; readonly title: string; readonly description: string };
+// Story Isi: teks mulai y=592, tombol berjarak 52 dari bawah. Panel cokelat (gambar) cukup sampai
+// ±y=860; di bawahnya diisi warna yang sama saat cerita panjang.
+const ISI_TOP = 592;
+const ISI_BOTTOM = 52;
+const ISI_FILL_TOP = 860;
+// Kuis dan hasil side quest: kartu mulai paling tinggi di y=110 (di bawah tombol Keluar).
+const CARD_TOP = 110;
+const QUIZ_BOTTOM = 48;
+const RESULT_GAP = 24;
+
+type ToastMessage ={ readonly tone: ToastTone; readonly title: string; readonly description: string };
 
 type Props = {
   readonly source: StoriesSource;
@@ -52,6 +62,8 @@ type Props = {
   readonly earnedBadges: readonly BadgeId[];
   readonly allCompleted: boolean;
   readonly dummyScans: readonly DummyScan[];
+  /** Ruangan berikutnya di rute rekomendasi, mis. "P08 · Terjadinya Tenaga Tektonik". */
+  readonly nextStop?: string | null;
   readonly onExit: () => void;
 };
 
@@ -78,6 +90,13 @@ export function StoryFlow(props: Props): ReactElement {
   const [error, setError] = useState<string | null>(null);
   const badgesAtStart = useRef<readonly BadgeId[]>(props.earnedBadges);
   const [narrationFrom, setNarrationFrom] = useState<"story" | "story2">("story");
+  // Tinggi isi cerita (judul + teks + tombol); menentukan apakah halaman perlu digulir.
+  const [isiHeight, setIsiHeight] = useState<number>(0);
+  const isiStep: boolean = step === "story" || step === "story2" || step === "narration";
+  // Tinggi kartu kuis / hasil + sheet; halaman digulir bila tidak muat di 844.
+  const [quizHeight, setQuizHeight] = useState<number>(0);
+  const [resultHeight, setResultHeight] = useState<number>(0);
+  const [sheetHeight, setSheetHeight] = useState<number>(0);
 
   // Masuk tanpa scan (sudah selesai / masih terverifikasi / "Mulai tanpa scan").
   useEffect((): (() => void) | undefined => {
@@ -210,9 +229,13 @@ export function StoryFlow(props: Props): ReactElement {
       <StoryFinishedScreen
         poiName={poi.nama}
         onSideQuest={(): void => setStep("sideQuest")}
-        onSkip={props.onExit}
+        onSkip={(): void => setStep("final")}
       />
     );
+  }
+
+  if (step === "final") {
+    return <StoryFinalScreen poiName={poi.nama} nextStop={props.nextStop ?? null} onHome={props.onExit} />;
   }
 
   if (step === "quizDone") {
@@ -221,7 +244,7 @@ export function StoryFlow(props: Props): ReactElement {
         poiName={poi.nama}
         completed={progress.completed}
         onResult={(): void => setStep("questDone")}
-        onSkip={props.onExit}
+        onSkip={(): void => setStep("final")}
       />
     );
   }
@@ -255,7 +278,17 @@ export function StoryFlow(props: Props): ReactElement {
   const earned: number = quizPoints(progress);
 
   return (
-    <FrameStage background={colors.primary[300]}>
+    <FrameStage
+      background={colors.primary[300]}
+      frameHeight={isiStep
+        ? ISI_TOP + isiHeight + ISI_BOTTOM
+        : step === "quiz"
+        ? CARD_TOP + quizHeight + QUIZ_BOTTOM
+        : step === "questDone"
+        ? CARD_TOP + resultHeight + RESULT_GAP + sheetHeight
+        : FRAME_H}
+      scrollKey={step}
+    >
       <StoryBackground />
 
       {step === "summary" && (
@@ -289,6 +322,8 @@ export function StoryFlow(props: Props): ReactElement {
               </>
             )}
           <SceneLayer layer={isiPanelLayer} />
+          {/* Panel cokelat diperpanjang ke bawah saat cerita panjang dan halaman digulir. */}
+          <View style={[styles.isiFill, { height: Math.max(0, ISI_TOP + isiHeight + ISI_BOTTOM - ISI_FILL_TOP) }]} />
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={step === "narration" ? "Tutup narasi" : "Dengarkan narasi"}
@@ -301,7 +336,10 @@ export function StoryFlow(props: Props): ReactElement {
           >
             <AudioCircle active={step === "narration"} />
           </Pressable>
-          <View style={styles.isiContent}>
+          <View
+            style={styles.isiContent}
+            onLayout={(event): void => setIsiHeight(event.nativeEvent.layout.height)}
+          >
             <View style={styles.isiTexts}>
               <GeaText variant="heading28" color={colors.secondaryYellow[100]} numberOfLines={2}>
                 {step === "narration" ? "Dengarkan Narasi" : step === "story2" ? pageTwoTitle : description.title ?? poi.nama}
@@ -309,7 +347,7 @@ export function StoryFlow(props: Props): ReactElement {
               {step === "narration"
                 ? <StoryAudio key={audio.audioUrl} audioUrl={audio.audioUrl} durationSeconds={audio.durationSeconds} />
                 : (
-                  <ScrollView style={styles.isiBody}>
+                  <View>
                     <GeaText variant="body16Tight" color={colors.secondaryYellow[0]}>
                       {step === "story2" ? pageTwoText : description.text}
                     </GeaText>
@@ -319,7 +357,7 @@ export function StoryFlow(props: Props): ReactElement {
                         <GeaText variant="body14" color={componentColors.bodyDark}>{description.fact}</GeaText>
                       </View>
                     )}
-                  </ScrollView>
+                  </View>
                 )}
             </View>
             {error !== null && <GeaText variant="body14" color={colors.danger[100]} accessibilityRole="alert">{error}</GeaText>}
@@ -394,13 +432,14 @@ export function StoryFlow(props: Props): ReactElement {
             setToast({ tone: "danger", title: "Jawaban belum terkirim", description: readableError(cause) });
           }}
           onBack={(): void => setStep("sideQuest")}
+          onHeight={setQuizHeight}
         />
       )}
 
       {step === "questDone" && (
         <>
           <BackButton onPress={props.onExit} />
-          <View style={styles.resultCard}>
+          <View style={styles.resultCard} onLayout={(event): void => setResultHeight(event.nativeEvent.layout.height)}>
             <GeaText variant="label16" color={colors.primary[700]}>HASIL SIDE QUEST</GeaText>
             <GeaText variant="display42" color={progress.completed ? colors.secondaryGreen[800] : colors.greys[300]}>
               +{earned} poin
@@ -421,14 +460,14 @@ export function StoryFlow(props: Props): ReactElement {
               </View>
             ))}
           </View>
-          <View style={styles.sheet}>
+          <View style={styles.sheet} onLayout={(event): void => setSheetHeight(event.nativeEvent.layout.height)}>
             <SheetContent
               title={props.allCompleted ? "Semua koleksi selesai!" : "Lanjutkan penjelajahanmu"}
               description={props.allCompleted
                 ? "Kamu sudah menyelesaikan semua cerita dan side quest. Hebat!"
                 : "Kembali ke peta dan temukan koleksi berikutnya."}
-              actionLabel="Kembali ke peta"
-              onAction={props.onExit}
+              actionLabel="Lanjut"
+              onAction={(): void => setStep("final")}
             />
           </View>
         </>
@@ -445,7 +484,7 @@ export function StoryFlow(props: Props): ReactElement {
 
 /** SEMENTARA: frame "Story - Mini quiz" (D4) belum final. Maksimal 3 percobaan, hint setelah salah. */
 function Quiz(
-  { poi, attemptsUsed, submit, onWrong, onCorrect, onError, onBack }: {
+  { poi, attemptsUsed, submit, onWrong, onCorrect, onError, onBack, onHeight }: {
     readonly poi: PoiDetail;
     readonly attemptsUsed: number;
     readonly submit: (requestId: string, label: OptionLabel) => Promise<AnswerResult>;
@@ -453,6 +492,8 @@ function Quiz(
     readonly onCorrect: (answer: AnswerResult) => void;
     readonly onError: (cause: unknown) => void;
     readonly onBack: () => void;
+    /** Tinggi kartu kuis, agar halaman bisa digulir bila soal/petunjuk panjang. */
+    readonly onHeight: (height: number) => void;
   },
 ): ReactElement {
   const [selected, setSelected] = useState<OptionLabel | null>(null);
@@ -491,7 +532,7 @@ function Quiz(
   return (
     <>
       <BackButton onPress={onBack} />
-      <View style={styles.quizCard}>
+      <View style={styles.quizCard} onLayout={(event): void => onHeight(event.nativeEvent.layout.height)}>
         <View style={styles.quizHeader}>
           <GeaText variant="label16" color={colors.primary[700]}>MINI QUIZ</GeaText>
           <GeaText variant="label16" color={colors.primary[700]} accessibilityLabel={`Sisa ${left} kesempatan`}>
@@ -642,10 +683,17 @@ const styles = StyleSheet.create({
     boxShadow: shadows.card,
   },
   texts: { alignSelf: "stretch", gap: spacing[12] },
-  // Posisi tetap di panel cokelat; teks panjang digulir di dalam panel, tidak menimpa foto.
-  isiContent: { position: "absolute", left: 16, width: 358, top: 592, bottom: 52, gap: spacing[12] },
+  // Isi cerita mengikuti panjang teks; minimal setinggi frame 844 (tombol tetap di bawah).
+  isiContent: {
+    position: "absolute",
+    left: 16,
+    width: 358,
+    top: ISI_TOP,
+    minHeight: FRAME_H - ISI_TOP - ISI_BOTTOM,
+    gap: spacing[12],
+  },
   isiTexts: { flex: 1, gap: spacing[12] },
-  isiBody: { flex: 1 },
+  isiFill: { position: "absolute", left: 0, width: 390, top: ISI_FILL_TOP, backgroundColor: colors.primary[800] },
   fact: {
     marginTop: spacing[12],
     gap: spacing[4],
@@ -660,7 +708,7 @@ const styles = StyleSheet.create({
   resultCard: {
     position: "absolute",
     left: 16,
-    top: 110,
+    top: CARD_TOP,
     width: 358,
     alignItems: "center",
     gap: spacing[8],

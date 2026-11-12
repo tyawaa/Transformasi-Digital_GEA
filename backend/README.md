@@ -108,7 +108,7 @@ Publishable key bukan pengganti access token pengunjung.
 | GET    | `/health`                                 | Tidak membutuhkan token; pemeriksaan proses, bukan seluruh layanan                |
 | POST   | `/geofence/evaluate`                      | `location` berupa koordinat+akurasi, atau `null`                                  |
 | GET    | `/pois`                                   | Daftar POI published, urut prioritas                                              |
-| GET    | `/pois/{id}?language=id&profile=umum`     | Varian wajib eksplisit; tidak ada fallback terjemahan                             |
+| GET    | `/pois/{id}?language=id&profile=dewasa`   | Bahasa wajib ada; usia tanpa teks sendiri memakai versi `dewasa`                  |
 | POST   | `/sessions`                               | `idSesi`, `language`, `profile`, `location`; GPS wajib inside                     |
 | POST   | `/sessions/qr`                            | `idSesi`, `language`, `profile`, `token` QR pintu masuk                           |
 | POST   | `/sessions/{id}/verify-qr`                | `token` QR koleksi, `language`, `profile`; mengembalikan POI dan bukti verifikasi |
@@ -116,7 +116,7 @@ Publishable key bukan pengganti access token pengunjung.
 | POST   | `/sessions/{id}/pois/{poiId}/close`       | Menyimpan kartu ditutup pada sesi ini                                             |
 | GET    | `/sessions/{id}/progress`                 | Sesi, kartu, dan hasil quest milik pengunjung                                     |
 
-Bahasa: `id`/`en`. Profil: `umum`/`pelajar`. Detail POI mengembalikan `cards` dengan jenis
+Bahasa: `id`/`en`. Profil (kelompok usia): `anak` (7–12), `remaja` (13–17), `dewasa` (18+); nilai lama `umum`/`pelajar` diterima sebagai `dewasa`/`anak`. Detail POI mengembalikan `cards` dengan jenis
 `description` dan `audio`, ditambah satu `quest` dengan empat opsi. Kunci jawaban dan hint tidak
 dikirim di detail; hint hanya dikirim setelah jawaban salah. Field domain mengikuti nama ERD
 (`id_poi`, `id_zona`, dsb); objek request dan keputusan menggunakan camelCase seperti tabel di atas.
@@ -282,7 +282,7 @@ quest.
 
 ## B6: seed konten 20 POI
 
-Cerita final Indonesia/profil umum untuk POI-01, POI-02, dan POI-04–11 tersimpan di
+Cerita final Indonesia/profil dewasa (sebelumnya umum) untuk POI-01, POI-02, dan POI-04–11 tersimpan di
 `data/approved-stories.json`; demo frontend dan generator seed memakai sumber yang sama untuk
 judul, cerita, fakta, dan koleksi sorotan. Nama checkpoint, media, dan soal tetap dari dataset/input
 masing-masing. Teks lampiran dipertahankan apa adanya. Terapkan migrasi `20261112000100_story_metadata.sql`
@@ -294,7 +294,9 @@ yang belum tersedia. Perintah ini hanya menghasilkan file, tidak mengubah cloud.
 Database kosong dapat menerima 10 cerita terlebih dahulu sebagai draft. Migrasi
 `20261112000200_partial_story_drafts.sql` mengizinkan data yang belum tersedia disimpan sebagai
 `NULL`; migrasi `20261112000300_approved_story_drafts.sql` mengisi zona yang dipakai, identitas
-10 POI, dan varian cerita `id/umum` dari sumber final. Jalankan `npm run db:push` untuk menerapkan
+10 POI, dan varian cerita dari sumber final. Profil legacy `umum` dinormalisasi menjadi `dewasa`
+oleh migrasi `20261112000150_legacy_story_profile.sql` agar seed lama tetap valid setelah migrasi
+kelompok usia. Jalankan `npm run db:push` untuk menerapkan
 migrasi yang belum ada di cloud. Koordinat zona, foto, denah, prioritas, estimasi, audio, dan quest
 yang belum tersedia tetap kosong. Cerita terlihat oleh admin di tabel `poi`/`konten`; API pengunjung
 tetap hanya menampilkan POI dengan `is_published=true`. Publikasi memerlukan detail POI, media,
@@ -345,3 +347,10 @@ koleksi yang diverifikasi, sedangkan ERD saat ini hanya punya posisi denah.
 Pembacaan GPS dan gating landing awal tersedia di aplikasi Expo. E3 masih memerlukan uji mock
 location/perangkat dan integrasi cloud yang berhasil. E7/E8 memerlukan frontend Stories lengkap. B3
 belum selesai sebelum konten asli dan media terunggah serta URL diperiksa.
+
+### Draft data POI dari frontend
+
+`npm run poi:draft` menulis `data/poi-sprint2-draft.json` (14 POI P01–P14, format sama dengan
+`poi-template.json`) dari konten frontend. Status `approved:false`, audio masih `null` (B5), dan foto
+harus diunggah ke `images/Pxx/NN.jpg`. `prepare-seed.ts` membutuhkan tepat 20 POI lengkap dan dua
+zona; draft 14 POI ini perlu dilengkapi sebelum dipakai sebagai seed publikasi.

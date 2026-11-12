@@ -29,10 +29,22 @@ export const healthSchema = z.object({
 });
 export type BackendHealth = z.infer<typeof healthSchema>;
 
+/** Kelompok usia pengunjung: anak 7–12, remaja 13–17, dewasa 18+. */
+export const profileSchema = z.enum(["anak", "remaja", "dewasa"]);
+export type Profile = z.infer<typeof profileSchema>;
+
+/**
+ * Profil dari server / penyimpanan. Nilai lama "umum" dan "pelajar" (sebelum migrasi usia
+ * atau kunjungan yang tersimpan di HP) dibaca sebagai "dewasa" dan "anak".
+ */
+const storedProfileSchema = z
+  .enum(["anak", "remaja", "dewasa", "umum", "pelajar"])
+  .transform((value): Profile => (value === "umum" ? "dewasa" : value === "pelajar" ? "anak" : value));
+
 export const visitSchema = z.object({
   id_sesi: z.uuid(),
   bahasa: z.enum(["id", "en"]),
-  profil: z.enum(["umum", "pelajar"]),
+  profil: storedProfileSchema,
   verification_method: z.enum(["gps", "entrance_qr"]),
   status: z.literal("aktif"),
 });
@@ -49,8 +61,6 @@ export type PoiSummary = z.infer<typeof poiSchema>;
 
 export const languageSchema = z.enum(["id", "en"]);
 export type Language = z.infer<typeof languageSchema>;
-export const profileSchema = z.enum(["umum", "pelajar"]);
-export type Profile = z.infer<typeof profileSchema>;
 export const optionLabelSchema = z.enum(["A", "B", "C", "D"]);
 export type OptionLabel = z.infer<typeof optionLabelSchema>;
 
@@ -89,7 +99,7 @@ export const poiDetailSchema = z.object({
   prioritas: z.number().int(),
   estimasi_durasi: z.number().int().positive(),
   language: languageSchema,
-  profile: profileSchema,
+  profile: storedProfileSchema,
   cards: z.tuple([descriptionCardSchema, audioCardSchema]),
   quest: questSchema,
 });
