@@ -59,6 +59,9 @@ export const descriptionCardSchema = z.object({
   type: z.literal("description"),
   text: z.string().min(1),
   photoUrl: z.url(),
+  title: z.string().min(1).nullable().optional(),
+  fact: z.string().min(1).nullable().optional(),
+  highlights: z.string().min(1).nullable().optional(),
 });
 export const audioCardSchema = z.object({
   type: z.literal("audio"),

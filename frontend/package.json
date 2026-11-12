@@ -39,7 +39,7 @@
     "doctor": "expo-doctor",
     "export:android": "expo export --platform android --output-dir dist/android --max-workers 2",
     "export:web": "expo export --platform web --output-dir dist/web --max-workers 2",
-    "test": "node --test tests/points.test.mjs"
+    "test": "node --test tests/*.test.mjs"
   },
   "private": true
 }

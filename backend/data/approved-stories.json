@@ -1,0 +1,87 @@
+{
+  "approved": true,
+  "language": "id",
+  "profile": "umum",
+  "stories": [
+    {
+      "poiCode": "POI-01",
+      "sourceName": "Paleogra & Sebaran Fauna Indonesia",
+      "title": "Debaran Fauna Purba Indonesia",
+      "description": "Jutaan tahun lalu, Indonesia dihuni berbagai hewan purba berukuran unik! Ada Megalochelys sp., kura-kura raksasa, hingga Elephas celebensis, gajah purba mungil dari Sulawesi. Bersama Elephas maximus dan Sinomastodon bumiayuensis, fosil-fosil ini menjadi saksi beragamnya kehidupan fauna di masa lalu. Yuk, amati dan temukan perbedaannya!",
+      "fact": "Elephas celebensis dikenal sebagai salah satu gajah purba berukuran kecil yang pernah hidup di Sulawesi.",
+      "highlights": "Megalochelys sp., Elephas celebensis, Elephas maximus, Sinomastodon bumiayuensis"
+    },
+    {
+      "poiCode": "POI-02",
+      "sourceName": "Kars Indonesia",
+      "title": "Rahasia Dunia Karst Indonesia",
+      "description": "Pernah melihat gua dengan hiasan batu yang menjuntai dari langit-langitnya? Itulah salah satu keunikan kawasan karst, seperti Gunung Sewu, yang terbentuk melalui proses pelarutan batuan kapur selama waktu yang sangat lama. Yuk, amati stalaktit, sinter kapur, batu jahe, hingga berbagai jenis batuan dan terumbu karang untuk mengenal keindahan proses pembentukan alam!",
+      "fact": "Stalaktit terbentuk dari endapan mineral kalsit yang menumpuk perlahan dari tetesan air di langit-langit gua.",
+      "highlights": "Karst Gunung Sewu, stalaktit kalsit, batugamping, batu jahe, sinter kapur, marmer, amfibolit, hasil karstifikasi, hard coral, plate coral, branching coral, head coral"
+    },
+    {
+      "poiCode": "POI-04",
+      "sourceName": "Roman Muka Bumi Indonesia",
+      "title": "Kisah Terbentuknya Muka Bumi Indonesia",
+      "description": "Tahukah kamu bahwa bentuk muka bumi Indonesia terbentuk melalui proses geologi selama jutaan tahun? Pergerakan dan tekanan lempeng bumi menghasilkan berbagai struktur batuan, seperti lipatan dan sesar. Yuk, amati koleksi genes, sekis biotit, serta contoh struktur geologi untuk melihat bagaimana bumi terus berubah!",
+      "fact": "Lipatan terbentuk ketika lapisan batuan mendapat tekanan hingga melengkung tanpa terpecah.",
+      "highlights": "Genes, sekis biotit, lipatan, sesar"
+    },
+    {
+      "poiCode": "POI-05",
+      "sourceName": "Animasi Geologi Indonesia",
+      "title": "Perjalanan Lahirnya Kepulauan Indonesia",
+      "description": "Pernah penasaran bagaimana ribuan pulau di Indonesia terbentuk? Melalui animasi ini, kamu bisa mengikuti perjalanan terbentuknya Kepulauan Indonesia akibat pergerakan lempeng tektonik, aktivitas gunung api, dan proses geologi selama jutaan tahun. Yuk, saksikan bagaimana daratan yang awalnya terpisah akhirnya membentuk Indonesia seperti yang kita kenal sekarang!",
+      "fact": "Bentuk kepulauan Indonesia terus mengalami perubahan akibat aktivitas tektonik hingga saat ini.",
+      "highlights": "video"
+    },
+    {
+      "poiCode": "POI-06",
+      "sourceName": "Pelapukan erosi & pengendapan",
+      "title": "Bagaimana Wajah Bumi Terbentuk?",
+      "description": "Bentuk permukaan bumi yang kita lihat sekarang terbentuk melalui proses alam selama ribuan hingga jutaan tahun. Pelapukan menghancurkan batuan, erosi memindahkan material, sedangkan pengendapan menumpuknya di tempat baru. Yuk, amati contoh bentukan muka bumi dan cari tahu bagaimana ketiga proses ini mengubah lanskap Indonesia!",
+      "fact": "Material hasil erosi dapat terbawa air, angin, maupun es sebelum akhirnya mengendap di tempat lain.",
+      "highlights": "Sembulan bentukan morfologi muka bumi, pelapukan, erosi, dan pengendapan"
+    },
+    {
+      "poiCode": "POI-07",
+      "sourceName": "Batuan & Mineral",
+      "title": "Mengenal Harta Karun Bumi: Batuan dan Mineral",
+      "description": "Bumi menyimpan beragam mineral dan batuan dengan warna, bentuk, serta karakteristik yang berbeda! Ada lapis lazuli yang terkenal dengan warna biru pekatnya, hingga geodes yang menyimpan kristal di bagian dalamnya. Yuk, amati berbagai koleksi mineral dan kenali tiga kelompok utama batuan: beku, sedimen, dan metamorf!",
+      "fact": "eodes dapat terlihat seperti batu biasa dari luar, tetapi bagian dalamnya bisa dipenuhi kristal yang indah.",
+      "highlights": "Lapis lazuli, mineral hidroksida, oksida, silikat, karbonat, borat dan nitrat, unsur asli (native elements), sulfida, fosfat, sulfat, batuan beku, batuan sedimen, batuan metamorf, geodes"
+    },
+    {
+      "poiCode": "POI-08",
+      "sourceName": "Terjadinya tenaga tektonik",
+      "title": "Kekuatan Tersembunyi di Dalam Bumi",
+      "description": "Permukaan bumi yang kita pijak ternyata terus bergerak! Tenaga tektonik berasal dari pergerakan lempeng bumi yang dapat membentuk pegunungan, lipatan, hingga patahan. Yuk, amati koleksi sekis mika, peridotit, dan lava basal untuk mengenal lebih jauh proses yang membentuk bumi!",
+      "fact": "Peridotit merupakan batuan yang banyak menyusun bagian mantel atas bumi.",
+      "highlights": "Proses terjadinya tenaga tektonik, sekis mika, peridotit, lava basal"
+    },
+    {
+      "poiCode": "POI-09",
+      "sourceName": "Alam semesta & Pembentukan bumi",
+      "title": "Dari Big Bang hingga Terbentuknya Bumi",
+      "description": "Pernah membayangkan bagaimana alam semesta dan planet Bumi terbentuk? Menurut teori Big Bang, alam semesta bermula dari kondisi yang sangat panas dan padat, lalu terus mengembang hingga sekarang. Seiring waktu, Bumi terbentuk dan mengalami perubahan struktur serta bentuk hingga menjadi planet yang kita kenal saat ini. Yuk, ikuti perjalanan panjang Bumi melalui koleksi dan ilustrasi di hadapanmu!",
+      "fact": "Bumi memiliki empat lapisan utama, yaitu kerak, mantel, inti luar, dan inti dalam.",
+      "highlights": "Teori Big Bang, hamparan luas alam semesta, proses terbentuknya planet Bumi, penampang struktur Bumi, perkembangan bentuk Bumi"
+    },
+    {
+      "poiCode": "POI-10",
+      "sourceName": "Keanekaragaman Batuan di Indonesia",
+      "title": "Ragam Batuan dari Nusantara",
+      "description": "Indonesia memiliki beragam jenis batuan yang terbentuk melalui proses geologi yang berbeda-beda. Mulai dari batugamping hitam, sekis biotit, rijang, peridotit, hingga granit, setiap batuan menyimpan cerita tentang proses pembentukan bumi. Yuk, amati warna dan tekstur koleksinya, lalu temukan perbedaannya!",
+      "fact": "Granit terbentuk dari magma yang mendingin secara perlahan di bawah permukaan bumi sehingga kristalnya dapat terlihat jelas.",
+      "highlights": "Batugamping hitam, sekis biotit, rijang, peridotit, batuan granit"
+    },
+    {
+      "poiCode": "POI-11",
+      "sourceName": "Kekayaan Sumber Daya Geologi",
+      "title": "Kekayaan Indonesia",
+      "description": "Indonesia menyimpan kekayaan geologi yang melimpah, mulai dari mineral logam, mineral non-logam, hingga batu mulia seperti ametis dari Solok, Sumatera Barat. Selain itu, ada batubara, minyak dan gas bumi, panas bumi, serta sumber daya air yang dimanfaatkan untuk kehidupan sehari-hari. Yuk, kenali berbagai potensi alam ini dan bagaimana manusia memanfaatkannya!",
+      "fact": "Indonesia memiliki potensi panas bumi yang besar karena berada di kawasan dengan aktivitas vulkanik tinggi.",
+      "highlights": "Batubara, mineral logam, mineral non-logam, batu mulia (ametis), minyak dan gas bumi, panas bumi (geothermal), sumber daya air dan cekungan air tanah"
+    }
+  ]
+}

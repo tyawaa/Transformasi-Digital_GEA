@@ -51,7 +51,7 @@ export async function poiDetail(
     gateway.query(
       "konten",
       new URLSearchParams({
-        select: "teks_cerita,path_audio,durasi_audio",
+        select: "teks_cerita,path_audio,durasi_audio,judul_cerita,fakta_menarik,koleksi_sorotan",
         id_poi: `eq.${poiId}`,
         bahasa: `eq.${language}`,
         profil: `eq.${profile}`,
@@ -102,6 +102,9 @@ export async function poiDetail(
       {
         type: "description",
         text: content.teks_cerita,
+        title: content.judul_cerita,
+        fact: content.fakta_menarik,
+        highlights: content.koleksi_sorotan,
         photoUrl: gateway.mediaUrl(text(poi.path_foto, "path_foto", 1024)),
       },
       {

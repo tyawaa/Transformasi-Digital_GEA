@@ -1,6 +1,7 @@
 import { ValidationError } from "../supabase/functions/gea-api/errors.ts";
 import { validateCoordinate } from "../supabase/functions/gea-api/geofence.ts";
 import {
+  array,
   finiteNumber,
   type JsonObject,
   language,
@@ -10,11 +11,9 @@ import {
   text,
   uuid,
 } from "../supabase/functions/gea-api/validation.ts";
-
-function array(value: unknown, field: string): readonly unknown[] {
-  if (!Array.isArray(value)) throw new ValidationError(`${field} harus berupa array.`);
-  return value;
-}
+import { POI_COUNT, ZONE_COUNT } from "./checkpoint-dataset.ts";
+import { withApprovedStory } from "./approved-stories.ts";
+import { quote } from "./sql.ts";
 
 function integer(value: unknown, field: string, minimum: number, maximum: number): number {
   const result: number = finiteNumber(value, field);
@@ -22,10 +21,6 @@ function integer(value: unknown, field: string, minimum: number, maximum: number
     throw new ValidationError(`${field} harus bilangan bulat ${minimum}..${maximum}.`);
   }
   return result;
-}
-
-function quote(value: string): string {
-  return "'" + value.replaceAll("'", "''") + "'";
 }
 
 function path(value: unknown, field: string): string {
@@ -54,7 +49,11 @@ function zoneSql(value: unknown): string {
 }
 
 function poiSql(value: unknown, selectedLanguage: string, selectedProfile: string): string {
-  const poi: JsonObject = object(value, "poi");
+  const poi: JsonObject = withApprovedStory(
+    object(value, "poi"),
+    selectedLanguage,
+    selectedProfile,
+  );
   const idPoi: string = uuid(poi.idPoi, "poi.idPoi");
   const idQuest: string = uuid(poi.idQuest, "poi.idQuest");
   const description: string = text(poi.description, "poi.description", 10000);
@@ -91,11 +90,15 @@ function poiSql(value: unknown, selectedLanguage: string, selectedProfile: strin
     },${integer(poi.denahX, "denahX", 0, 100000)},${integer(poi.denahY, "denahY", 0, 100000)},${
       integer(poi.priority, "priority", 0, 1000)
     },${integer(poi.estimatedMinutes, "estimatedMinutes", 1, 1440)});`,
-    `insert into public.konten(id_poi,bahasa,profil,teks_cerita,path_audio,durasi_audio) values (${
+    `insert into public.konten(id_poi,bahasa,profil,teks_cerita,path_audio,durasi_audio,judul_cerita,fakta_menarik,koleksi_sorotan) values (${
       quote(idPoi)
     },${quote(selectedLanguage)},${quote(selectedProfile)},${quote(description)},${
       quote(audioPath)
-    },${integer(poi.audioDurationSeconds, "audioDurationSeconds", 30, 90)});`,
+    },${integer(poi.audioDurationSeconds, "audioDurationSeconds", 30, 90)},${
+      poi.title === undefined ? "null" : quote(text(poi.title, "title", 200))
+    },${poi.fact === undefined ? "null" : quote(text(poi.fact, "fact", 2000))},${
+      poi.highlights === undefined ? "null" : quote(text(poi.highlights, "highlights", 4000))
+    });`,
     `insert into public.quest(id_quest,id_poi,tipe_quest) values (${quote(idQuest)},${
       quote(idPoi)
     },'pilgan');`,
@@ -131,11 +134,11 @@ export function prepareInitialSeed(value: unknown): string {
   const selectedProfile: string = profile(dataset.profile);
   const zones: readonly unknown[] = array(dataset.zones, "zones");
   const pois: readonly unknown[] = array(dataset.pois, "pois");
-  if (zones.length === 0 || pois.length !== 6) {
-    throw new ValidationError("Seed sprint harus memiliki minimal satu zona dan tepat enam POI.");
+  if (zones.length !== ZONE_COUNT || pois.length !== POI_COUNT) {
+    throw new ValidationError("Seed sprint harus memiliki dua zona dan tepat 20 POI.");
   }
   return [
-    "-- Seed awal enam POI yang telah disetujui. Media wajib diunggah terpisah.",
+    "-- Seed awal 20 POI yang telah disetujui. Media wajib diunggah terpisah.",
     ...zones.map(zoneSql),
     ...pois.map((poi: unknown): string => poiSql(poi, selectedLanguage, selectedProfile)),
   ].join("\n\n") + "\n";
@@ -151,5 +154,5 @@ if (import.meta.main) {
   const parsed: unknown = JSON.parse(await Deno.readTextFile(input));
   const sql: string = prepareInitialSeed(parsed);
   await Deno.writeTextFile(output, sql, { createNew: true });
-  console.log(JSON.stringify({ event: "seed_prepared", output, poiCount: 6 }));
+  console.log(JSON.stringify({ event: "seed_prepared", output, poiCount: POI_COUNT }));
 }

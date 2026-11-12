@@ -63,13 +63,16 @@ cd frontend
 Di layar lebar (>600 px) aplikasi otomatis dibuka di bingkai HP (`demo.html`); tambahkan
 `?full` ke URL untuk melewatinya. Server hanya hidup selama jendela terminal itu terbuka (Ctrl+C untuk berhenti). Setelah kode
 diubah, jalankan lagi tanpa `-NoBuild`. Kamera tidak tersedia di browser; pakai menu "Mode uji".
+Refresh melanjutkan progres yang tersimpan. Pada mode mock, tombol **Ulangi demo** di bawah
+bingkai HP menghapus progres, poin, percobaan kuis, dan status onboarding lokal setelah konfirmasi,
+lalu memuat ulang aplikasi dari awal. Konten cerita dan database Supabase tetap tersimpan.
 
 ## Alur aplikasi (Sprint 2, C-3)
 
 Onboarding → **peta lantai 1** → scan QR → cerita POI → Kisah Selesai → Side Quest → kuis →
 hasil poin. Progres (poin, lencana) bisa dilihat dari tombol poin di peta.
 
-- **Peta** (`src/features/map`): denah P01–P21 dari dokumen survei. Warna ruangan = status POI
+- **Peta** (`src/features/map`): denah P01–P20 dengan identitas dan koordinat dari dataset A9. Warna ruangan = status POI
   (belum/sebagian/selesai), abu-abu = belum ada konten. Sayap aktif diambil dari QR zona atau QR
   koleksi terakhir. Hi-fi peta (D3) belum ada, jadi tampilan masih memakai token design system.
 - **QR scanner bersama (E13)** (`src/features/qr`, `ScanQrScreen`): dipakai untuk QR pintu masuk,
@@ -98,24 +101,27 @@ bisa di-build dan memakai ilustrasi sementara. Foto ditentukan dengan nomor urut
 
 ### Dua versi peta
 
-- `EXPO_PUBLIC_MAP_WINGS=left` (bawaan): hanya Sayap Kiri (P01–P11), denah lebih besar, Sayap
+- `EXPO_PUBLIC_MAP_WINGS=left`: hanya Sayap Kiri (P01–P11), denah lebih besar, Sayap
   Kanan ditandai "segera hadir". Lencana Penjelajah Sayap Kanan disembunyikan, dan QR koleksi
   sayap kanan ditolak dengan pesan yang jelas.
-- `EXPO_PUBLIC_MAP_WINGS=both`: Sayap Kiri + Sayap Kanan.
+- `EXPO_PUBLIC_MAP_WINGS=both` (bawaan): Sayap Kiri + Sayap Kanan.
 - Versi web bisa diganti tanpa build ulang: `http://localhost:8082/?wings=both` atau `?wings=left`.
 
 ### Data POI
 
-`src/data/museum.ts` berisi 21 POI dari `Template_Scratch_Data_Museum_Geologi.xlsx` (nama,
-sayap, koordinat, posisi denah). 14 POI aktif (P01–P14, dari foto survei 10 Nov 2026; P15–P21 belum ada data) sudah punya teks cerita dan soal **draft** yang wajib dicek kurator (B4). PM bisa mengganti
-POI aktif dengan mengisi/menghapus `content`. Mode mock (`EXPO_PUBLIC_STORIES_SOURCE=mock`)
-memakai data ini, termasuk tombol "Uji: QR ..." di layar scan.
+`src/data/museum.ts` membaca 20 POI yang sudah disurvei dari `../backend/data/checkpoints.json`.
+ID, nama, zona, koordinat dan radius 15 m berasal dari sumber yang sama dengan penerbit QR backend.
+Kode tampilan `P01` dan kode dataset `POI-01` mengarah ke UUID yang sama. POI-21 tidak digunakan.
+Posisi denah dan konten draft tetap di frontend; 14 POI memiliki cerita/soal draft, sementara
+konten P15–P20 belum dimasukkan. Mode API mengambil konten dan media dari backend/Storage.
+Mode mock (`EXPO_PUBLIC_STORIES_SOURCE=mock`) hanya untuk pengembangan dengan data draft.
+Konfigurasi lokal integrasi memakai API dan dua sayap.
 
 ### Yang dibutuhkan dari tim
 
 - **C-1 (A9/B6/D5)**: pakai ID stabil per kode POI saat seed, `30000000-0000-4000-8000-0000000000NN`
-  (NN = nomor POI) dan quest `40000000-...NN`, agar peta mencocokkan POI dari database. Jika ID
-  lain dipakai, peta mencocokkan lewat nama POI. Isi QR cetak disarankan berlabel:
+  (NN = nomor POI) dan quest `40000000-...NN`, agar peta mencocokkan POI dari database lewat
+  UUID dataset A9. Isi QR cetak berlabel:
   `GEA1:POI:P03:<token64hex>`, `GEA1:ZONE:ZL:<token>`, `GEA1:ENTRANCE:-:<token>`. Token 64 hex
   polos juga tetap diterima. Yang dikirim ke backend tetap hanya token.
 - **C-2 (E11/E12)**: backend sekarang belum membatasi 3 percobaan dan belum punya poin/lencana.
