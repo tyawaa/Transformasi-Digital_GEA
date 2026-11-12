@@ -22,6 +22,8 @@ export type GeofenceState = {
   readonly dismiss: (id: string) => void;
   /** null = kembali ke GPS asli. */
   readonly simulate: (fix: Fix | null) => void;
+  /** Bacaan GPS terakhir (asli atau Mode uji), untuk titik "Kamu" di peta. */
+  readonly fix: Fix | null;
 };
 
 const storageKey = (visitId: string): string => `gea.geofence.dismissed.v1:${visitId}`;
@@ -40,6 +42,7 @@ export function useGeofence(
   const [weak, setWeak] = useState(false);
   const [card, setCard] = useState<string | null>(null);
   const [simulated, setSimulated] = useState<Fix | null>(null);
+  const [fix, setFix] = useState<Fix | null>(null);
 
   const inside = useRef<readonly string[]>([]);
   const dismissed = useRef<ReadonlySet<string>>(new Set());
@@ -53,6 +56,7 @@ export function useGeofence(
     setActive(null);
     setWeak(false);
     setCard(null);
+    setFix(null);
   };
 
   // Daftar kartu yang sudah ditutup, per kunjungan.
@@ -75,6 +79,7 @@ export function useGeofence(
   }, [visitId]);
 
   const handleFix = useCallback((fix: Fix): void => {
+    setFix(fix);
     const step = stepGeofence(inside.current, fix, checkpointsRef.current);
     setWeak(step.weak);
     if (step.weak) return;
@@ -154,5 +159,5 @@ export function useGeofence(
     setSimulated(fix);
   }, []);
 
-  return { status, active, weak, card, dismiss, simulate };
+  return { status, active, weak, card, dismiss, simulate, fix };
 }

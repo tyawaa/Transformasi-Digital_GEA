@@ -1,4 +1,5 @@
-// Peta lantai 1 (layar utama setelah onboarding). Denah dari "Survey Docs" (P01–P21).
+// Peta lantai 1 (layar utama setelah onboarding). Peta hanya untuk dilihat: ruangan tidak bisa diketuk;
+// cerita dibuka lewat Scan QR di dekat koleksi. Titik "Kamu" menunjukkan posisi GPS pengunjung. Denah dari "Survey Docs" (P01–P21).
 // Frame HP 390 × 844 tanpa gulir, gaya sama dengan layar Story hi-fi (latar Scan QR, Ellak + Qanelas).
 // SEMENTARA: hi-fi peta (D3, PD-1) belum ada. Geofence (E10): kartu "Kamu di dekat", banner GPS lemah,
 // pilih ruang manual ("Saya di sini"), dan Mode uji GPS (hanya mode mock).
@@ -7,7 +8,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from "reac
 import { colors, componentColors, radius, shadows, spacing } from "../../design/tokens";
 import { GeaText } from "../../design/typography";
 import type { MuseumPoi, Wing, ZoneInfo } from "../../data/museum";
-import type { Fix } from "../../domain/geofence";
+import { distanceMeters, type Fix } from "../../domain/geofence";
 import type { PoiStatus } from "../../domain/points";
 import type { Route } from "../preferences/recommend";
 import { ScanBackground } from "../stories/hifi/backgrounds";
@@ -50,8 +51,9 @@ type Props = {
   readonly onScan: () => void;
   readonly onCheckLocation: () => void;
   readonly onRetry: () => void;
-  readonly onOpenPoi: (id: string) => void;
   readonly onOpenProgress: () => void;
+  /** Bacaan GPS terakhir; dipakai untuk titik "Kamu" di denah. */
+  readonly userFix: Fix | null;
   /** Rute dari preferensi (usia, waktu, minat); null = belum ada preferensi. */
   readonly route: Route | null;
   /** Topik minat pengguna yang cocok dengan ruangan ini. */
@@ -75,8 +77,7 @@ const roomFill: Record<PoiStatus, string> = {
 };
 
 export function MapScreen(props: Props): ReactElement {
-  const [selected, setSelected] = useState<string | null>(null);
-  const picked: MapPoi | undefined = props.pois.find((poi: MapPoi): boolean => poi.museum.code === selected);
+  const spot: PlanSpot | null = locateOnPlan(props.userFix, props.pois);
   const active: number = props.pois.filter((poi: MapPoi): boolean => poi.id !== null).length;
   const leftOnly: boolean = props.wingsMode === "left";
   const [testsOpen, setTestsOpen] = useState(false);
@@ -147,9 +148,8 @@ export function MapScreen(props: Props): ReactElement {
         pois={props.pois}
         here={props.activeWing === "left"}
         onPickHere={pickWing}
-        selected={selected}
-        onSelect={setSelected}
         route={props.route?.codes ?? []}
+        spot={spot?.wing === "left" ? spot : null}
       />
       {leftOnly
         ? (
@@ -169,9 +169,8 @@ export function MapScreen(props: Props): ReactElement {
             pois={props.pois}
             here={props.activeWing === "right"}
             onPickHere={pickWing}
-            selected={selected}
-            onSelect={setSelected}
             route={props.route?.codes ?? []}
+            spot={spot?.wing === "right" ? spot : null}
           />
         )}
 
@@ -187,7 +186,7 @@ export function MapScreen(props: Props): ReactElement {
         style={[styles.card, { top: cardTop }]}
         onLayout={(event): void => setCardHeight(event.nativeEvent.layout.height)}
       >
-        <BottomCard {...props} picked={picked} onClosePick={(): void => setSelected(null)} onSelect={setSelected} />
+        <BottomCard {...props} />
       </View>
 
       {props.hasVisit && (
@@ -203,7 +202,6 @@ export function MapScreen(props: Props): ReactElement {
                 accessibilityRole="button"
                 onPress={(): void => {
                   setTestsOpen(false);
-                  setSelected(null);
                   setTestLabel(test.fix === null ? null : test.label);
                   props.onGpsTest(test.fix);
                 }}
@@ -220,11 +218,7 @@ export function MapScreen(props: Props): ReactElement {
 }
 
 function BottomCard(
-  props: Props & {
-    readonly picked: MapPoi | undefined;
-    readonly onClosePick: () => void;
-    readonly onSelect: (code: string) => void;
-  },
+  props: Props,
 ): ReactElement {
   if (props.loading) {
     return (
@@ -264,44 +258,6 @@ function BottomCard(
       </>
     );
   }
-  if (props.picked !== undefined) {
-    const poi: MapPoi = props.picked;
-    const available: boolean = poi.id !== null;
-    return (
-      <>
-        <View style={styles.cardRow}>
-          <View style={[styles.codeBadge, { backgroundColor: available ? roomFill[poi.status] : colors.primary[400] }]}>
-            <GeaText variant="bold16" color={poi.status === "selesai" && available ? colors.white : colors.primary[900]}>
-              {poi.museum.code}
-            </GeaText>
-          </View>
-          <View style={styles.flex}>
-            <GeaText variant="heading20" color={colors.primary[900]} numberOfLines={2}>{poi.museum.name}</GeaText>
-            <GeaText variant="caption12" color={colors.primary[700]}>
-              {available ? statusLabel[poi.status] : "Ceritanya segera hadir"}
-            </GeaText>
-            {routeNote(props, poi.museum.code) !== null && (
-              <GeaText variant="caption12" color={colors.secondaryGreen[900]} numberOfLines={2}>
-                {routeNote(props, poi.museum.code)}
-              </GeaText>
-            )}
-          </View>
-          <Pressable accessibilityRole="button" accessibilityLabel="Tutup" hitSlop={12} onPress={props.onClosePick}>
-            <GeaText variant="bold16" color={colors.primary[700]}>✕</GeaText>
-          </Pressable>
-        </View>
-        {available && (
-          <StoryButton
-            label={poi.status === "selesai" ? "Lihat hasil" : "Buka cerita"}
-            onPress={(): void => {
-              if (poi.id !== null) props.onOpenPoi(poi.id);
-            }}
-            style={styles.full}
-          />
-        )}
-      </>
-    );
-  }
   if (props.nearby !== null && props.nearby.id !== null) {
     const poi: MapPoi = props.nearby;
     return (
@@ -320,13 +276,10 @@ function BottomCard(
             <GeaText variant="bold16" color={colors.primary[700]}>✕</GeaText>
           </Pressable>
         </View>
-        <StoryButton
-          label={poi.status === "selesai" ? "Lihat hasil" : "Buka cerita"}
-          onPress={(): void => {
-            if (poi.id !== null) props.onOpenPoi(poi.id);
-          }}
-          style={styles.full}
-        />
+        <GeaText variant="body14" color={componentColors.bodyDark}>
+          Scan QR di dekat koleksi ini untuk membuka ceritanya.
+        </GeaText>
+        <StoryButton label="Scan QR koleksi" onPress={props.onScan} style={styles.full} />
       </>
     );
   }
@@ -353,22 +306,20 @@ function BottomCard(
         </GeaText>
         <GeaText variant="body14" color={componentColors.bodyDark} numberOfLines={2}>
           {allDone
-            ? "Hebat! Masih ada waktu? Ketuk ruangan lain di peta."
+            ? "Hebat! Masih ada waktu? Scan QR koleksi lain untuk terus menjelajah."
             : `${stops.length} ruangan · ${route.duration}${route.topics.length > 0 ? ` · ${route.topics.join(", ")}` : ""}`}
         </GeaText>
         <View style={styles.stops}>
           {stops.map((poi: MapPoi, index: number): ReactElement => (
-            <Pressable
+            <View
               key={poi.museum.code}
-              accessibilityRole="button"
-              accessibilityLabel={`Rute ${index + 1}: ${poi.museum.name}`}
-              onPress={(): void => props.onSelect(poi.museum.code)}
-              style={({ pressed }) => [styles.stop, poi.status === "selesai" && styles.stopDone, pressed && styles.pressed]}
+              accessibilityLabel={`Rute ${index + 1}: ${poi.museum.name}${poi.status === "selesai" ? ", selesai" : ""}`}
+              style={[styles.stop, poi.status === "selesai" && styles.stopDone]}
             >
               <GeaText variant="caption12" color={poi.status === "selesai" ? colors.white : colors.primary[900]}>
                 {index + 1}. {poi.museum.code}{poi.status === "selesai" ? " ✓" : ""}
               </GeaText>
-            </Pressable>
+            </View>
           ))}
         </View>
       </>
@@ -378,21 +329,10 @@ function BottomCard(
     <>
       <GeaText variant="heading20" color={colors.primary[900]}>Mau jelajah ke mana?</GeaText>
       <GeaText variant="body14" color={componentColors.bodyDark}>
-        Ketuk ruangan di peta untuk melihat koleksinya, atau scan QR di dekat koleksi untuk langsung membuka ceritanya.
+        Peta menunjukkan posisimu. Scan QR di dekat koleksi untuk membuka ceritanya.
       </GeaText>
     </>
   );
-}
-
-/** "Rute untukmu #2 · cocok dengan minatmu: Gunung Api" untuk kartu ruangan. */
-function routeNote(props: Props, code: string): string | null {
-  const index: number = props.route?.codes.indexOf(code) ?? -1;
-  const matches: readonly string[] = props.topicsFor(code);
-  if (index === -1 && matches.length === 0) return null;
-  const parts: string[] = [];
-  if (index !== -1) parts.push(`Rute untukmu #${index + 1}`);
-  if (matches.length > 0) parts.push(`cocok dengan minatmu: ${matches.join(", ")}`);
-  return parts.join(" · ");
 }
 
 function TextLink(
@@ -417,7 +357,7 @@ function Legend(
 }
 
 function WingPlan(
-  { top, maxHeight, stretch, title, subtitle, wing, pois, here, onPickHere, selected, onSelect, route }: {
+  { top, maxHeight, stretch, title, subtitle, wing, pois, here, onPickHere, route, spot }: {
     readonly top: number;
     /** Tinggi maksimum denah di frame 390 × 844. */
     readonly maxHeight: number;
@@ -430,17 +370,17 @@ function WingPlan(
     readonly here: boolean;
     /** null = tombol "Saya di sini" disembunyikan (belum ada kunjungan). */
     readonly onPickHere: ((wing: Wing) => void) | null;
-    readonly selected: string | null;
-    readonly onSelect: (code: string) => void;
     /** Kode POI rute rekomendasi; nomor urut tampil di pojok ruangan. */
     readonly route: readonly string[];
+    /** Posisi GPS pengunjung di denah sayap ini (satuan denah), null = tidak di sayap ini. */
+    readonly spot: PlanSpot | null;
   },
 ): ReactElement {
   const rooms: readonly MapPoi[] = pois.filter((poi: MapPoi): boolean => poi.museum.wing === wing);
   const width: number = Math.max(...rooms.map((poi: MapPoi): number => poi.museum.room.x + poi.museum.room.w));
   const height: number = Math.max(...rooms.map((poi: MapPoi): number => poi.museum.room.y + poi.museum.room.h));
   // Dua sayap: proporsi denah dijaga agar muat tanpa gulir. Satu sayap: ruangan dibuat lebih tinggi
-  // supaya mudah diketuk.
+  // supaya mudah dibaca.
   const sx: number = Math.min(1, 338 / width);
   const sy: number = stretch ? Math.min(maxHeight / height, sx * 2) : Math.min(sx, maxHeight / height);
   const scaleX: number = stretch ? sx : sy;
@@ -471,15 +411,12 @@ function WingPlan(
         {rooms.map((poi: MapPoi): ReactElement => {
           const { room } = poi.museum;
           const available: boolean = poi.id !== null;
-          const isSelected: boolean = selected === poi.museum.code;
           const done: boolean = available && poi.status === "selesai";
           return (
-            <Pressable
+            <View
               key={poi.museum.code}
-              accessibilityRole="button"
               accessibilityLabel={`${poi.museum.code} ${poi.museum.name}, ${available ? statusLabel[poi.status] : "segera hadir"}`}
-              onPress={(): void => onSelect(poi.museum.code)}
-              style={({ pressed }) => [
+              style={[
                 styles.room,
                 {
                   left: room.x * scaleX + 1.5,
@@ -488,8 +425,6 @@ function WingPlan(
                   height: room.h * sy - 3,
                 },
                 available ? { backgroundColor: roomFill[poi.status] } : styles.soon,
-                isSelected && styles.roomSelected,
-                pressed && styles.pressed,
               ]}
             >
               <GeaText variant="bold16" color={done ? colors.white : available ? colors.primary[900] : colors.primary[700]}>
@@ -503,12 +438,57 @@ function WingPlan(
                   </GeaText>
                 </View>
               )}
-            </Pressable>
+            </View>
           );
         })}
+        {spot !== null && (
+          <View
+            accessibilityLabel="Posisimu menurut GPS"
+            pointerEvents="none"
+            style={[styles.youWrap, { left: spot.x * scaleX - 30, top: spot.y * sy - 13 }]}
+          >
+            <View style={styles.youDot} />
+            <View style={styles.youLabel}>
+              <GeaText variant="caption12" color={colors.white} style={styles.routeBadgeText}>Kamu</GeaText>
+            </View>
+          </View>
+        )}
       </View>
     </View>
   );
+}
+
+/** Posisi pengunjung di denah (satuan denah, sama dengan RoomBox). */
+type PlanSpot = { readonly wing: Wing; readonly x: number; readonly y: number };
+
+// Titik "Kamu" hanya tampil bila GPS cukup akurat dan dekat dengan ruangan museum.
+const MAX_SPOT_ACCURACY_M = 30;
+const MAX_SPOT_DISTANCE_M = 40;
+
+/**
+ * Perkirakan posisi pengunjung di denah dari GPS: rata-rata titik tengah ruangan di sayap terdekat,
+ * diberi bobot 1/jarak² (ruangan terdekat paling berpengaruh). Koordinat POI masih dari survei kasar.
+ */
+function locateOnPlan(fix: Fix | null, pois: readonly MapPoi[]): PlanSpot | null {
+  if (fix === null || fix.accuracyMeters > MAX_SPOT_ACCURACY_M) return null;
+  const measured = pois.map((poi: MapPoi) => ({ poi, distance: distanceMeters(fix, poi.museum) }));
+  const first = measured[0];
+  if (first === undefined) return null;
+  const nearest = measured.reduce((best, item) => (item.distance < best.distance ? item : best), first);
+  if (nearest.distance > MAX_SPOT_DISTANCE_M) return null;
+  const wing: Wing = nearest.poi.museum.wing;
+  let sum = 0;
+  let x = 0;
+  let y = 0;
+  for (const { poi, distance } of measured) {
+    if (poi.museum.wing !== wing) continue;
+    const weight: number = 1 / Math.max(1, distance) ** 2;
+    const { room } = poi.museum;
+    x += (room.x + room.w / 2) * weight;
+    y += (room.y + room.h / 2) * weight;
+    sum += weight;
+  }
+  return { wing, x: x / sum, y: y / sum };
 }
 
 const styles = StyleSheet.create({
@@ -620,7 +600,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.primary[300],
   },
-  roomSelected: { borderWidth: 4, borderColor: colors.tertiary[200] },
   soon: { backgroundColor: colors.primary[400], borderStyle: "dashed", borderColor: colors.primary[600] },
   soonWing: {
     position: "absolute",
@@ -691,6 +670,17 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   routeBadgeText: { fontSize: 10, lineHeight: 12 },
+  youWrap: { position: "absolute", width: 60, alignItems: "center", gap: 2, zIndex: 2 },
+  youDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 3,
+    borderColor: colors.white,
+    backgroundColor: colors.info[400],
+    boxShadow: "0px 0px 0px 6px rgba(66, 121, 171, 0.25)",
+  },
+  youLabel: { paddingHorizontal: 6, paddingVertical: 1, borderRadius: radius.pill, backgroundColor: colors.info[400] },
   stops: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   stop: {
     paddingHorizontal: spacing[8],

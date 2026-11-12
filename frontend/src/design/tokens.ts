@@ -94,6 +94,9 @@ export const componentColors = {
   qrFailed: "#CA0000",
   textWhite: "#FFFFFF",
   toastDangerBackground: "#FFDBDE",
+  // Layar "Selamat Penjelajah!": bintang dan kotak SCORE / REWARD (diambil dari ekspor frame).
+  resultStar: "#D4501E",
+  resultBox: "#E8DED3",
   toastSuccessBackground: "#E5FFE3",
   // Latar tombol outline saat ditekan (warna tombol dengan opasitas 25%).
   outlinePressedPrimary: "rgba(238, 228, 168, 0.25)",

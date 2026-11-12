@@ -1,60 +1,166 @@
-// SEMENTARA: layar "Kisah Selesai" dan "Side Quest" mengikuti draft desain PD yang belum final.
-// Semua teks dan tata letak dikumpulkan di file ini supaya mudah diganti saat hi-fi final keluar.
+// Layar akhir cerita, mengikuti frame "Selesai Story Splash" terbaru:
+// Kisah Selesai → (tantangan) → Yeay! → Mini Quiz → Selamat Penjelajah!
+// Maskot: SVG vektor dari Figma (node 359:3019 "Group 123325"), tajam di semua ukuran layar.
 import { Image } from "expo-image";
-import type { ReactElement } from "react";
+import { type ReactElement, useState } from "react";
 import { Linking, Pressable, Share, StyleSheet, View } from "react-native";
 import { Button } from "../../../design/Button";
 import { colors, componentColors, radius, shadows, spacing } from "../../../design/tokens";
 import { GeaText } from "../../../design/typography";
-import { StoryBackground } from "./backgrounds";
-import { BackButton, FrameStage, StoryButton } from "./parts";
+import { FrameStage, StoryButton } from "./parts";
 
-// SEMENTARA: ikan Coelacanth dan latar tiga lapis meniru draft desain "Kisah Selesai".
-const illustration = require("../../../../assets/design/finished-fish.png") as number;
+const mascot = require("../../../../assets/design/mascot.svg") as number;
 const background = require("../../../../assets/design/finished-bg.svg") as number;
+// Rasio maskot di Figma (200 × 214.85).
+const MASCOT_RATIO = 214.85 / 200;
 
-/** Draft "Kisah selesai. Lanjutkan penjelajahanmu!" (setelah cerita). */
+/** "Kisah selesai. Lanjutkan penjelajahanmu!" setelah Story Isi. */
 export function StoryFinishedScreen(
-  { poiName, onSideQuest, onSkip }: {
+  { poiName, actionLabel, onAction, onSkip }: {
     readonly poiName: string;
-    readonly onSideQuest: () => void;
+    /** "Lakukan Tantangan", atau "Lanjut ke Mini Quiz" bila POI tidak punya tantangan. */
+    readonly actionLabel: string;
+    readonly onAction: () => void;
     readonly onSkip: () => void;
   },
 ): ReactElement {
   return (
-    <FinishedScreen
+    <MascotSplash
       title="Kisah selesai. Lanjutkan penjelajahanmu!"
-      description={`Selamat explorer, kamu baru saja menamatkan cerita tentang ${poiName}. Ayo hidupkan ceritamu dengan Side Quest!`}
-      actionLabel="Lakukan Side Quest"
-      onAction={onSideQuest}
+      description={`Selamat explorer, kamu baru saja menamatkan cerita tentang ${poiName}. Ayo hidupkan ceritamu dengan tantangan!`}
+      actionLabel={actionLabel}
+      onAction={onAction}
       onSkip={onSkip}
     />
   );
 }
 
-/** Placeholder layar selesai kuis: layout sama dengan Kisah Selesai, teks berbeda. */
-export function QuizFinishedScreen(
-  { poiName, completed, onResult, onSkip }: {
+/** "Yeay! Kamu berhasil menyelesaikan tantangan" sebelum Mini Quiz. */
+export function ChallengeDoneScreen(
+  { poiName, success, onQuiz, onSkip }: {
     readonly poiName: string;
-    readonly completed: boolean;
-    readonly onResult: () => void;
+    /** false = kesempatan tantangan habis; judul disesuaikan. */
+    readonly success: boolean;
+    readonly onQuiz: () => void;
     readonly onSkip: () => void;
   },
 ): ReactElement {
   return (
-    <FinishedScreen
-      title={completed ? "Side quest selesai. Hebat, explorer!" : "Side quest selesai. Tetap semangat!"}
-      description={completed
-        ? `Kamu berhasil menjawab mini quiz tentang ${poiName}. Yuk lihat berapa poin yang kamu kumpulkan!`
-        : `Kesempatan menjawab mini quiz tentang ${poiName} sudah habis. Lihat hasilmu, lalu lanjutkan ke koleksi berikutnya!`}
-      actionLabel="Lihat Poin"
-      onAction={onResult}
+    <MascotSplash
+      title={success ? "Yeay! Kamu berhasil menyelesaikan tantangan" : "Tantangan selesai. Tetap semangat!"}
+      description={`Sebelum mengakhiri perjalanan di ${poiName}, buktikan pengetahuanmu dulu yuk!`}
+      actionLabel="Lanjut ke Mini Quiz"
+      onAction={onQuiz}
       onSkip={onSkip}
     />
   );
 }
 
-/** Figma "Final": layar penutup cerita dengan tombol bagikan dan kembali ke halaman utama. */
+/** Template splash: maskot mengintip di balik kartu putih, tombol hijau di bawah, Skip di kanan atas. */
+function MascotSplash(
+  { title, description, actionLabel, onAction, onSkip }: {
+    readonly title: string;
+    readonly description: string;
+    readonly actionLabel: string;
+    readonly onAction: () => void;
+    readonly onSkip: () => void;
+  },
+): ReactElement {
+  return (
+    <FrameStage background={colors.primary[800]}>
+      <Image accessible={false} source={background} style={splash.bg} contentFit="fill" />
+      <Pressable accessibilityRole="button" hitSlop={12} onPress={onSkip} style={splash.skip}>
+        <GeaText variant="label16" color={colors.secondaryYellow[0]} style={splash.underline}>Skip</GeaText>
+      </Pressable>
+      <Image accessible={false} source={mascot} style={splash.mascot} contentFit="contain" />
+      <View style={splash.card}>
+        <GeaText variant="heading28" color={colors.tertiary[100]} style={splash.center}>{title}</GeaText>
+        <GeaText variant="body16" color={componentColors.bodyDark} style={splash.center}>{description}</GeaText>
+      </View>
+      <StoryButton label={actionLabel} onPress={onAction} style={splash.button} />
+    </FrameStage>
+  );
+}
+
+/** "Selamat Penjelajah!": bintang dari kuis, SCORE (poin koleksi ini) dan REWARD (total poin). */
+export function ExplorerResultScreen(
+  { poiName, stars, conquered, score, reward, explanation, extra, onHome }: {
+    readonly poiName: string;
+    /** Penjelasan jawaban Mini Quiz (kolom "Penjelasan setelah Menjawab"). */
+    readonly explanation?: string | undefined;
+    /** 0–3: benar di percobaan 1/2/3 = 3/2/1 bintang. */
+    readonly stars: number;
+    /** true = kuis dijawab benar. */
+    readonly conquered: boolean;
+    readonly score: number;
+    readonly reward: number;
+    /** Baris tambahan: rute berikutnya, lencana baru. */
+    readonly extra: readonly string[];
+    readonly onHome: () => void;
+  },
+): ReactElement {
+  // Lembar putih ikut memanjang (penjelasan, lencana baru); halaman digulir bila tidak muat.
+  const [sheetHeight, setSheetHeight] = useState<number>(0);
+  return (
+    <FrameStage background={colors.primary[800]} frameHeight={Math.max(RESULT_BASE, SHEET_TOP + sheetHeight)}>
+      <Image accessible={false} source={background} style={splash.bg} contentFit="fill" />
+      <Image accessible={false} source={mascot} style={result.mascot} contentFit="contain" />
+      <View
+        style={[result.sheet, { minHeight: RESULT_BASE - SHEET_TOP }]}
+        onLayout={(event): void => setSheetHeight(event.nativeEvent.layout.height)}
+      >
+        <View accessibilityLabel={`${stars} dari 3 bintang`} style={result.stars}>
+          {[0, 1, 2].map((i: number): ReactElement => (
+            <GeaText
+              key={i}
+              variant="display42"
+              color={i < stars ? componentColors.resultStar : colors.greys[0]}
+              style={[result.star, i < stars && result.starGlow]}
+            >
+              ★
+            </GeaText>
+          ))}
+        </View>
+        <GeaText variant="display42" color={colors.primary[800]} style={splash.center}>
+          Selamat Penjelajah!
+        </GeaText>
+        <GeaText variant="body16" color={componentColors.bodyDark} style={splash.center}>
+          {conquered
+            ? `Kamu berhasil menaklukan ${poiName}. Perjalanan selanjutnya masih menunggu!`
+            : `Kamu sudah menjelajahi ${poiName}. Perjalanan selanjutnya masih menunggu!`}
+        </GeaText>
+        {explanation !== undefined && (
+          <GeaText variant="body14" color={componentColors.cardCaption} style={splash.center}>{explanation}</GeaText>
+        )}
+        {extra.map((line: string): ReactElement => (
+          <GeaText key={line} variant="label16" color={colors.secondaryGreen[900]} style={splash.center}>{line}</GeaText>
+        ))}
+        <View style={result.divider} />
+        <View style={result.scores}>
+          <ScoreBox label="SCORE" value={String(score)} />
+          <ScoreBox label="REWARD" value={String(reward)} unit="POINTS" />
+        </View>
+        <StoryButton label="Kembali ke Halaman Utama" onPress={onHome} style={result.button} />
+      </View>
+    </FrameStage>
+  );
+}
+
+function ScoreBox(
+  { label, value, unit }: { readonly label: string; readonly value: string; readonly unit?: string },
+): ReactElement {
+  return (
+    <View style={result.scoreCol}>
+      <GeaText variant="label16" color={colors.primary[200]}>{label}</GeaText>
+      <View style={result.box}>
+        <GeaText variant="heading28" color={colors.primary[800]}>{value}</GeaText>
+        {unit !== undefined && <GeaText variant="bold16" color={colors.primary[800]}>{unit}</GeaText>}
+      </View>
+    </View>
+  );
+}
+
+/** Figma "Final" (Finish): penutup kunjungan setelah semua koleksi selesai, dengan bagikan ke Instagram. */
 export function StoryFinalScreen(
   { poiName, nextStop, onHome }: {
     readonly poiName: string;
@@ -75,129 +181,43 @@ export function StoryFinalScreen(
 
   return (
     <FrameStage background={colors.primary[800]}>
-      <Image accessible={false} source={background} style={finished.bg} contentFit="fill" />
-      <View style={finished.card}>
-        <GeaText variant="heading28" color={colors.tertiary[100]} style={finished.center}>
+      <Image accessible={false} source={background} style={splash.bg} contentFit="fill" />
+      <View style={splash.card}>
+        <GeaText variant="heading28" color={colors.tertiary[100]} style={splash.center}>
           Kisah selesai. Lanjutkan penjelajahanmu!
         </GeaText>
-        <GeaText variant="body16" color={componentColors.bodyDark} style={finished.center}>
+        <GeaText variant="body16" color={componentColors.bodyDark} style={splash.center}>
           Selamat explorer, kamu baru saja menamatkan cerita tentang {poiName}. Bagikan petualanganmu dan lanjutkan ke koleksi berikutnya!
         </GeaText>
         {nextStop !== null && (
-          <GeaText variant="label16" color={colors.secondaryGreen[900]} style={finished.center}>
+          <GeaText variant="label16" color={colors.secondaryGreen[900]} style={splash.center}>
             Berikutnya di rutemu: {nextStop}
           </GeaText>
         )}
       </View>
-      <StoryButton label="Bagikan ke Instagram" onPress={(): void => void share()} style={finished.button} />
-      <View style={finished.homeButton}>
-        <Button appearance="outline" tone="primary" label="Kembali ke Halaman Utama" onPress={onHome} style={finished.stretch} />
+      <StoryButton label="Bagikan ke Instagram" onPress={(): void => void share()} style={splash.button} />
+      <View style={splash.homeButton}>
+        <Button appearance="outline" tone="primary" label="Kembali ke Halaman Utama" onPress={onHome} style={splash.stretch} />
       </View>
     </FrameStage>
   );
 }
 
-/** Template layar "selesai" (draft PD). Ganti di sini saat hi-fi final keluar. */
-function FinishedScreen(
-  { title, description, actionLabel, onAction, onSkip }: {
-    readonly title: string;
-    readonly description: string;
-    readonly actionLabel: string;
-    readonly onAction: () => void;
-    readonly onSkip: () => void;
-  },
-): ReactElement {
-  return (
-    <FrameStage background={colors.primary[800]}>
-      <Image accessible={false} source={background} style={finished.bg} contentFit="fill" />
-      <Pressable accessibilityRole="button" hitSlop={12} onPress={onSkip} style={finished.skip}>
-        <GeaText variant="label16" color={colors.secondaryYellow[0]} style={finished.underline}>Skip</GeaText>
-      </Pressable>
-      <Image accessible={false} source={illustration} style={finished.art} contentFit="contain" />
-      <View style={finished.card}>
-        <GeaText variant="heading28" color={colors.tertiary[100]} style={finished.center}>
-          {title}
-        </GeaText>
-        <GeaText variant="body16" color={componentColors.bodyDark} style={finished.center}>
-          {description}
-        </GeaText>
-      </View>
-      <StoryButton label={actionLabel} onPress={onAction} style={finished.button} />
-    </FrameStage>
-  );
-}
+// Tinggi minimum layar hasil (frame 844) dan posisi lembar putih (frame "Selamat Penjelajah").
+const RESULT_BASE = 844;
+const SHEET_TOP = 362;
 
-export type SideQuestTask = {
-  readonly label: string;
-  readonly done: boolean;
-  readonly icon: "camera" | "search" | "quiz";
-};
-
-const taskIcons: Record<SideQuestTask["icon"], number> = {
-  camera: require("../../../../assets/design/icon-camera.svg") as number,
-  search: require("../../../../assets/design/icon-search.svg") as number,
-  quiz: require("../../../../assets/design/icon-quiz.svg") as number,
-};
-
-/** Draft daftar Side Quest dengan kotak centang per tugas. */
-export function SideQuestScreen(
-  { poiName, tasks, locked, actionLabel, onAction, onBack }: {
-    readonly poiName: string;
-    readonly tasks: readonly SideQuestTask[];
-    readonly locked: boolean;
-    readonly actionLabel: string;
-    readonly onAction: () => void;
-    readonly onBack: () => void;
-  },
-): ReactElement {
-  return (
-    <FrameStage background={colors.primary[300]}>
-      <StoryBackground />
-      <BackButton onPress={onBack} />
-      <View style={side.intro}>
-        <GeaText variant="label16" color={componentColors.bodyDark} style={finished.center}>
-          Selamat explorer, kamu baru saja menamatkan cerita tentang {poiName}. Ayo hidupkan ceritamu dengan Side Quest!
-        </GeaText>
-      </View>
-      <View style={side.list}>
-        {tasks.map((task: SideQuestTask): ReactElement => (
-          <View
-            key={task.label}
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: task.done }}
-            style={side.task}
-          >
-            <Image accessible={false} source={taskIcons[task.icon]} style={side.icon} />
-            <GeaText variant="body16Tight" color={componentColors.bodyDark} style={side.taskText}>
-              {task.label}
-            </GeaText>
-            <View style={[side.box, task.done && side.boxDone]}>
-              {task.done && <GeaText variant="bold16" color={colors.secondaryGreen[900]}>✓</GeaText>}
-            </View>
-          </View>
-        ))}
-        {locked && (
-          <GeaText variant="body14" color={colors.tertiary[300]} style={finished.center}>
-            Quest terkunci. Scan QR di dekat koleksi untuk membukanya.
-          </GeaText>
-        )}
-      </View>
-      <StoryButton label={actionLabel} onPress={onAction} style={finished.button} />
-    </FrameStage>
-  );
-}
-
-const finished = StyleSheet.create({
+const splash = StyleSheet.create({
   bg: { position: "absolute", left: 0, top: 0, width: 390, height: 844 },
   skip: { position: "absolute", right: 16, top: 38, zIndex: 1 },
   underline: { textDecorationLine: "underline" },
-  // Posisi ikan sama dengan frame "Selesai Story Splash" (393 px, diskalakan ke 390).
-  art: { position: "absolute", left: 36, top: 135, width: 319, height: 163 },
+  // Maskot mengintip di balik kartu (frame "Selesai Story Splash (2)": x 60–335, puncak tanduk y≈117).
+  mascot: { position: "absolute", left: 60, top: 116, width: 272, height: 272 * MASCOT_RATIO },
   card: {
     position: "absolute",
     left: 18,
-    top: 325,
-    width: 358,
+    top: 318,
+    width: 354,
     gap: spacing[16],
     paddingHorizontal: spacing[16],
     paddingVertical: spacing[24],
@@ -205,46 +225,45 @@ const finished = StyleSheet.create({
     backgroundColor: colors.white,
   },
   center: { textAlign: "center" },
-  button: { position: "absolute", left: 17, top: 696, width: 358, boxShadow: shadows.drop },
-  homeButton: { position: "absolute", left: 17, top: 752, width: 358 },
+  button: { position: "absolute", left: 17, top: 692, width: 356, boxShadow: shadows.drop },
+  homeButton: { position: "absolute", left: 17, top: 748, width: 356 },
   stretch: { alignSelf: "stretch" },
 });
 
-const side = StyleSheet.create({
-  intro: {
+const result = StyleSheet.create({
+  // Frame "Selamat Penjelajah": maskot penuh di atas (x 97–297, y 86–300).
+  mascot: { position: "absolute", left: 96, top: 85, width: 200, height: 200 * MASCOT_RATIO },
+  sheet: {
     position: "absolute",
-    left: 16,
-    top: 124,
-    width: 358,
-    padding: spacing[24],
-    borderRadius: radius.control,
+    left: 0,
+    top: SHEET_TOP,
+    width: 390,
+    alignItems: "center",
+    gap: spacing[16],
+    paddingHorizontal: spacing[16],
+    paddingTop: spacing[24],
+    paddingBottom: spacing[32],
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
     backgroundColor: colors.white,
   },
-  // "Story - Mini quiz": daftar tugas mulai y≈350, kartu krem berbingkai cokelat.
-  list: { position: "absolute", left: 16, top: 350, width: 358, gap: spacing[8] },
-  icon: { width: 28, height: 28 },
-  task: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing[12],
-    minHeight: 64,
-    paddingHorizontal: spacing[12],
-    paddingVertical: spacing[8],
-    borderWidth: 2.5,
-    borderColor: colors.primary[600],
-    borderRadius: 6,
-    backgroundColor: colors.primary[0],
-  },
-  taskText: { flex: 1 },
+  stars: { flexDirection: "row", gap: spacing[8] },
+  star: { fontSize: 56, lineHeight: 60 },
+  starGlow: { textShadowColor: "rgba(212, 80, 30, 0.45)", textShadowRadius: 12, textShadowOffset: { width: 0, height: 0 } },
+  divider: { width: 246, height: 1, backgroundColor: colors.greys[0] },
+  scores: { flexDirection: "row", gap: spacing[12], alignSelf: "stretch" },
+  scoreCol: { flex: 1, alignItems: "center", gap: spacing[8] },
   box: {
-    width: 26,
-    height: 26,
-    borderWidth: 2,
-    borderColor: colors.primary[600],
-    borderRadius: 3,
-    alignItems: "center",
+    alignSelf: "stretch",
+    height: 52,
+    flexDirection: "row",
+    alignItems: "baseline",
     justifyContent: "center",
-    backgroundColor: colors.secondaryYellow[0],
+    gap: spacing[8],
+    paddingTop: spacing[8],
+    borderRadius: radius.control,
+    backgroundColor: componentColors.resultBox,
+    boxShadow: shadows.drop,
   },
-  boxDone: { backgroundColor: colors.secondaryGreen[100] },
+  button: { alignSelf: "stretch", boxShadow: shadows.drop },
 });
