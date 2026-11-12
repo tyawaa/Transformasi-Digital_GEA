@@ -58,6 +58,10 @@ type Props = {
   readonly topicsFor: (code: string) => readonly string[];
 };
 
+// Tombol Scan QR: posisi default di frame 844 dan tingginya.
+const SCAN_TOP = 772;
+const SCAN_HEIGHT = 48;
+
 const statusLabel: Record<PoiStatus, string> = {
   belum: "Belum dikunjungi",
   sebagian: "Sedang dijelajahi",
@@ -77,11 +81,17 @@ export function MapScreen(props: Props): ReactElement {
   const leftOnly: boolean = props.wingsMode === "left";
   const [testsOpen, setTestsOpen] = useState(false);
   const [testLabel, setTestLabel] = useState<string | null>(null);
+  // Kartu bawah bisa panjang (mis. rute 11+ ruangan). Tombol Scan QR turun mengikuti kartu,
+  // dan seluruh halaman bisa digulir bila tidak muat.
+  const [cardHeight, setCardHeight] = useState<number>(0);
+  const cardTop: number = leftOnly ? 580 : 600;
+  const scanTop: number = Math.max(SCAN_TOP, cardTop + cardHeight + 16);
+  const pageHeight: number = props.hasVisit ? scanTop + SCAN_HEIGHT + 24 : cardTop + cardHeight + 24;
   const showTests: boolean = props.hasVisit && props.gpsTests.length > 0;
   const pickWing = props.hasVisit ? props.onPickWing : null;
 
   return (
-    <FrameStage background={colors.primary[300]}>
+    <FrameStage background={colors.primary[300]} frameHeight={pageHeight}>
       <ScanBackground />
 
       {/* Kepala: judul + poin */}
@@ -173,12 +183,15 @@ export function MapScreen(props: Props): ReactElement {
       </View>
 
       {/* Kartu bawah: satu informasi saja pada satu waktu */}
-      <View style={[styles.card, leftOnly && { top: 580 }]}>
+      <View
+        style={[styles.card, { top: cardTop }]}
+        onLayout={(event): void => setCardHeight(event.nativeEvent.layout.height)}
+      >
         <BottomCard {...props} picked={picked} onClosePick={(): void => setSelected(null)} onSelect={setSelected} />
       </View>
 
       {props.hasVisit && (
-        <StoryButton label="Scan QR" onPress={props.onScan} style={styles.scan} />
+        <StoryButton label="Scan QR" onPress={props.onScan} style={[styles.scan, { top: scanTop }]} />
       )}
 
       {showTests && testsOpen && (
@@ -485,7 +498,9 @@ function WingPlan(
               {done && <GeaText variant="caption12" color={colors.white}>✓</GeaText>}
               {route.includes(poi.museum.code) && (
                 <View style={styles.routeBadge}>
-                  <GeaText variant="caption12" color={colors.white}>{route.indexOf(poi.museum.code) + 1}</GeaText>
+                  <GeaText variant="caption12" color={colors.white} style={styles.routeBadgeText}>
+                    {route.indexOf(poi.museum.code) + 1}
+                  </GeaText>
                 </View>
               )}
             </Pressable>
@@ -658,18 +673,24 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   scan: { position: "absolute", left: 16, width: 358, top: 772, boxShadow: shadows.drop },
+  // Nomor rute di pojok kiri atas ruangan, sedikit keluar dari kotak agar kode ruangan
+  // tetap terbaca di ruangan kecil (mode dua sayap).
   routeBadge: {
     position: "absolute",
-    left: 2,
-    top: 2,
-    minWidth: 18,
-    height: 18,
-    paddingHorizontal: 4,
-    borderRadius: 9,
+    left: -7,
+    top: -7,
+    minWidth: 16,
+    height: 16,
+    paddingHorizontal: 3,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: colors.white,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.tertiary[200],
+    zIndex: 1,
   },
+  routeBadgeText: { fontSize: 10, lineHeight: 12 },
   stops: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   stop: {
     paddingHorizontal: spacing[8],
