@@ -171,3 +171,14 @@ Audit dependency SDK 57 dan tooling tunnel masih melaporkan 15 temuan transitif
 berasal dari tooling Expo. Saran `npm audit fix
 --force` memindahkan Expo ke SDK
 58, sehingga tidak diterapkan pada target Expo Go SDK 57 ini.
+
+## Geofence GPS (E10)
+
+Selama kunjungan aktif, aplikasi memantau GPS (±1 detik) bila izin lokasi sudah diberikan
+(`src/hooks/useGeofence.ts`, logika di `src/domain/geofence.ts`, uji di `tests/geofence.test.mjs`).
+
+- Masuk radius koleksi: kartu "Kamu di dekat" muncul ≤3 detik; tidak berulang selama tetap di dalam.
+- Keluar lalu masuk lagi: kartu muncul lagi. Kartu yang ditutup (✕) tidak muncul lagi di kunjungan itu.
+- Akurasi > 20 m: banner merah "GPS lemah" (ketuk untuk scan QR); posisi tidak dipakai.
+- "Saya di sini" di judul sayap: pilih ruang manual bila GPS tidak membantu.
+- Mode mock: tombol "Uji GPS ▾" di peta untuk simulasi posisi (luar museum, GPS lemah, zona, P01–P14).

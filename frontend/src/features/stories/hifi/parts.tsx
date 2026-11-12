@@ -3,6 +3,7 @@ import { type ReactElement, type ReactNode, useEffect, useRef } from "react";
 import {
   Platform,
   Pressable,
+  ScrollView,
   type StyleProp,
   StyleSheet,
   useWindowDimensions,
@@ -17,13 +18,32 @@ import { backArrow } from "./backgrounds";
 export const FRAME_W = 390;
 export const FRAME_H = 844;
 
-/** Frame Figma 390 × 844 yang diskalakan agar muat di layar. */
+/**
+ * Frame Figma 390 × 844 yang diskalakan agar muat di layar. Bila isi lebih panjang
+ * (frameHeight > 844), seluruh halaman bisa digulir ke bawah, bukan kotak teks kecil.
+ */
 export function FrameStage(
-  { background, children }: { readonly background: string; readonly children: ReactNode },
+  { background, children, frameHeight = FRAME_H, scrollKey }: {
+    readonly background: string;
+    readonly children: ReactNode;
+    /** Tinggi isi dalam satuan frame; > 844 = halaman bisa digulir. */
+    readonly frameHeight?: number;
+    /** Ganti nilai ini (mis. langkah cerita) agar halaman kembali ke atas. */
+    readonly scrollKey?: string;
+  },
 ): ReactElement {
   const { width, height } = useWindowDimensions();
   const scale: number = Math.min(width / FRAME_W, height / FRAME_H);
   const rootRef = useRef<View>(null);
+  const scrollRef = useRef<ScrollView>(null);
+  const frameH: number = Math.max(FRAME_H, frameHeight);
+  // Jarak atas sama seperti frame 844 yang ditengahkan; transform scale berpusat di tengah frame.
+  const offsetTop: number = (height - FRAME_H * scale) / 2;
+  const stageTop: number = offsetTop - (frameH - frameH * scale) / 2;
+
+  useEffect((): void => {
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, [scrollKey]);
 
   // Web: browser bisa menggulir kontainer overflow hidden saat elemen difokus. Kunci di 0.
   useEffect((): (() => void) | undefined => {
@@ -39,14 +59,22 @@ export function FrameStage(
 
   return (
     <View ref={rootRef} style={[styles.root, { backgroundColor: background }]}>
-      <View
-        style={[
-          styles.stage,
-          { left: (width - FRAME_W) / 2, top: (height - FRAME_H) / 2, transform: [{ scale }] },
-        ]}
+      <ScrollView
+        ref={scrollRef}
+        scrollEnabled={frameH > FRAME_H}
+        showsVerticalScrollIndicator={false}
+        // overflow hidden: hiasan yang menjulur melewati bawah frame tidak ikut bisa digulir.
+        contentContainerStyle={{ height: Math.max(height, offsetTop * 2 + frameH * scale), overflow: "hidden" }}
       >
-        {children}
-      </View>
+        <View
+          style={[
+            styles.stage,
+            { left: (width - FRAME_W) / 2, top: stageTop, height: frameH, transform: [{ scale }] },
+          ]}
+        >
+          {children}
+        </View>
+      </ScrollView>
     </View>
   );
 }
