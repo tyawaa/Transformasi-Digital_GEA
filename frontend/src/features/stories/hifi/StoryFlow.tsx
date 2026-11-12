@@ -189,17 +189,17 @@ export function StoryFlow(props: Props): ReactElement {
   }
 
   const [description, audio] = poi.cards;
-  // Kolom tambahan dari sheet (judul, fakta, penjelasan, foto survei) bila ada di data lokal.
+  // Data lokal hanya untuk pilihan foto survei dan penjelasan kuis di mode mock.
   const museumPoi = museumPoiById(poi.id_poi);
-  const local: StoryContent | null = museumPoi?.content ?? null;
+  const local: StoryContent | null = source.kind === "mock" ? museumPoi?.content ?? null : null;
   const secondPhoto: string = museumPoi !== undefined && local?.fotoKedua !== undefined
     ? mockMediaUrl(`/poi/${museumPoi.code}/${local.fotoKedua}`)
     : description.photoUrl;
   // Halaman ke-2 isi cerita ("Story Isi 2"): kartu koleksi yang disorot + fakta menarik.
-  const highlights: readonly string[] = splitHighlights(local?.sorotan).slice(0, 4);
+  const highlights: readonly string[] = splitHighlights(description.highlights ?? undefined).slice(0, 4);
   const pageCount: number = highlights.length > 0 ? 2 : 1;
-  const pageTwoTitle: string = local?.fakta !== undefined ? "Fakta Menarik" : "Cari di Ruangan Ini";
-  const pageTwoText: string = local?.fakta ?? poi.quest.instruksi;
+  const pageTwoTitle: string = description.fact != null ? "Fakta Menarik" : "Cari di Ruangan Ini";
+  const pageTwoText: string = description.fact ?? poi.quest.instruksi;
   function openNarration(from: "story" | "story2"): void {
     setNarrationFrom(from);
     setStep("narration");
@@ -304,7 +304,7 @@ export function StoryFlow(props: Props): ReactElement {
           <View style={styles.isiContent}>
             <View style={styles.isiTexts}>
               <GeaText variant="heading28" color={colors.secondaryYellow[100]} numberOfLines={2}>
-                {step === "narration" ? "Dengarkan Narasi" : step === "story2" ? pageTwoTitle : local?.judul ?? poi.nama}
+                {step === "narration" ? "Dengarkan Narasi" : step === "story2" ? pageTwoTitle : description.title ?? poi.nama}
               </GeaText>
               {step === "narration"
                 ? <StoryAudio key={audio.audioUrl} audioUrl={audio.audioUrl} durationSeconds={audio.durationSeconds} />
@@ -313,10 +313,10 @@ export function StoryFlow(props: Props): ReactElement {
                     <GeaText variant="body16Tight" color={colors.secondaryYellow[0]}>
                       {step === "story2" ? pageTwoText : description.text}
                     </GeaText>
-                    {step === "story" && pageCount === 1 && local?.fakta !== undefined && (
+                    {step === "story" && pageCount === 1 && description.fact != null && (
                       <View style={styles.fact}>
                         <GeaText variant="bold16" color={colors.primary[900]}>Fakta menarik</GeaText>
-                        <GeaText variant="body14" color={componentColors.bodyDark}>{local.fakta}</GeaText>
+                        <GeaText variant="body14" color={componentColors.bodyDark}>{description.fact}</GeaText>
                       </View>
                     )}
                   </ScrollView>

@@ -1,6 +1,12 @@
 import { deepStrictEqual, equal, ok, rejects, throws } from "node:assert/strict";
 import { PGlite } from "@electric-sql/pglite";
 import { prepareInitialSeed } from "../scripts/prepare-seed.ts";
+import { approvedStories, type ApprovedStory } from "../scripts/approved-stories.ts";
+import { prepareStoryUpdates } from "../scripts/prepare-story-updates.ts";
+import { prepareStoryDrafts } from "../scripts/prepare-story-drafts.ts";
+import { prepareCheckpointSeed } from "../scripts/prepare-checkpoint-seed.ts";
+import catalog from "../data/checkpoints.json" with { type: "json" };
+import { parseCheckpointDataset } from "../scripts/checkpoint-dataset.ts";
 import { handleRequest } from "../supabase/functions/gea-api/app.ts";
 import {
   type BackendConfig,
@@ -130,6 +136,87 @@ Deno.test("integrasi SQL: migrasi, enam POI, hak akses, QR, jawaban, idempotensi
         await Deno.readTextFile(new URL(`../supabase/migrations/${migration}`, import.meta.url)),
       );
     }
+    await test.step("database kosong menerima 10 draft tanpa media, idempoten dan belum terpublikasi", async (): Promise<void> => {
+      const result = await database.query(
+        "select p.*,k.* from public.poi p join public.konten k using(id_poi)",
+      );
+      equal(result.rows.length, 10);
+      for (const story of approvedStories.stories) {
+        const row: JsonObject = object(
+          result.rows.find((row): boolean => object(row, "draft").id_poi === story.idPoi),
+          "draft",
+        );
+        equal(row.teks_cerita, story.description);
+        equal(row.judul_cerita, story.title);
+        equal(row.fakta_menarik, story.fact);
+        equal(row.koleksi_sorotan, story.highlights);
+        equal(row.is_published, false);
+        equal(row.path_foto, null);
+        equal(row.path_audio, null);
+        equal(row.durasi_audio, null);
+        equal(row.denah_x, null);
+        equal(row.estimasi_durasi, null);
+      }
+      equal(
+        object((await database.query("select * from public.zona")).rows[0], "zona").latitude,
+        null,
+      );
+      equal((await database.query("select * from public.quest")).rows.length, 0);
+      await database.exec(prepareStoryDrafts(approvedStories, parseCheckpointDataset(catalog)));
+      equal((await database.query("select * from public.konten")).rows.length, 10);
+      await rejects(
+        database.exec("update public.poi set is_published=true"),
+        /POI_DETAILS_INCOMPLETE/,
+      );
+      equal((await database.query("select * from public.poi where is_published")).rows.length, 0);
+    });
+    // Fixture simulasi terpisah dari draft editorial yang sudah diverifikasi di atas.
+    await test.step("master 20 POI: dua zona, koordinat final, dan cerita yang ada tetap utuh", async (): Promise<void> => {
+      const before = await database.query(
+        "select * from public.konten order by id_poi,bahasa,profil",
+      );
+      const beforeMaster = await database.query("select * from public.poi order by id_poi");
+      equal(beforeMaster.rows.length, 20);
+      for (const checkpoint of parseCheckpointDataset(catalog).pois) {
+        const row: JsonObject = object(
+          beforeMaster.rows.find((row): boolean =>
+            object(row, "master").id_poi === checkpoint.idPoi
+          ),
+          "master",
+        );
+        equal(row.kode_poi, checkpoint.poiCode);
+        equal(row.nama, checkpoint.name);
+        equal(row.nama_asli, checkpoint.originalName);
+        equal(row.id_zona, checkpoint.idZona);
+        equal(row.latitude, checkpoint.latitude);
+        equal(row.longitude, checkpoint.longitude);
+        equal(row.radius, 15);
+        equal(row.is_published, false);
+      }
+      const zones = await database.query(
+        "select id_zona,count(*)::int as count from public.poi group by id_zona order by id_zona",
+      );
+      deepStrictEqual(zones.rows.map((row): unknown => object(row, "zone count").count), [11, 9]);
+      equal((await database.query("select * from public.zona")).rows.length, 2);
+      await database.exec(prepareCheckpointSeed(parseCheckpointDataset(catalog)));
+      deepStrictEqual(
+        (await database.query("select * from public.poi order by id_poi")).rows,
+        beforeMaster.rows,
+      );
+      deepStrictEqual(
+        (await database.query("select * from public.konten order by id_poi,bahasa,profil")).rows,
+        before.rows,
+      );
+      await rejects(
+        database.exec("update public.poi set latitude=91 where kode_poi='POI-10'"),
+        /check constraint/,
+      );
+      await rejects(
+        database.exec("update public.poi set longitude=null where kode_poi='POI-10'"),
+        /check constraint/,
+      );
+    });
+    await database.exec("delete from public.poi; delete from public.zona;");
     await database.exec(
       await Deno.readTextFile(new URL("./fixtures/stories.sql", import.meta.url)),
     );
@@ -138,6 +225,109 @@ Deno.test("integrasi SQL: migrasi, enam POI, hak akses, QR, jawaban, idempotensi
     const visitId: string = "50000000-0000-4000-8000-000000000001";
     const questId: string = "40000000-0000-4000-8000-000000000001";
     const requestId: string = "60000000-0000-4000-8000-000000000001";
+    await test.step("cerita final: update atomik, metadata tersimpan, media dan quest tetap", async (): Promise<void> => {
+      const firstId: string = "30000000-0000-4000-8000-000000000001";
+      const before = await database.query(
+        "select * from public.konten where id_poi=$1",
+        [firstId],
+      );
+      await rejects(database.exec(prepareStoryUpdates(approvedStories)), /POI-07.*belum tersedia/);
+      deepStrictEqual(
+        (await database.query("select * from public.konten where id_poi=$1", [firstId])).rows,
+        before.rows,
+      );
+      await database.exec("begin");
+      try {
+        for (const story of approvedStories.stories) {
+          await database.query(
+            `
+            insert into public.poi(id_poi,id_zona,nama,path_foto,denah_x,denah_y,prioritas,estimasi_durasi)
+              select $1,id_zona,nama,path_foto,denah_x,denah_y,prioritas,estimasi_durasi
+              from public.poi where id_poi=$2 on conflict (id_poi) do nothing;
+          `,
+            [story.idPoi, firstId],
+          );
+          await database.query(
+            `
+            insert into public.konten(id_poi,bahasa,profil,teks_cerita,path_audio,durasi_audio)
+              select $1,bahasa,profil,teks_cerita,path_audio,durasi_audio
+              from public.konten where id_poi=$2 on conflict (id_poi,bahasa,profil) do nothing;
+          `,
+            [story.idPoi, firstId],
+          );
+        }
+        await database.exec(prepareStoryUpdates(approvedStories));
+        await database.exec(prepareStoryUpdates(approvedStories));
+        await database.exec(prepareStoryDrafts(approvedStories, parseCheckpointDataset(catalog)));
+        for (const story of approvedStories.stories) {
+          const result = await database.query(
+            "select * from public.konten where id_poi=$1 and bahasa='id' and profil='umum'",
+            [story.idPoi],
+          );
+          const row: JsonObject = object(result.rows[0], "final story");
+          equal(row.teks_cerita, story.description);
+          equal(row.judul_cerita, story.title);
+          equal(row.fakta_menarik, story.fact);
+          equal(row.koleksi_sorotan, story.highlights);
+          equal(row.path_audio, "simulation/audio.mp3");
+          equal(row.durasi_audio, 45);
+        }
+        const first: ApprovedStory | undefined = approvedStories.stories[0];
+        ok(first);
+        equal(
+          (await database.query<{ nama: string }>("select nama from public.poi where id_poi=$1", [
+            first.idPoi,
+          ]))
+            .rows[0]?.nama,
+          "SIMULASI POI 1",
+        );
+        equal(
+          (await database.query<{ count: number }>(
+            "select count(*)::int as count from public.quest",
+          )).rows[0]?.count,
+          6,
+        );
+        equal(
+          (await database.query<{ count: number }>(
+            "select count(*)::int as count from public.poi where is_published",
+          ))
+            .rows[0]?.count,
+          6,
+        );
+      } finally {
+        await database.exec("rollback");
+      }
+    });
+    await test.step("master checkpoint melengkapi POI tanpa mengubah media, kuis, dan status publikasi", async (): Promise<void> => {
+      await database.exec("begin");
+      try {
+        const contents = await database.query(
+          "select * from public.konten order by id_poi,bahasa,profil",
+        );
+        const quests = await database.query("select * from public.quest order by id_quest");
+        const existingMedia = await database.query(
+          "select id_poi,path_foto,denah_x,denah_y,prioritas,estimasi_durasi,is_published from public.poi order by id_poi",
+        );
+        await database.exec(prepareCheckpointSeed(parseCheckpointDataset(catalog)));
+        equal((await database.query("select * from public.poi")).rows.length, 20);
+        deepStrictEqual(
+          (await database.query("select * from public.konten order by id_poi,bahasa,profil")).rows,
+          contents.rows,
+        );
+        deepStrictEqual(
+          (await database.query("select * from public.quest order by id_quest")).rows,
+          quests.rows,
+        );
+        deepStrictEqual(
+          (await database.query(
+            "select id_poi,path_foto,denah_x,denah_y,prioritas,estimasi_durasi,is_published from public.poi where is_published order by id_poi",
+          )).rows,
+          existingMedia.rows,
+        );
+      } finally {
+        await database.exec("rollback");
+      }
+    });
     await test.step("generator seed menolak draft dan SQL hasilnya bisa dimigrasikan", async (): Promise<void> => {
       const template: unknown = JSON.parse(
         await Deno.readTextFile(new URL("../data/poi-template.json", import.meta.url)),
@@ -147,17 +337,19 @@ Deno.test("integrasi SQL: migrasi, enam POI, hak akses, QR, jawaban, idempotensi
         approved: true,
         language: "id",
         profile: "umum",
-        zones: [{
-          idZona: "21000000-0000-4000-8000-000000000001",
+        zones: [1, 2].map((index: number): JsonObject => ({
+          idZona: `21000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
           name: "SIMULASI",
           latitude: 0,
           longitude: 0,
-          radiusMeters: 10,
-        }],
-        pois: Array.from({ length: 6 }, (_value: unknown, index: number): JsonObject => ({
+          radiusMeters: 15,
+        })),
+        pois: Array.from({ length: 20 }, (_value: unknown, index: number): JsonObject => ({
           idPoi: `31000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
           idQuest: `41000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
-          idZona: "21000000-0000-4000-8000-000000000001",
+          idZona: index < 11
+            ? "21000000-0000-4000-8000-000000000001"
+            : "21000000-0000-4000-8000-000000000002",
           name: "SIMULASI 'seed'",
           photoPath: "images/simulation.jpg",
           audioPath: "audio/simulation.mp3",
@@ -185,7 +377,7 @@ Deno.test("integrasi SQL: migrasi, enam POI, hak akses, QR, jawaban, idempotensi
         const result = await database.query(
           "select count(*)::int as count from public.poi where is_published",
         );
-        equal(object(result.rows[0], "count").count, 12);
+        equal(object(result.rows[0], "count").count, 26);
       } finally {
         await database.exec("rollback");
       }
@@ -196,6 +388,25 @@ Deno.test("integrasi SQL: migrasi, enam POI, hak akses, QR, jawaban, idempotensi
       );
       equal(object(result.rows[0], "count").count, 6);
       await rejects(database.exec("update public.konten set durasi_audio=10"), /check constraint/);
+      await rejects(
+        database.exec("update public.poi set path_foto=null where is_published"),
+        /POI_DETAILS_INCOMPLETE/,
+      );
+      await rejects(
+        database.exec("update public.konten set path_audio=null,durasi_audio=null"),
+        /POI_AUDIO_INCOMPLETE/,
+      );
+      await database.exec("begin");
+      try {
+        await database.exec("update public.poi set is_published=false;");
+        await database.exec("update public.konten set path_audio=null,durasi_audio=null;");
+        await rejects(
+          database.exec("update public.poi set is_published=true;"),
+          /POI_AUDIO_INCOMPLETE/,
+        );
+      } finally {
+        await database.exec("rollback");
+      }
       await rejects(
         database.exec("update public.quest_opsi set is_correct=true where label_opsi='B'"),
         /unique constraint/,

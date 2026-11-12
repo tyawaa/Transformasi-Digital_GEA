@@ -25,7 +25,7 @@ function fromUrl(): WingsMode | null {
   }
 }
 
-export const wingsMode: WingsMode = fromUrl() ?? parse(process.env.EXPO_PUBLIC_MAP_WINGS) ?? "left";
+export const wingsMode: WingsMode = fromUrl() ?? parse(process.env.EXPO_PUBLIC_MAP_WINGS) ?? "both";
 
 export const enabledWings: readonly Wing[] = wingsMode === "both" ? ["left", "right"] : ["left"];
 

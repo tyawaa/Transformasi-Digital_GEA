@@ -1,6 +1,12 @@
+import catalog from "../data/checkpoints.json" with { type: "json" };
 import { ValidationError } from "../supabase/functions/gea-api/errors.ts";
 import { sha256 } from "../supabase/functions/gea-api/stories.ts";
-import { uuid } from "../supabase/functions/gea-api/validation.ts";
+import {
+  type CheckpointDataset,
+  parseCheckpointDataset,
+  resolveEntranceQrTarget,
+  resolvePoiQrTarget,
+} from "./checkpoint-dataset.ts";
 
 /** Buat token acak; simpan hanya hash di DB. File token dibagikan ke pencetak QR museum. */
 async function createQrFiles(args: readonly string[]): Promise<void> {
@@ -10,10 +16,13 @@ async function createQrFiles(args: readonly string[]): Promise<void> {
     outputPrefix === undefined || args.length !== 4
   ) {
     throw new ValidationError(
-      "Gunakan: npm run qr:create -- entrance|poi TARGET_UUID EXPIRES_ISO OUTPUT_PREFIX",
+      "Gunakan: npm run qr:create -- entrance|poi TARGET_CODE_OR_UUID EXPIRES_ISO OUTPUT_PREFIX",
     );
   }
-  const targetId: string = uuid(target, "target");
+  const dataset: CheckpointDataset = parseCheckpointDataset(catalog);
+  const targetId: string = scope === "poi"
+    ? resolvePoiQrTarget(dataset, target)
+    : resolveEntranceQrTarget(dataset, target);
   const expires: Date = new Date(expiry);
   if (!Number.isFinite(expires.getTime()) || expires.getTime() <= Date.now()) {
     throw new ValidationError("expires harus waktu ISO masa depan.");

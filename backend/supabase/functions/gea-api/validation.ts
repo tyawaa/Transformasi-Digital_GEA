@@ -4,6 +4,11 @@ export type JsonObject = { readonly [key: string]: unknown };
 export type Language = "id" | "en";
 export type Profile = "umum" | "pelajar";
 
+export function array(value: unknown, field: string): readonly unknown[] {
+  if (!Array.isArray(value)) throw new ValidationError(`${field} harus berupa array.`);
+  return value;
+}
+
 export function object(value: unknown, field: string): JsonObject {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     throw new ValidationError(`${field} harus berupa objek JSON.`);

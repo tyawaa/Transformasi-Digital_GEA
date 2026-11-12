@@ -1,5 +1,6 @@
 // Data mode uji (EXPO_PUBLIC_STORIES_SOURCE=mock). Isi POI diambil dari src/data/museum.ts
-// (Excel survei). Foto dan audio masih file dummy sampai media asli diunggah (B5/B6).
+// (Excel survei), termasuk cerita final dari backend/data/approved-stories.json.
+// Foto dan audio masih file dummy sampai media asli diunggah (B5/B6).
 // Bentuk setiap objek mengikuti respons API backend (lihat backend/README.md).
 import {
   type OptionLabel,
@@ -56,7 +57,14 @@ export const mockPoiDetails: readonly PoiDetail[] = pois.map((poi, index: number
   language: "id",
   profile: "umum",
   cards: [
-    { type: "description", text: poi.content.cerita, photoUrl: mainPhoto(poi) },
+    {
+      type: "description",
+      text: poi.content.cerita,
+      photoUrl: mainPhoto(poi),
+      title: poi.content.judul,
+      fact: poi.content.fakta,
+      highlights: poi.content.sorotan,
+    },
     { type: "audio", audioUrl: mockMediaUrl("/narasi.wav"), durationSeconds: 30 },
   ],
   quest: {

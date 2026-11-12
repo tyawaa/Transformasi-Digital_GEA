@@ -10,7 +10,7 @@
 // Token 64 hex polos (format Sprint 1) tetap diterima; jenisnya ditentukan backend.
 // Yang dikirim ke backend selalu hanya token, sehingga kontrak API tidak berubah.
 
-import { museumPoiByCode, poiIdFor, zones } from "../../data/museum";
+import { museumPoiByCode, poiIdFor, zones } from "../../data/museum.ts";
 
 export type QrKind = "entrance" | "zone" | "poi";
 

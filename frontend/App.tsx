@@ -1,7 +1,7 @@
 import { randomUUID } from "expo-crypto";
 import { StatusBar } from "expo-status-bar";
 import { type ReactElement, useEffect, useMemo, useState } from "react";
-import { View } from "react-native";
+import { Platform, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { colors } from "./src/design/tokens";
 import { GeaFontsProvider } from "./src/design/typography";
@@ -10,7 +10,6 @@ import { type BadgeId, earnedBadges, poiStatus, type PoiRef, totalPoints } from 
 import {
   activePois,
   museumPoiById,
-  museumPoiFor,
   museumPois,
   type Wing,
   type ZoneInfo,
@@ -33,6 +32,7 @@ import { MOCK_ENTRANCE_QR, MOCK_ENTRANCE_TOKEN, mockPoiQr, mockZoneToken } from 
 import { GeaApi, readableError } from "./src/services/api";
 import { ApiStoriesSource, MockStoriesSource, type StoriesSource, storiesMockEnabled } from "./src/services/stories";
 import { publicConfig, supabase } from "./src/services/supabase";
+import { registerDemoSource } from "./src/services/demoBridge";
 
 
 const api: GeaApi = new GeaApi(publicConfig.url, supabase);
@@ -103,7 +103,7 @@ function Home(): ReactElement {
   const mapPois: readonly MapPoi[] = useMemo((): readonly MapPoi[] =>
     museumPois.filter((museum) => wingEnabled(museum.wing)).map((museum): MapPoi => {
       const match: PoiSummary | undefined = summaries?.find((s: PoiSummary): boolean =>
-        museumPoiFor(s.id_poi, s.nama)?.code === museum.code
+        museumPoiById(s.id_poi)?.code === museum.code
       );
       const id: string | null = match?.id_poi ?? null;
       const state = id === null ? undefined : progress[id];
@@ -308,6 +308,10 @@ function Home(): ReactElement {
 }
 
 export default function App(): ReactElement {
+  useEffect((): (() => void) | undefined => {
+    if (Platform.OS !== "web" || window.parent === window) return undefined;
+    return registerDemoSource(storiesSource.kind);
+  }, []);
   return (
     <SafeAreaProvider>
       <GeaFontsProvider>

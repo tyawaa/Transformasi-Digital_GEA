@@ -5,7 +5,14 @@
   "zones": [
     {
       "idZona": "20000000-0000-4000-8000-000000000001",
-      "name": null,
+      "name": "Left Wing",
+      "latitude": null,
+      "longitude": null,
+      "radiusMeters": null
+    },
+    {
+      "idZona": "20000000-0000-4000-8000-000000000002",
+      "name": "Right Wing",
       "latitude": null,
       "longitude": null,
       "radiusMeters": null
@@ -16,7 +23,7 @@
       "idPoi": "30000000-0000-4000-8000-000000000001",
       "idQuest": "40000000-0000-4000-8000-000000000001",
       "idZona": "20000000-0000-4000-8000-000000000001",
-      "name": null,
+      "name": "Paleogeografi & Sebaran Fauna Indonesia",
       "photoPath": null,
       "denahX": null,
       "denahY": null,
@@ -57,7 +64,7 @@
       "idPoi": "30000000-0000-4000-8000-000000000002",
       "idQuest": "40000000-0000-4000-8000-000000000002",
       "idZona": "20000000-0000-4000-8000-000000000001",
-      "name": null,
+      "name": "Kars Indonesia",
       "photoPath": null,
       "denahX": null,
       "denahY": null,
@@ -98,7 +105,7 @@
       "idPoi": "30000000-0000-4000-8000-000000000003",
       "idQuest": "40000000-0000-4000-8000-000000000003",
       "idZona": "20000000-0000-4000-8000-000000000001",
-      "name": null,
+      "name": "Gunung Api Indonesia",
       "photoPath": null,
       "denahX": null,
       "denahY": null,
@@ -139,7 +146,7 @@
       "idPoi": "30000000-0000-4000-8000-000000000004",
       "idQuest": "40000000-0000-4000-8000-000000000004",
       "idZona": "20000000-0000-4000-8000-000000000001",
-      "name": null,
+      "name": "Rona Muka Bumi Indonesia",
       "photoPath": null,
       "denahX": null,
       "denahY": null,
@@ -180,7 +187,7 @@
       "idPoi": "30000000-0000-4000-8000-000000000005",
       "idQuest": "40000000-0000-4000-8000-000000000005",
       "idZona": "20000000-0000-4000-8000-000000000001",
-      "name": null,
+      "name": "Animasi Geologi Indonesia",
       "photoPath": null,
       "denahX": null,
       "denahY": null,
@@ -221,7 +228,581 @@
       "idPoi": "30000000-0000-4000-8000-000000000006",
       "idQuest": "40000000-0000-4000-8000-000000000006",
       "idZona": "20000000-0000-4000-8000-000000000001",
-      "name": null,
+      "name": "Pelapukan, Erosi & Pengendapan",
+      "photoPath": null,
+      "denahX": null,
+      "denahY": null,
+      "priority": null,
+      "estimatedMinutes": null,
+      "description": null,
+      "audioPath": null,
+      "audioDurationSeconds": null,
+      "question": {
+        "instruction": null,
+        "prompt": null,
+        "hint": null,
+        "options": [
+          {
+            "label": "A",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "B",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "C",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "D",
+            "text": null,
+            "correct": null
+          }
+        ]
+      }
+    },
+    {
+      "idPoi": "30000000-0000-4000-8000-000000000007",
+      "idQuest": "40000000-0000-4000-8000-000000000007",
+      "idZona": "20000000-0000-4000-8000-000000000001",
+      "name": "Batuan & Mineral",
+      "photoPath": null,
+      "denahX": null,
+      "denahY": null,
+      "priority": null,
+      "estimatedMinutes": null,
+      "description": null,
+      "audioPath": null,
+      "audioDurationSeconds": null,
+      "question": {
+        "instruction": null,
+        "prompt": null,
+        "hint": null,
+        "options": [
+          {
+            "label": "A",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "B",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "C",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "D",
+            "text": null,
+            "correct": null
+          }
+        ]
+      }
+    },
+    {
+      "idPoi": "30000000-0000-4000-8000-000000000008",
+      "idQuest": "40000000-0000-4000-8000-000000000008",
+      "idZona": "20000000-0000-4000-8000-000000000001",
+      "name": "Terjadinya Tenaga Tektonik",
+      "photoPath": null,
+      "denahX": null,
+      "denahY": null,
+      "priority": null,
+      "estimatedMinutes": null,
+      "description": null,
+      "audioPath": null,
+      "audioDurationSeconds": null,
+      "question": {
+        "instruction": null,
+        "prompt": null,
+        "hint": null,
+        "options": [
+          {
+            "label": "A",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "B",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "C",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "D",
+            "text": null,
+            "correct": null
+          }
+        ]
+      }
+    },
+    {
+      "idPoi": "30000000-0000-4000-8000-000000000009",
+      "idQuest": "40000000-0000-4000-8000-000000000009",
+      "idZona": "20000000-0000-4000-8000-000000000001",
+      "name": "Alam Semesta & Pembentukan Bumi",
+      "photoPath": null,
+      "denahX": null,
+      "denahY": null,
+      "priority": null,
+      "estimatedMinutes": null,
+      "description": null,
+      "audioPath": null,
+      "audioDurationSeconds": null,
+      "question": {
+        "instruction": null,
+        "prompt": null,
+        "hint": null,
+        "options": [
+          {
+            "label": "A",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "B",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "C",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "D",
+            "text": null,
+            "correct": null
+          }
+        ]
+      }
+    },
+    {
+      "idPoi": "30000000-0000-4000-8000-000000000010",
+      "idQuest": "40000000-0000-4000-8000-000000000010",
+      "idZona": "20000000-0000-4000-8000-000000000001",
+      "name": "Keanekaragaman Batuan di Indonesia",
+      "photoPath": null,
+      "denahX": null,
+      "denahY": null,
+      "priority": null,
+      "estimatedMinutes": null,
+      "description": null,
+      "audioPath": null,
+      "audioDurationSeconds": null,
+      "question": {
+        "instruction": null,
+        "prompt": null,
+        "hint": null,
+        "options": [
+          {
+            "label": "A",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "B",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "C",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "D",
+            "text": null,
+            "correct": null
+          }
+        ]
+      }
+    },
+    {
+      "idPoi": "30000000-0000-4000-8000-000000000011",
+      "idQuest": "40000000-0000-4000-8000-000000000011",
+      "idZona": "20000000-0000-4000-8000-000000000001",
+      "name": "Kekayaan Sumber Daya Geologi",
+      "photoPath": null,
+      "denahX": null,
+      "denahY": null,
+      "priority": null,
+      "estimatedMinutes": null,
+      "description": null,
+      "audioPath": null,
+      "audioDurationSeconds": null,
+      "question": {
+        "instruction": null,
+        "prompt": null,
+        "hint": null,
+        "options": [
+          {
+            "label": "A",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "B",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "C",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "D",
+            "text": null,
+            "correct": null
+          }
+        ]
+      }
+    },
+    {
+      "idPoi": "30000000-0000-4000-8000-000000000012",
+      "idQuest": "40000000-0000-4000-8000-000000000012",
+      "idZona": "20000000-0000-4000-8000-000000000002",
+      "name": "Introduksi Sejarah Kehidupan",
+      "photoPath": null,
+      "denahX": null,
+      "denahY": null,
+      "priority": null,
+      "estimatedMinutes": null,
+      "description": null,
+      "audioPath": null,
+      "audioDurationSeconds": null,
+      "question": {
+        "instruction": null,
+        "prompt": null,
+        "hint": null,
+        "options": [
+          {
+            "label": "A",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "B",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "C",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "D",
+            "text": null,
+            "correct": null
+          }
+        ]
+      }
+    },
+    {
+      "idPoi": "30000000-0000-4000-8000-000000000013",
+      "idQuest": "40000000-0000-4000-8000-000000000013",
+      "idZona": "20000000-0000-4000-8000-000000000002",
+      "name": "Prakambrium",
+      "photoPath": null,
+      "denahX": null,
+      "denahY": null,
+      "priority": null,
+      "estimatedMinutes": null,
+      "description": null,
+      "audioPath": null,
+      "audioDurationSeconds": null,
+      "question": {
+        "instruction": null,
+        "prompt": null,
+        "hint": null,
+        "options": [
+          {
+            "label": "A",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "B",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "C",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "D",
+            "text": null,
+            "correct": null
+          }
+        ]
+      }
+    },
+    {
+      "idPoi": "30000000-0000-4000-8000-000000000014",
+      "idQuest": "40000000-0000-4000-8000-000000000014",
+      "idZona": "20000000-0000-4000-8000-000000000002",
+      "name": "Paleozoikum",
+      "photoPath": null,
+      "denahX": null,
+      "denahY": null,
+      "priority": null,
+      "estimatedMinutes": null,
+      "description": null,
+      "audioPath": null,
+      "audioDurationSeconds": null,
+      "question": {
+        "instruction": null,
+        "prompt": null,
+        "hint": null,
+        "options": [
+          {
+            "label": "A",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "B",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "C",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "D",
+            "text": null,
+            "correct": null
+          }
+        ]
+      }
+    },
+    {
+      "idPoi": "30000000-0000-4000-8000-000000000015",
+      "idQuest": "40000000-0000-4000-8000-000000000015",
+      "idZona": "20000000-0000-4000-8000-000000000002",
+      "name": "Mesozoikum",
+      "photoPath": null,
+      "denahX": null,
+      "denahY": null,
+      "priority": null,
+      "estimatedMinutes": null,
+      "description": null,
+      "audioPath": null,
+      "audioDurationSeconds": null,
+      "question": {
+        "instruction": null,
+        "prompt": null,
+        "hint": null,
+        "options": [
+          {
+            "label": "A",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "B",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "C",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "D",
+            "text": null,
+            "correct": null
+          }
+        ]
+      }
+    },
+    {
+      "idPoi": "30000000-0000-4000-8000-000000000016",
+      "idQuest": "40000000-0000-4000-8000-000000000016",
+      "idZona": "20000000-0000-4000-8000-000000000002",
+      "name": "Kenozoikum Tersier",
+      "photoPath": null,
+      "denahX": null,
+      "denahY": null,
+      "priority": null,
+      "estimatedMinutes": null,
+      "description": null,
+      "audioPath": null,
+      "audioDurationSeconds": null,
+      "question": {
+        "instruction": null,
+        "prompt": null,
+        "hint": null,
+        "options": [
+          {
+            "label": "A",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "B",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "C",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "D",
+            "text": null,
+            "correct": null
+          }
+        ]
+      }
+    },
+    {
+      "idPoi": "30000000-0000-4000-8000-000000000017",
+      "idQuest": "40000000-0000-4000-8000-000000000017",
+      "idZona": "20000000-0000-4000-8000-000000000002",
+      "name": "Vertebrata Kuarter",
+      "photoPath": null,
+      "denahX": null,
+      "denahY": null,
+      "priority": null,
+      "estimatedMinutes": null,
+      "description": null,
+      "audioPath": null,
+      "audioDurationSeconds": null,
+      "question": {
+        "instruction": null,
+        "prompt": null,
+        "hint": null,
+        "options": [
+          {
+            "label": "A",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "B",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "C",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "D",
+            "text": null,
+            "correct": null
+          }
+        ]
+      }
+    },
+    {
+      "idPoi": "30000000-0000-4000-8000-000000000018",
+      "idQuest": "40000000-0000-4000-8000-000000000018",
+      "idZona": "20000000-0000-4000-8000-000000000002",
+      "name": "Hominid",
+      "photoPath": null,
+      "denahX": null,
+      "denahY": null,
+      "priority": null,
+      "estimatedMinutes": null,
+      "description": null,
+      "audioPath": null,
+      "audioDurationSeconds": null,
+      "question": {
+        "instruction": null,
+        "prompt": null,
+        "hint": null,
+        "options": [
+          {
+            "label": "A",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "B",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "C",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "D",
+            "text": null,
+            "correct": null
+          }
+        ]
+      }
+    },
+    {
+      "idPoi": "30000000-0000-4000-8000-000000000019",
+      "idQuest": "40000000-0000-4000-8000-000000000019",
+      "idZona": "20000000-0000-4000-8000-000000000002",
+      "name": "Diorama Hominid",
+      "photoPath": null,
+      "denahX": null,
+      "denahY": null,
+      "priority": null,
+      "estimatedMinutes": null,
+      "description": null,
+      "audioPath": null,
+      "audioDurationSeconds": null,
+      "question": {
+        "instruction": null,
+        "prompt": null,
+        "hint": null,
+        "options": [
+          {
+            "label": "A",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "B",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "C",
+            "text": null,
+            "correct": null
+          },
+          {
+            "label": "D",
+            "text": null,
+            "correct": null
+          }
+        ]
+      }
+    },
+    {
+      "idPoi": "30000000-0000-4000-8000-000000000020",
+      "idQuest": "40000000-0000-4000-8000-000000000020",
+      "idZona": "20000000-0000-4000-8000-000000000002",
+      "name": "Artefak",
       "photoPath": null,
       "denahX": null,
       "denahY": null,
