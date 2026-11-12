@@ -27,6 +27,8 @@ function merge(local: ProgressMap, server: ProgressMap): ProgressMap {
   for (const [poiId, remote] of Object.entries(server)) {
     const mine: PoiProgress = local[poiId] ?? emptyProgress;
     result[poiId] = {
+      // Foto dan tantangan hanya ada di perangkat; jangan hilang saat digabung dengan server.
+      ...mine,
       closed: mine.closed || remote.closed,
       verifiedUntil: mine.verifiedUntil,
       completed: mine.completed || remote.completed,

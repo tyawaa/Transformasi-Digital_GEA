@@ -5,7 +5,7 @@
 
 export const MAX_ATTEMPTS = 3;
 
-/** Poin kuis menurut percobaan ke-1/2/3; gagal = 0. Quest foto (5) ditunda ke Sprint 3. */
+/** Poin kuis menurut percobaan ke-1/2/3; gagal = 0. Poin tantangan ditambahkan terpisah (challengePoints). */
 export const QUIZ_POINTS: readonly number[] = [20, 10, 5];
 export const PHOTO_POINTS = 5;
 
@@ -15,7 +15,11 @@ export type QuestState = {
   readonly attempts: number;
 };
 
-export type StoryState = QuestState & { readonly closed: boolean };
+export type StoryState = QuestState & {
+  readonly closed: boolean;
+  /** Poin tantangan (foto / benar-salah / isian) dari sheet Quest, dinilai di aplikasi. */
+  readonly challengePoints?: number;
+};
 
 export function quizPoints(state: QuestState): number {
   if (!state.completed) return 0;
@@ -92,7 +96,7 @@ export function totalPoints(
 ): number {
   const quiz: number = pois.reduce((sum: number, poi: PoiRef): number => {
     const state: StoryState | undefined = states[poi.id];
-    return sum + (state === undefined ? 0 : quizPoints(state));
+    return sum + (state === undefined ? 0 : quizPoints(state) + (state.challengePoints ?? 0));
   }, 0);
   const bonus: number = earnedBadges(pois, states).reduce(
     (sum: number, id: BadgeId): number =>

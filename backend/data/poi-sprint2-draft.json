@@ -36,37 +36,37 @@
       "denahY": 0,
       "priority": 1,
       "estimatedMinutes": 5,
-      "description": "Saat zaman es, air laut membeku di kutub sehingga muka air laut turun lebih dari 100 meter. Dasar laut dangkal di barat Indonesia muncul menjadi daratan luas, Paparan Sunda, yang menyambungkan Sumatra, Jawa, dan Kalimantan dengan Asia. Lewat jembatan darat ini, hewan dari Asia bermigrasi ke Nusantara dalam tiga tahap: sekitar 2,6 juta, 0,8 juta, dan 250 ribu tahun lalu. Buktinya ada di vitrin: rahang Sinomastodon dari Bumiayu, gading Elephas celebensis dari Sangihe, dan gigi Elephas maximus dari Cipeundeuy.",
-      "descriptionWords": 79,
-      "descriptionAnak": "Dulu, saat zaman es, banyak air laut membeku jadi es di kutub. Akibatnya laut jadi lebih dangkal, turun lebih dari 100 meter! Dasar laut di barat Indonesia pun muncul jadi daratan, namanya Paparan Sunda. Daratan ini seperti jembatan yang menyambungkan Sumatra, Jawa, dan Kalimantan dengan Asia. Hewan dari Asia, seperti kerabat gajah, berjalan melewatinya ke Nusantara. Buktinya ada di vitrin: rahang Sinomastodon dari Bumiayu dan gading gajah purba dari Sangihe.",
-      "descriptionAnakWords": 70,
-      "descriptionRemaja": "Saat zaman es, banyak air laut membeku di kutub sehingga muka air laut turun lebih dari 100 meter. Dasar laut dangkal di barat Indonesia pun muncul menjadi daratan luas bernama Paparan Sunda. Daratan ini menjadi jembatan yang menyambungkan Sumatra, Jawa, dan Kalimantan dengan Asia. Hewan dari Asia bermigrasi lewat jembatan ini dalam tiga gelombang: sekitar 2,6 juta, 0,8 juta, dan 250 ribu tahun lalu. Buktinya ada di vitrin: rahang Sinomastodon dari Bumiayu dan gading Elephas celebensis dari Sangihe.",
-      "descriptionRemajaWords": 78,
+      "description": "Jutaan tahun lalu, Indonesia dihuni berbagai hewan purba berukuran unik! Ada Megalochelys sp., kura-kura raksasa, hingga Elephas celebensis, gajah purba mungil dari Sulawesi. Bersama Elephas maximus dan Sinomastodon bumiayuensis, fosil-fosil ini menjadi saksi beragamnya kehidupan fauna di masa lalu. Yuk, amati dan temukan perbedaannya!",
+      "descriptionWords": 44,
+      "descriptionAnak": "Dulu sekali, jutaan tahun lalu, di Indonesia hidup hewan-hewan purba yang unik! Ada kura-kura raksasa bernama Megalochelys. Ada juga gajah purba yang mungil dari Sulawesi, namanya Elephas celebensis. Fosilnya, yaitu sisa hewan yang sudah membatu, bisa kamu lihat di sini. Yuk, cari tahu apa bedanya!",
+      "descriptionAnakWords": 45,
+      "descriptionRemaja": "Jutaan tahun lalu, Indonesia dihuni hewan purba dengan ukuran yang unik. Ada Megalochelys sp., kura-kura raksasa, dan Elephas celebensis, gajah purba mungil dari Sulawesi. Bersama Elephas maximus dan Sinomastodon bumiayuensis, fosil-fosil ini membuktikan bahwa fauna Indonesia di masa lalu sangat beragam. Coba amati dan temukan perbedaannya!",
+      "descriptionRemajaWords": 46,
       "audioPath": null,
       "audioDurationSeconds": null,
       "question": {
-        "instruction": "Temukan fosil rahang bawah berwarna cokelat di dalam vitrin, lalu baca label hitam di bawahnya.",
-        "prompt": "Dari mana fosil rahang Sinomastodon bumiayuensis ditemukan?",
-        "hint": "Nama spesiesnya mirip dengan nama tempat ia ditemukan.",
+        "instruction": "Gajah Mungil dari Sulawesi",
+        "prompt": "Fosil gajah purba berukuran kecil dari Sulawesi yang dipamerkan di sini bernama...",
+        "hint": "Nama spesiesnya mengandung nama pulau asalnya.",
         "options": [
           {
             "label": "A",
-            "text": "Bumiayu, Jawa Tengah",
-            "correct": true
+            "text": "Elephas maximus",
+            "correct": false
           },
           {
             "label": "B",
-            "text": "Sangihe, Sulawesi Utara",
+            "text": "Sinomastodon bumiayuensis",
             "correct": false
           },
           {
             "label": "C",
-            "text": "Cipeundeuy, Jawa Barat",
-            "correct": false
+            "text": "Elephas celebensis",
+            "correct": true
           },
           {
             "label": "D",
-            "text": "Trinil, Jawa Timur",
+            "text": "Megalochelys sp.",
             "correct": false
           }
         ]
@@ -86,37 +86,37 @@
       "denahY": 0,
       "priority": 2,
       "estimatedMinutes": 5,
-      "description": "Batugamping sebagian besar berasal dari cangkang dan kerangka hewan laut, seperti terumbu karang yang tumbuh di laut hangat Indonesia. Gerakan tektonik lalu mengangkat terumbu dan batugamping itu menjadi daratan. Di sana air hujan perlahan melarutkannya, proses yang disebut karstifikasi. Di permukaan terbentuk bukit dan lembah kars, sedangkan di bawah tanah terbentuk gua, sungai bawah tanah, dan stalaktit. Contohnya Kars Gunung Sewu, Maros-Pangkep, dan Gombong. Karang di vitrin ini adalah bahan dasar kars!",
-      "descriptionWords": 72,
-      "descriptionAnak": "Tahukah kamu, batugamping kebanyakan berasal dari kerangka hewan laut, misalnya terumbu karang? Karang tumbuh di laut hangat Indonesia. Lalu gerakan Bumi mengangkatnya jadi daratan. Air hujan pelan-pelan melarutkan batugamping itu. Proses ini disebut karstifikasi. Hasilnya ada bukit-bukit kars di permukaan, dan gua serta sungai bawah tanah di dalamnya. Contohnya Kars Gunung Sewu dan Maros-Pangkep. Karang di vitrin ini adalah bahan dasar kars!",
-      "descriptionAnakWords": 62,
-      "descriptionRemaja": "Batugamping sebagian besar terbentuk dari cangkang dan kerangka hewan laut, terutama terumbu karang di laut hangat Indonesia. Gerakan tektonik kemudian mengangkat batugamping itu menjadi daratan. Air hujan yang sedikit asam lalu melarutkannya perlahan, proses yang disebut karstifikasi. Hasilnya bentang alam kars: bukit dan lembah di permukaan, serta gua, sungai bawah tanah, dan stalaktit di dalamnya. Contohnya Kars Gunung Sewu, Maros-Pangkep, dan Gombong. Karang di vitrin ini adalah bahan dasar kars!",
-      "descriptionRemajaWords": 70,
+      "description": "Pernah melihat gua dengan hiasan batu yang menjuntai dari langit-langitnya? Itulah salah satu keunikan kawasan karst, seperti Gunung Sewu, yang terbentuk melalui proses pelarutan batuan kapur selama waktu yang sangat lama. Yuk, amati stalaktit, sinter kapur, batu jahe, hingga berbagai jenis batuan dan terumbu karang untuk mengenal keindahan proses pembentukan alam!",
+      "descriptionWords": 51,
+      "descriptionAnak": "Pernah lihat gua yang langit-langitnya punya hiasan batu menjuntai? Itu ada di kawasan karst, misalnya Gunung Sewu. Karst terbentuk saat batu kapur pelan-pelan larut oleh air, dalam waktu yang sangat lama. Yuk, cari stalaktit, sinter kapur, batu jahe, dan terumbu karang di ruangan ini!",
+      "descriptionAnakWords": 44,
+      "descriptionRemaja": "Pernah melihat gua dengan hiasan batu yang menjuntai dari langit-langit? Itu salah satu keunikan kawasan karst, seperti Gunung Sewu. Karst terbentuk karena batuan kapur larut oleh air sedikit demi sedikit selama waktu yang sangat lama. Amati stalaktit, sinter kapur, batu jahe, serta berbagai batuan dan terumbu karang di sini untuk melihat hasil proses alam ini!",
+      "descriptionRemajaWords": 55,
       "audioPath": null,
       "audioDurationSeconds": null,
       "question": {
-        "instruction": "Cari karang bercabang seperti ranting di vitrin karang, lalu baca label di depannya.",
-        "prompt": "Apa nama ilmiah karang bercabang (Branching Coral) di vitrin ini?",
-        "hint": "Karang lain di vitrin berbentuk kepala atau piring. Cari yang bentuknya seperti ranting.",
+        "instruction": "Asal-usul Stalaktit",
+        "prompt": "Stalaktit yang menjuntai dari langit-langit gua karst terbentuk dari...",
+        "hint": "Perhatikan tetesan air di langit-langit gua.",
         "options": [
           {
             "label": "A",
-            "text": "Meandrina sp.",
+            "text": "Lava yang membeku di langit-langit gua",
             "correct": false
           },
           {
             "label": "B",
-            "text": "Fungia sp.",
-            "correct": false
-          },
-          {
-            "label": "C",
-            "text": "Acropora sp.",
+            "text": "Endapan mineral kalsit dari tetesan air",
             "correct": true
           },
           {
+            "label": "C",
+            "text": "Pasir yang terbawa angin",
+            "correct": false
+          },
+          {
             "label": "D",
-            "text": "Halomitra sp.",
+            "text": "Terumbu karang yang menempel",
             "correct": false
           }
         ]
@@ -136,37 +136,37 @@
       "denahY": 0,
       "priority": 3,
       "estimatedMinutes": 5,
-      "description": "Indonesia berada di jalur pertemuan lempeng yang disebut Cincin Api Pasifik. Pertemuan lempeng inilah yang membentuk deretan gunung api dari Sumatra sampai Maluku. Saat meletus, gunung api menghasilkan beragam batuan. Lava yang membeku sangat cepat menjadi obsidian, kaca vulkanik yang hitam mengilap. Gas yang terperangkap meninggalkan banyak lubang, seperti pada batuapung dan basalt vesikuler. Gumpalan lava yang terlempar ke udara lalu membeku disebut bom gunung api.",
-      "descriptionWords": 66,
-      "descriptionAnak": "Indonesia berada di Cincin Api Pasifik, tempat lempeng-lempeng Bumi bertemu. Lempeng adalah potongan besar kulit Bumi. Pertemuan lempeng inilah yang membuat banyak gunung api, dari Sumatra sampai Maluku. Saat meletus, gunung api menghasilkan batu yang berbeda-beda. Lava yang cepat dingin jadi obsidian, batu hitam mengilap seperti kaca. Batuapung punya banyak lubang dari gelembung gas, jadi sangat ringan. Gumpalan lava yang terlempar lalu membeku disebut bom gunung api.",
-      "descriptionAnakWords": 67,
-      "descriptionRemaja": "Indonesia berada di Cincin Api Pasifik, jalur tempat lempeng-lempeng Bumi saling bertemu. Pertemuan lempeng inilah yang membentuk deretan gunung api dari Sumatra sampai Maluku. Saat meletus, gunung api menghasilkan batuan yang beragam. Lava yang membeku sangat cepat menjadi obsidian, kaca vulkanik yang hitam mengilap. Gas yang terperangkap meninggalkan banyak rongga, seperti pada batuapung dan basalt vesikuler. Gumpalan lava yang terlempar ke udara lalu membeku sebelum jatuh disebut bom gunung api.",
-      "descriptionRemajaWords": 70,
+      "description": "Indonesia berada di jalur pertemuan lempeng yang disebut Cincin Api Pasifik. Pertemuan lempeng inilah yang membentuk deretan gunung api dari Sumatra sampai Maluku. Coba perhatikan peta di hadapanmu dan temukan gunung api yang paling dekat dengan Bandung!",
+      "descriptionWords": 37,
+      "descriptionAnak": "Indonesia berada di Cincin Api Pasifik, tempat potongan-potongan besar kulit Bumi, yang disebut lempeng, saling bertemu. Karena itu, banyak gunung api berjajar dari Sumatra sampai Maluku. Coba lihat peta di depanmu. Gunung api mana yang paling dekat dengan Bandung?",
+      "descriptionAnakWords": 39,
+      "descriptionRemaja": "Indonesia berada di Cincin Api Pasifik, jalur tempat lempeng-lempeng Bumi saling bertemu. Pertemuan lempeng inilah yang membentuk deretan gunung api dari Sumatra sampai Maluku. Perhatikan peta di hadapanmu, lalu temukan gunung api yang paling dekat dengan Bandung!",
+      "descriptionRemajaWords": 37,
       "audioPath": null,
       "audioDurationSeconds": null,
       "question": {
-        "instruction": "Temukan batu hitam yang mengilap seperti kaca, lalu baca label di depannya.",
-        "prompt": "Dari mana obsidian di vitrin ini berasal?",
-        "hint": "Batuapung berasal dari gunung di Tasikmalaya. Obsidian dari tempat lain di Jawa Barat.",
+        "instruction": "Tebak Jalur Api",
+        "prompt": "Deretan gunung api dari Sumatra sampai Maluku terbentuk karena Indonesia berada di...",
+        "hint": "Judul ceritanya memberi petunjuk.",
         "options": [
           {
             "label": "A",
-            "text": "Bukit Rejeng, Garut",
+            "text": "Jalur pertemuan lempeng Cincin Api Pasifik",
             "correct": true
           },
           {
             "label": "B",
-            "text": "G. Galunggung, Tasikmalaya",
+            "text": "Tengah satu lempeng yang tidak bergerak",
             "correct": false
           },
           {
             "label": "C",
-            "text": "Subang, Jawa Barat",
+            "text": "Bekas tempat jatuhnya meteor",
             "correct": false
           },
           {
             "label": "D",
-            "text": "Magelang, Jawa Tengah",
+            "text": "Dasar laut yang mengering",
             "correct": false
           }
         ]
@@ -186,37 +186,37 @@
       "denahY": 0,
       "priority": 4,
       "estimatedMinutes": 5,
-      "description": "Rona muka Bumi Indonesia terus berubah karena tenaga dari dalam Bumi. Saat batuan ditekan perlahan, lapisannya bisa melengkung menjadi lipatan, seperti sekis terlipat dari Pegunungan Cyclop, Papua. Jika tekanannya terlalu besar, batuan patah dan bergeser menjadi sesar. Gesekannya meninggalkan bidang halus yang disebut cermin sesar, sedangkan pecahan batuan yang menyatu kembali disebut breksi sesar. Di dekat Bandung pun ada sesar: Sesar Lembang di Gunung Batu, yang retakannya memanjang lebih dari 22 km.",
-      "descriptionWords": 72,
-      "descriptionAnak": "Muka Bumi Indonesia terus berubah karena ada tenaga dari dalam Bumi. Kalau batuan ditekan pelan-pelan, lapisannya bisa melengkung. Ini disebut lipatan. Kalau tekanannya terlalu kuat, batuan patah lalu bergeser. Ini disebut sesar. Gesekan sesar bisa membuat permukaan batu jadi halus seperti cermin, namanya cermin sesar. Dekat Bandung juga ada sesar, lho: Sesar Lembang, panjangnya lebih dari 22 km!",
-      "descriptionAnakWords": 58,
-      "descriptionRemaja": "Muka Bumi Indonesia terus berubah karena tenaga dari dalam Bumi. Saat batuan ditekan perlahan, lapisannya melengkung membentuk lipatan, seperti sekis terlipat dari Pegunungan Cyclop, Papua. Jika tekanannya melebihi kekuatan batuan, batuan patah dan bergeser membentuk sesar. Gesekan di bidang sesar bisa menghasilkan permukaan licin yang disebut cermin sesar, sementara pecahan batuan yang menyatu kembali disebut breksi sesar. Bandung juga punya sesar aktif: Sesar Lembang, yang panjangnya lebih dari 22 km.",
-      "descriptionRemajaWords": 70,
+      "description": "Tahukah kamu bahwa bentuk muka bumi Indonesia terbentuk melalui proses geologi selama jutaan tahun? Pergerakan dan tekanan lempeng bumi menghasilkan berbagai struktur batuan, seperti lipatan dan sesar. Yuk, amati koleksi genes, sekis biotit, serta contoh struktur geologi untuk melihat bagaimana bumi terus berubah!",
+      "descriptionWords": 43,
+      "descriptionAnak": "Tahukah kamu, bentuk daratan Indonesia terbentuk selama jutaan tahun? Lempeng Bumi terus bergerak dan saling menekan. Tekanan itu bisa membuat lapisan batu melengkung, disebut lipatan, atau patah lalu bergeser, disebut sesar. Yuk, lihat batu genes dan sekis biotit di sini!",
+      "descriptionAnakWords": 40,
+      "descriptionRemaja": "Bentuk muka bumi Indonesia terbentuk melalui proses geologi selama jutaan tahun. Pergerakan dan tekanan lempeng bumi menghasilkan struktur batuan seperti lipatan, saat lapisan batuan melengkung, dan sesar, saat batuan patah lalu bergeser. Amati koleksi genes, sekis biotit, dan contoh struktur geologi di sini untuk melihat bagaimana bumi terus berubah!",
+      "descriptionRemajaWords": 49,
       "audioPath": null,
       "audioDurationSeconds": null,
       "question": {
-        "instruction": "Temukan vitrin berlabel \"Sesar\", lalu baca keterangan batu nomor 1.",
-        "prompt": "Apa nama bidang batuan yang halus akibat pergerakan sesar?",
-        "hint": "Namanya mirip benda yang permukaannya halus dan bisa memantulkan bayangan.",
+        "instruction": "Lapisan yang Melengkung",
+        "prompt": "Struktur geologi yang terbentuk ketika lapisan batuan tertekan hingga melengkung tanpa terpecah disebut...",
+        "hint": "Batuannya tidak patah, hanya melengkung.",
         "options": [
           {
             "label": "A",
-            "text": "Cermin sesar",
-            "correct": true
-          },
-          {
-            "label": "B",
-            "text": "Breksi sesar",
+            "text": "Sesar",
             "correct": false
           },
           {
+            "label": "B",
+            "text": "Lipatan",
+            "correct": true
+          },
+          {
             "label": "C",
-            "text": "Sekis terlipat",
+            "text": "Erosi",
             "correct": false
           },
           {
             "label": "D",
-            "text": "Genes",
+            "text": "Pengendapan",
             "correct": false
           }
         ]
@@ -236,37 +236,37 @@
       "denahY": 90,
       "priority": 5,
       "estimatedMinutes": 5,
-      "description": "Di ruang animasi ini kamu bisa melihat bagaimana Kepulauan Indonesia terbentuk. Animasi buatan Robert Hall, geolog dari Inggris yang tertarik pada geologi Indonesia, memutar ulang waktu hingga puluhan juta tahun lalu. Pulau-pulau bergeser sedikit demi sedikit karena lempeng-lempeng Bumi terus bergerak dan bertumbukan. Sampai sekarang Indonesia masih diapit lempeng Eurasia, Indo-Australia, dan Pasifik. Hasilnya adalah negeri kepulauan dengan garis pantai yang sangat panjang.",
-      "descriptionWords": 63,
-      "descriptionAnak": "Di ruang animasi ini kamu bisa menonton bagaimana Kepulauan Indonesia terbentuk. Animasinya dibuat Robert Hall, geolog dari Inggris. Geolog adalah ilmuwan yang mempelajari Bumi dan batuan. Animasi ini memutar ulang waktu sampai puluhan juta tahun lalu. Kamu akan melihat pulau-pulau bergeser sedikit demi sedikit, karena lempeng Bumi terus bergerak. Sampai sekarang Indonesia masih diapit tiga lempeng: Eurasia, Indo-Australia, dan Pasifik.",
-      "descriptionAnakWords": 60,
-      "descriptionRemaja": "Ruang animasi ini memperlihatkan bagaimana Kepulauan Indonesia terbentuk. Animasinya dibuat oleh Robert Hall, geolog asal Inggris yang meneliti geologi Indonesia. Animasi ini memutar ulang waktu hingga puluhan juta tahun lalu. Kamu bisa melihat pulau-pulau bergeser sedikit demi sedikit karena lempeng-lempeng Bumi terus bergerak dan bertumbukan. Sampai sekarang Indonesia masih diapit tiga lempeng besar: Eurasia, Indo-Australia, dan Pasifik. Hasilnya adalah negara kepulauan dengan garis pantai yang sangat panjang.",
-      "descriptionRemajaWords": 67,
+      "description": "Pernah penasaran bagaimana ribuan pulau di Indonesia terbentuk? Melalui animasi ini, kamu bisa mengikuti perjalanan terbentuknya Kepulauan Indonesia akibat pergerakan lempeng tektonik, aktivitas gunung api, dan proses geologi selama jutaan tahun. Yuk, saksikan bagaimana daratan yang awalnya terpisah akhirnya membentuk Indonesia seperti yang kita kenal sekarang!",
+      "descriptionWords": 46,
+      "descriptionAnak": "Indonesia punya ribuan pulau. Bagaimana pulau-pulau itu muncul? Tonton animasinya di sini! Kamu akan melihat lempeng Bumi bergerak, gunung api meletus, dan daratan yang tadinya terpisah pelan-pelan membentuk Indonesia seperti sekarang. Semua itu terjadi selama jutaan tahun!",
+      "descriptionAnakWords": 37,
+      "descriptionRemaja": "Pernah penasaran bagaimana ribuan pulau di Indonesia terbentuk? Animasi ini memperlihatkan perjalanan terbentuknya Kepulauan Indonesia akibat pergerakan lempeng tektonik, aktivitas gunung api, dan proses geologi lain selama jutaan tahun. Saksikan bagaimana daratan yang awalnya terpisah akhirnya membentuk Indonesia seperti sekarang!",
+      "descriptionRemajaWords": 40,
       "audioPath": null,
       "audioDurationSeconds": null,
       "question": {
-        "instruction": "Tonton animasi di layar besar dan perhatikan judul di pojok kiri atasnya.",
-        "prompt": "Siapa geolog dari Inggris yang membuat animasi pembentukan Kepulauan Indonesia di ruangan ini?",
-        "hint": "Namanya tertulis di bagian atas layar, setelah kata \"Animasi\".",
+        "instruction": "Lahirnya Kepulauan Indonesia",
+        "prompt": "Menurut animasi, apa yang membentuk ribuan pulau di Indonesia?",
+        "hint": "Tonton lagi bagian awal animasi.",
         "options": [
           {
             "label": "A",
-            "text": "Robert Hall",
-            "correct": true
-          },
-          {
-            "label": "B",
-            "text": "Alfred Russel Wallace",
+            "text": "Hujan dan angin saja",
             "correct": false
           },
           {
+            "label": "B",
+            "text": "Pergerakan lempeng tektonik, aktivitas gunung api, dan proses geologi",
+            "correct": true
+          },
+          {
             "label": "C",
-            "text": "Eugène Dubois",
+            "text": "Endapan sungai saja",
             "correct": false
           },
           {
             "label": "D",
-            "text": "Max Weber",
+            "text": "Kegiatan manusia",
             "correct": false
           }
         ]
@@ -286,37 +286,37 @@
       "denahY": 90,
       "priority": 6,
       "estimatedMinutes": 5,
-      "description": "Batuan yang terangkat menjadi daratan tidak abadi. Panas, hujan, akar tumbuhan, dan hewan pelan-pelan melapukkannya hingga menjadi tanah. Air, angin, dan es lalu mengikis serta membawa material itu ke tempat lain. Saat tenaganya habis, material diendapkan dan membentuk roman muka Bumi yang baru. Panel di sini menunjukkan sembilan bentukan muka Bumi, dari vulkanik, sungai, pantai, angin, sampai es. Lihat batugamping dari Wonogiri: rongganya terbentuk karena batuan larut oleh air.",
-      "descriptionWords": 69,
-      "descriptionAnak": "Batu ternyata bisa berubah, walau sangat pelan! Panas, hujan, akar tumbuhan, dan hewan membuat batu rapuh lalu hancur jadi tanah. Ini disebut pelapukan. Lalu air, angin, dan es membawa butiran itu ke tempat lain. Ini disebut erosi. Saat berhenti, butiran itu menumpuk dan membentuk daratan baru. Ini disebut pengendapan. Coba lihat batugamping dari Wonogiri: lubang-lubangnya terbentuk karena batu larut oleh air.",
-      "descriptionAnakWords": 61,
-      "descriptionRemaja": "Batuan yang terangkat ke permukaan tidak bertahan selamanya. Panas, hujan, akar tumbuhan, dan hewan perlahan menghancurkannya menjadi tanah. Proses ini disebut pelapukan. Air, angin, dan es lalu mengikis dan memindahkan material itu, yang disebut erosi. Ketika tenaga pengangkutnya habis, material diendapkan dan membentuk muka Bumi yang baru. Panel di sini menunjukkan sembilan bentukan muka Bumi, dari vulkanik, sungai, pantai, angin, sampai es. Rongga pada batugamping Wonogiri terbentuk karena batuan larut oleh air.",
-      "descriptionRemajaWords": 72,
+      "description": "Bentuk permukaan bumi yang kita lihat sekarang terbentuk melalui proses alam selama ribuan hingga jutaan tahun. Pelapukan menghancurkan batuan, erosi memindahkan material, sedangkan pengendapan menumpuknya di tempat baru. Yuk, amati contoh bentukan muka bumi dan cari tahu bagaimana ketiga proses ini mengubah lanskap Indonesia!",
+      "descriptionWords": 44,
+      "descriptionAnak": "Bentuk permukaan Bumi terus berubah, pelan-pelan sekali. Ada tiga prosesnya. Pelapukan membuat batu hancur. Erosi membawa pecahan batu ke tempat lain. Pengendapan menumpuk pecahan itu di tempat baru. Yuk, lihat contohnya di sini!",
+      "descriptionAnakWords": 33,
+      "descriptionRemaja": "Bentuk permukaan bumi yang kita lihat sekarang terbentuk lewat proses alam selama ribuan hingga jutaan tahun. Pelapukan menghancurkan batuan, erosi memindahkan materialnya, lalu pengendapan menumpuknya di tempat baru. Amati contoh bentukan muka bumi di sini dan cari tahu bagaimana ketiga proses ini mengubah lanskap Indonesia!",
+      "descriptionRemajaWords": 45,
       "audioPath": null,
       "audioDurationSeconds": null,
       "question": {
-        "instruction": "Temukan batugamping berlubang di vitrin, lalu baca keterangan pada labelnya.",
-        "prompt": "Rongga-rongga pada batugamping di vitrin ini terbentuk karena apa?",
-        "hint": "Batugamping mudah larut oleh air hujan, sama seperti di kawasan kars.",
+        "instruction": "Si Pemindah Material",
+        "prompt": "Proses yang memindahkan material hasil pelapukan ke tempat lain disebut...",
+        "hint": "Pelapukan menghancurkan, pengendapan menumpuk. Mana yang memindahkan?",
         "options": [
           {
             "label": "A",
-            "text": "Pelarutan oleh air",
-            "correct": true
-          },
-          {
-            "label": "B",
-            "text": "Letusan gunung api",
+            "text": "Pelapukan",
             "correct": false
           },
           {
+            "label": "B",
+            "text": "Erosi",
+            "correct": true
+          },
+          {
             "label": "C",
-            "text": "Gigitan hewan",
+            "text": "Pengendapan",
             "correct": false
           },
           {
             "label": "D",
-            "text": "Pembekuan lava",
+            "text": "Intrusi",
             "correct": false
           }
         ]
@@ -336,37 +336,37 @@
       "denahY": 90,
       "priority": 7,
       "estimatedMinutes": 5,
-      "description": "Semua batuan tersusun dari mineral, yaitu bahan padat alami dengan susunan kimia tertentu dan bentuk kristal yang khas. Vitrin di sini memamerkan mineral dari berbagai kelompok, dari unsur murni seperti emas, sulfida seperti pirit, hingga silikat. Warnanya pun beragam: ungu pada kristal ametis, biru tua pada lapis lazuli, dan merah muda pada rhodochrosite. Mineral bergabung membentuk tiga jenis batuan: batuan beku dari magma, batuan sedimen dari endapan, dan batuan metamorf yang berubah karena panas dan tekanan.",
-      "descriptionWords": 76,
-      "descriptionAnak": "Semua batu tersusun dari mineral. Mineral adalah bahan padat dari alam yang punya bentuk kristal khas. Di vitrin ini ada emas, pirit yang berkilau seperti emas, dan banyak lagi. Warnanya juga cantik: ametis berwarna ungu, lapis lazuli biru tua, dan rhodochrosite merah muda. Mineral bergabung jadi tiga jenis batuan. Batuan beku berasal dari magma, batuan sedimen dari endapan, dan batuan metamorf berubah karena panas dan tekanan.",
-      "descriptionAnakWords": 66,
-      "descriptionRemaja": "Semua batuan tersusun dari mineral, yaitu benda padat alami dengan susunan kimia tertentu dan bentuk kristal yang khas. Vitrin ini menampilkan mineral dari berbagai kelompok: unsur murni seperti emas, sulfida seperti pirit, sampai silikat. Warnanya beragam, misalnya ungu pada ametis, biru tua pada lapis lazuli, dan merah muda pada rhodochrosite. Mineral membentuk tiga jenis batuan: batuan beku dari magma yang membeku, batuan sedimen dari endapan, dan batuan metamorf yang berubah karena panas dan tekanan.",
-      "descriptionRemajaWords": 74,
+      "description": "Bumi menyimpan beragam mineral dan batuan dengan warna, bentuk, serta karakteristik yang berbeda! Ada lapis lazuli yang terkenal dengan warna biru pekatnya, hingga geodes yang menyimpan kristal di bagian dalamnya. Yuk, amati berbagai koleksi mineral dan kenali tiga kelompok utama batuan: beku, sedimen, dan metamorf!",
+      "descriptionWords": 45,
+      "descriptionAnak": "Bumi menyimpan banyak harta karun berupa mineral dan batu, warnanya macam-macam! Ada lapis lazuli yang biru tua. Ada juga geodes, batu yang kelihatan biasa, tapi di dalamnya penuh kristal. Batu dibagi jadi tiga kelompok: beku, sedimen, dan metamorf. Yuk, cari di vitrin!",
+      "descriptionAnakWords": 42,
+      "descriptionRemaja": "Bumi menyimpan beragam mineral dan batuan dengan warna, bentuk, dan sifat yang berbeda. Ada lapis lazuli dengan warna biru pekatnya, dan geodes yang menyimpan kristal di bagian dalamnya. Amati koleksi mineral di sini dan kenali tiga kelompok utama batuan: beku, sedimen, dan metamorf!",
+      "descriptionRemajaWords": 43,
       "audioPath": null,
       "audioDurationSeconds": null,
       "question": {
-        "instruction": "Temukan agate, batu berlapis-lapis berwarna kebiruan, lalu baca labelnya.",
-        "prompt": "Mineral di vitrin ini datang dari banyak negara. Dari mana asal agate yang dipamerkan?",
-        "hint": "Agate ini berasal dari Indonesia sendiri.",
+        "instruction": "Kristal Tersembunyi",
+        "prompt": "Batuan yang dari luar tampak seperti batu biasa, tetapi bagian dalamnya dipenuhi kristal, disebut...",
+        "hint": "Cari koleksi yang dibelah dua dan berkilau di dalamnya.",
         "options": [
           {
             "label": "A",
-            "text": "Sukabumi, Jawa Barat",
-            "correct": true
-          },
-          {
-            "label": "B",
-            "text": "Brasil",
+            "text": "Lapis lazuli",
             "correct": false
           },
           {
+            "label": "B",
+            "text": "Geodes",
+            "correct": true
+          },
+          {
             "label": "C",
-            "text": "Afghanistan",
+            "text": "Marmer",
             "correct": false
           },
           {
             "label": "D",
-            "text": "Afrika Selatan",
+            "text": "Batubara",
             "correct": false
           }
         ]
@@ -386,37 +386,37 @@
       "denahY": 90,
       "priority": 8,
       "estimatedMinutes": 5,
-      "description": "Inti Bumi menyimpan energi panas yang memunculkan arus konveksi di dalam magma. Arus ini menyeret kerak Bumi di atasnya sehingga kulit Bumi terkoyak menjadi lempeng-lempeng yang bergerak sekitar 7 cm per tahun. Lempeng bisa saling mendekat (konvergen), saling menjauh (divergen), atau saling berpapasan (transform). Akibatnya muncul lipatan, patahan, gempa bumi, dan gunung api. Peridotit dari Ciletuh di depanmu adalah batuan dari kedalaman yang terangkat ke permukaan karena tenaga tektonik.",
-      "descriptionWords": 69,
-      "descriptionAnak": "Di dalam Bumi sangat panas. Panas ini membuat magma bergerak berputar, seperti air mendidih di panci. Gerakan itu menyeret kulit Bumi sehingga terpecah jadi lempeng-lempeng. Lempeng bergerak sekitar 7 cm setiap tahun. Lempeng bisa saling mendekat, saling menjauh, atau saling berpapasan. Akibatnya muncul lipatan, patahan, gempa bumi, dan gunung api. Peridotit dari Ciletuh di depanmu dulunya batu dari dalam Bumi.",
-      "descriptionAnakWords": 60,
-      "descriptionRemaja": "Inti Bumi menyimpan panas yang memicu arus konveksi, yaitu aliran berputar di dalam lapisan Bumi yang panas. Arus ini menyeret kerak Bumi sehingga terpecah menjadi lempeng-lempeng yang bergerak sekitar 7 cm per tahun. Lempeng bisa saling mendekat (konvergen), saling menjauh (divergen), atau saling berpapasan (transform). Akibatnya terbentuk lipatan, patahan, gempa bumi, dan gunung api. Peridotit dari Ciletuh di depanmu berasal dari kedalaman Bumi dan terangkat ke permukaan karena tenaga tektonik.",
-      "descriptionRemajaWords": 70,
+      "description": "Permukaan bumi yang kita pijak ternyata terus bergerak! Tenaga tektonik berasal dari pergerakan lempeng bumi yang dapat membentuk pegunungan, lipatan, hingga patahan. Yuk, amati koleksi sekis mika, peridotit, dan lava basal untuk mengenal lebih jauh proses yang membentuk bumi!",
+      "descriptionWords": 39,
+      "descriptionAnak": "Tanah yang kamu injak ternyata terus bergerak, walau tidak terasa! Gerakan lempeng Bumi ini disebut tenaga tektonik. Tenaga ini bisa membuat gunung, lapisan batu yang melengkung, sampai batu yang patah. Yuk, lihat sekis mika, peridotit, dan lava basal di sini!",
+      "descriptionAnakWords": 40,
+      "descriptionRemaja": "Permukaan bumi yang kita pijak ternyata terus bergerak. Tenaga tektonik berasal dari pergerakan lempeng bumi, dan tenaga ini dapat membentuk pegunungan, lipatan, hingga patahan. Amati koleksi sekis mika, peridotit, dan lava basal di sini untuk mengenal proses yang membentuk bumi!",
+      "descriptionRemajaWords": 40,
       "audioPath": null,
       "audioDurationSeconds": null,
       "question": {
-        "instruction": "Temukan batu hitam mengilap bergaris kekuningan di bawah panel, lalu baca labelnya.",
-        "prompt": "Dari mana peridotit di bawah panel tenaga tektonik ini berasal?",
-        "hint": "Tempat ini terkenal sebagai geopark di Sukabumi.",
+        "instruction": "Batuan dari Mantel",
+        "prompt": "Batuan yang banyak menyusun bagian mantel atas bumi adalah...",
+        "hint": "Lihat lagi tiga koleksi yang disebut di cerita.",
         "options": [
           {
             "label": "A",
-            "text": "Ciletuh, Jawa Barat",
-            "correct": true
+            "text": "Lava basal",
+            "correct": false
           },
           {
             "label": "B",
-            "text": "Karang Asem, Bali",
+            "text": "Sekis mika",
             "correct": false
           },
           {
             "label": "C",
-            "text": "Palu, Sulawesi Tengah",
-            "correct": false
+            "text": "Peridotit",
+            "correct": true
           },
           {
             "label": "D",
-            "text": "Donggala, Sulawesi Tengah",
+            "text": "Granit",
             "correct": false
           }
         ]
@@ -436,38 +436,38 @@
       "denahY": 90,
       "priority": 9,
       "estimatedMinutes": 5,
-      "description": "Menurut Teori Big Bang di panel ini, alam semesta berawal dari ledakan dahsyat sekitar 13,7 miliar tahun lalu. Tata surya lalu terbentuk dari kabut raksasa berisi gas dan debu yang berputar, sesuai Teori Kabut dari Kant dan Laplace. Bumi awalnya masih berpijar, lalu permukaannya perlahan mendingin dan memadat. Batu dari luar angkasa yang jatuh ke Bumi disebut meteorit. Di vitrin ada meteorit batu, meteorit besi, dan meteorit Namibia yang berukuran besar.",
-      "descriptionWords": 71,
-      "descriptionAnak": "Menurut Teori Big Bang, alam semesta berawal dari ledakan besar sekitar 13,7 miliar tahun lalu. Tata surya lalu terbentuk dari awan raksasa berisi gas dan debu yang berputar. Dulu Bumi masih panas membara, lalu pelan-pelan mendingin dan mengeras. Kadang ada batu dari luar angkasa yang jatuh ke Bumi. Batu itu disebut meteorit. Di vitrin ada meteorit batu, meteorit besi, dan meteorit besar dari Namibia.",
-      "descriptionAnakWords": 64,
-      "descriptionRemaja": "Menurut Teori Big Bang, alam semesta berawal dari ledakan dahsyat sekitar 13,7 miliar tahun lalu. Tata surya kemudian terbentuk dari kabut raksasa berisi gas dan debu yang berputar, sesuai Teori Kabut dari Kant dan Laplace. Awalnya Bumi masih berpijar, lalu permukaannya perlahan mendingin dan memadat. Batu dari luar angkasa yang jatuh ke Bumi disebut meteorit. Di vitrin ada meteorit batu, meteorit besi, dan meteorit Namibia yang berukuran besar.",
-      "descriptionRemajaWords": 68,
+      "description": "Pernah membayangkan bagaimana alam semesta dan planet Bumi terbentuk? Menurut teori Big Bang, alam semesta bermula dari kondisi yang sangat panas dan padat, lalu terus mengembang hingga sekarang. Seiring waktu, Bumi terbentuk dan mengalami perubahan struktur serta bentuk hingga menjadi planet yang kita kenal saat ini. Yuk, ikuti perjalanan panjang Bumi melalui koleksi dan ilustrasi di hadapanmu!",
+      "descriptionWords": 57,
+      "descriptionAnak": "Bagaimana alam semesta dan Bumi terbentuk? Menurut teori Big Bang, awalnya alam semesta sangat panas dan padat, lalu terus membesar sampai sekarang. Lama-lama, Bumi terbentuk dan berubah-ubah hingga jadi planet tempat kita tinggal. Yuk, lihat ilustrasinya di sini!",
+      "descriptionAnakWords": 38,
+      "descriptionRemaja": "Pernah membayangkan bagaimana alam semesta dan Bumi terbentuk? Menurut teori Big Bang, alam semesta bermula dari kondisi yang sangat panas dan padat, lalu terus mengembang hingga sekarang. Seiring waktu, Bumi terbentuk, lalu struktur dan bentuknya berubah hingga menjadi planet yang kita kenal. Ikuti perjalanan panjang itu lewat koleksi dan ilustrasi di hadapanmu!",
+      "descriptionRemajaWords": 52,
       "audioPath": null,
       "audioDurationSeconds": null,
       "question": {
-        "instruction": "Temukan vitrin \"Meteorit Besi\", lalu cocokkan nomor 1 dengan daftar di labelnya.",
-        "prompt": "Meteorit besi nomor 1 di vitrin ini ditemukan di mana?",
-        "hint": "Tempatnya terkenal dengan candi besar di Jawa Tengah.",
+        "instruction": "Empat Lapisan Bumi",
+        "prompt": "Mana yang BUKAN termasuk empat lapisan utama Bumi?",
+        "hint": "Lihat penampang struktur Bumi di hadapanmu.",
         "options": [
           {
             "label": "A",
-            "text": "Prambanan, Jawa Tengah",
-            "correct": true
+            "text": "Kerak",
+            "correct": false
           },
           {
             "label": "B",
-            "text": "Texas, USA",
+            "text": "Mantel",
             "correct": false
           },
           {
             "label": "C",
-            "text": "Henbury, Australia",
+            "text": "Inti dalam",
             "correct": false
           },
           {
             "label": "D",
-            "text": "Namibia, Afrika",
-            "correct": false
+            "text": "Atmosfer",
+            "correct": true
           }
         ]
       }
@@ -479,44 +479,44 @@
       "code": "P10",
       "name": "Keanekaragaman Batuan di Indonesia",
       "photoPath": "images/P10/03.jpg",
-      "latitude": -6.900694,
-      "longitude": 107.621056,
+      "latitude": -6.900649,
+      "longitude": 107.621063,
       "radiusMeters": 15,
       "denahX": 0,
       "denahY": 0,
       "priority": 10,
       "estimatedMinutes": 5,
-      "description": "Indonesia menyimpan batuan yang sangat beragam karena sejarah geologinya panjang dan rumit. Di ruang ini ada rijang dari Karangsambung, batugamping hitam dari Bayah, sekis biotit dari Sigi, dan peridotit dari Ciletuh. Ada juga granit, batuan beku berbutir kasar yang terkenal di Bangka Belitung. Granit di sana membawa timah. Saat granit lapuk dan tererosi, timahnya ikut terbawa lalu mengendap kembali menjadi endapan timah sekunder.",
-      "descriptionWords": 63,
-      "descriptionAnak": "Batuan di Indonesia sangat beragam karena sejarah Buminya panjang. Di ruang ini ada rijang dari Karangsambung, batugamping hitam dari Bayah, dan peridotit dari Ciletuh. Ada juga granit, batu yang butirannya besar-besar. Granit di Bangka Belitung membawa timah. Saat granit hancur dan terbawa air, timahnya ikut terbawa. Timah itu lalu mengumpul lagi di tempat lain. Itulah endapan timah yang ditambang di sana.",
-      "descriptionAnakWords": 61,
-      "descriptionRemaja": "Indonesia memiliki batuan yang sangat beragam karena sejarah geologinya panjang dan rumit. Di ruang ini ada rijang dari Karangsambung, batugamping hitam dari Bayah, sekis biotit dari Sigi, dan peridotit dari Ciletuh. Ada juga granit, batuan beku berbutir kasar yang terkenal di Bangka Belitung karena membawa timah. Saat granit lapuk dan tererosi, timahnya ikut terbawa air lalu mengendap di tempat lain. Endapan inilah yang disebut endapan timah sekunder.",
-      "descriptionRemajaWords": 67,
+      "description": "Indonesia memiliki beragam jenis batuan yang terbentuk melalui proses geologi yang berbeda-beda. Mulai dari batugamping hitam, sekis biotit, rijang, peridotit, hingga granit, setiap batuan menyimpan cerita tentang proses pembentukan bumi. Yuk, amati warna dan tekstur koleksinya, lalu temukan perbedaannya!",
+      "descriptionWords": 39,
+      "descriptionAnak": "Indonesia punya banyak jenis batu, dan cara terbentuknya berbeda-beda. Di sini ada batugamping hitam, sekis biotit, rijang, peridotit, dan granit. Setiap batu punya ceritanya sendiri! Yuk, lihat warna dan permukaannya, lalu cari bedanya!",
+      "descriptionAnakWords": 33,
+      "descriptionRemaja": "Indonesia memiliki beragam jenis batuan yang terbentuk lewat proses geologi yang berbeda-beda. Batugamping hitam, sekis biotit, rijang, peridotit, hingga granit masing-masing menyimpan cerita tentang pembentukan bumi. Amati warna dan tekstur koleksinya, lalu temukan perbedaannya!",
+      "descriptionRemajaWords": 34,
       "audioPath": null,
       "audioDurationSeconds": null,
       "question": {
-        "instruction": "Temukan batu cokelat bergaris-garis putih berlabel \"Rijang\", lalu baca asalnya.",
-        "prompt": "Rijang di ruangan ini berasal dari mana?",
-        "hint": "Lokasinya di Jawa Tengah dan terkenal sebagai cagar alam geologi.",
+        "instruction": "Rahasia Kristal Granit",
+        "prompt": "Mengapa kristal pada batuan granit dapat terlihat jelas?",
+        "hint": "Semakin lama mendingin, semakin besar kristalnya.",
         "options": [
           {
             "label": "A",
-            "text": "Karangsambung, Jawa Tengah",
+            "text": "Magmanya mendingin perlahan di bawah permukaan bumi",
             "correct": true
           },
           {
             "label": "B",
-            "text": "Bayah, Banten",
+            "text": "Magmanya membeku cepat di udara terbuka",
             "correct": false
           },
           {
             "label": "C",
-            "text": "Sigi, Sulawesi Tengah",
+            "text": "Terbentuk dari tumpukan cangkang hewan laut",
             "correct": false
           },
           {
             "label": "D",
-            "text": "Ciletuh, Sukabumi",
+            "text": "Terbentuk dari endapan es",
             "correct": false
           }
         ]
@@ -536,37 +536,37 @@
       "denahY": 55,
       "priority": 11,
       "estimatedMinutes": 5,
-      "description": "Proses geologi yang berlangsung jutaan tahun membuat Indonesia kaya sumber daya mineral dan energi. Peta di panel menunjukkan sebarannya: minyak dan gas di Minas, Riau, batubara di Bukit Asam, Sumatra Selatan, hingga panas bumi di Kamojang, Jawa Barat. Di vitrin ada batubara dari Ombilin, bijih besi dari Kalimantan Selatan, dan bijih tembaga dari Tembagapura, Papua. Sumber daya ini harus dikelola dengan bijak karena tidak bisa terbentuk kembali dalam waktu singkat.",
-      "descriptionWords": 70,
-      "descriptionAnak": "Karena proses Bumi selama jutaan tahun, Indonesia punya banyak harta di bawah tanah. Lihat peta di panel: ada minyak dan gas di Riau, batubara di Sumatra Selatan, dan panas bumi di Kamojang, Jawa Barat. Di vitrin ada batubara, bijih besi, dan bijih tembaga dari Papua. Bijih adalah batuan yang mengandung logam. Kita harus memakainya dengan bijak, karena butuh jutaan tahun untuk terbentuk lagi.",
-      "descriptionAnakWords": 63,
-      "descriptionRemaja": "Proses geologi selama jutaan tahun membuat Indonesia kaya sumber daya mineral dan energi. Peta di panel menunjukkan sebarannya: minyak dan gas di Minas, Riau, batubara di Bukit Asam, Sumatra Selatan, dan panas bumi di Kamojang, Jawa Barat. Di vitrin ada batubara dari Ombilin, bijih besi dari Kalimantan Selatan, dan bijih tembaga dari Tembagapura, Papua. Bijih adalah batuan yang mengandung logam. Semua ini harus dikelola dengan bijak karena tidak bisa terbentuk kembali dalam waktu singkat.",
-      "descriptionRemajaWords": 74,
+      "description": "Indonesia menyimpan kekayaan geologi yang melimpah, mulai dari mineral logam, mineral non-logam, hingga batu mulia seperti ametis dari Solok, Sumatera Barat. Selain itu, ada batubara, minyak dan gas bumi, panas bumi, serta sumber daya air yang dimanfaatkan untuk kehidupan sehari-hari. Yuk, kenali berbagai potensi alam ini dan bagaimana manusia memanfaatkannya!",
+      "descriptionWords": 50,
+      "descriptionAnak": "Di bawah tanah Indonesia ada banyak harta! Ada logam, batu mulia ametis dari Solok, Sumatera Barat, juga batubara, minyak, gas, panas bumi, dan air tanah. Semua itu kita pakai sehari-hari. Yuk, kenali harta alam ini!",
+      "descriptionAnakWords": 35,
+      "descriptionRemaja": "Indonesia menyimpan kekayaan geologi yang melimpah: mineral logam, mineral non-logam, hingga batu mulia seperti ametis dari Solok, Sumatera Barat. Ada juga batubara, minyak dan gas bumi, panas bumi, serta sumber daya air yang kita manfaatkan sehari-hari. Kenali berbagai potensi alam ini dan bagaimana manusia memanfaatkannya!",
+      "descriptionRemajaWords": 45,
       "audioPath": null,
       "audioDurationSeconds": null,
       "question": {
-        "instruction": "Temukan batu hitam mengilap berlabel \"Batubara\", lalu baca asalnya.",
-        "prompt": "Batubara di vitrin ini berasal dari mana?",
-        "hint": "Tempatnya di Sumatera Barat dan terkenal sebagai kawasan tambang tua.",
+        "instruction": "Panas dari Perut Bumi",
+        "prompt": "Mengapa Indonesia memiliki potensi panas bumi (geothermal) yang besar?",
+        "hint": "Hubungkan dengan cerita gunung api di POI-03.",
         "options": [
           {
             "label": "A",
-            "text": "Ombilin, Sumatera Barat",
-            "correct": true
-          },
-          {
-            "label": "B",
-            "text": "Harujan, Kalimantan Selatan",
+            "text": "Karena banyak hutan hujan",
             "correct": false
           },
           {
+            "label": "B",
+            "text": "Karena berada di kawasan dengan aktivitas vulkanik tinggi",
+            "correct": true
+          },
+          {
             "label": "C",
-            "text": "Tembagapura, Papua",
+            "text": "Karena memiliki banyak sungai",
             "correct": false
           },
           {
             "label": "D",
-            "text": "Bogor, Jawa Barat",
+            "text": "Karena letaknya dekat kutub",
             "correct": false
           }
         ]

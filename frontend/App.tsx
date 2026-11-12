@@ -383,8 +383,8 @@ function Home(): ReactElement {
           setSummaries(null);
           void loadPois();
         }}
-        onOpenPoi={(poiId: string): void => setScreen({ name: "story", poiId, token: null })}
         onOpenProgress={(): void => setScreen({ name: "progress" })}
+        userFix={geofence.fix}
         route={route}
         topicsFor={(code: string): readonly string[] => matchedTopics(preferences.preferences, code)}
       />
