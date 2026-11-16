@@ -38,6 +38,13 @@ const DEFAULT_POI_MINUTES = 7;
 // POI-01 s.d. POI-11 = prioritas tinggi (kuning di sheet); POI-12 s.d. POI-21 = rendah (oranye), ditunda.
 const HIGH_PRIORITY_LAST = 11;
 
+/** Anak punya quest di POI ini: quest selain foto (anak tidak mengerjakan quest foto). */
+function kidHasQuest(code: string): boolean {
+  const content = museumPoiByCode(code)?.content;
+  if (content === null || content === undefined) return false;
+  return content.tanpaKuis !== true || (content.tantangan !== undefined && content.tantangan.tipe !== "foto");
+}
+
 /** Estimasi lama kunjungan POI (menit), dari kolom Estimated_Duration di POI_Preference. */
 export function poiMinutes(code: string): number {
   return museumPoiByCode(code)?.content?.durasiMenit ?? DEFAULT_POI_MINUTES;
@@ -79,7 +86,7 @@ export function matchedTopics(prefs: Preferences | null, code: string): readonly
 
 /**
  * Pilih ruangan dari yang tersedia. Skor = 2 × topik minat yang cocok, +1 untuk anak bila POI punya quest
- * foto anak (Quest_Anak), dan POI prioritas rendah (P12+) selalu di belakang. Ruangan diambil menurut skor
+ * quest anak (selain foto), dan POI prioritas rendah (P12+) selalu di belakang. Ruangan diambil menurut skor
  * selama total Estimated_Duration masih muat di waktu efektif, lalu diurutkan sesuai jalur jalan kaki.
  */
 export function recommendRoute(
@@ -100,7 +107,7 @@ export function recommendRoute(
   };
   const score = (code: string): number =>
     matchedTopics(prefs, code).length * 2 +
-    (kid && museumPoiByCode(code)?.content?.tantanganAnak !== undefined ? 1 : 0) -
+    (kid && kidHasQuest(code) ? 1 : 0) -
     (lowPriority(code) ? 100 : 0);
 
   const picked: string[] = [];

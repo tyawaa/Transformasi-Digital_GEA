@@ -15,7 +15,8 @@ type Props = {
   readonly challenge: Tantangan;
   readonly onBack: () => void;
   /** points = poin sheet bila berhasil, 0 bila kesempatan habis. */
-  readonly onDone: (result: { readonly success: boolean; readonly points: number }) => void;
+  /** attempts = jumlah jawaban (0 untuk quest foto); dipakai lencana "percobaan pertama". */
+  readonly onDone: (result: { readonly success: boolean; readonly points: number; readonly attempts: number }) => void;
   readonly testMode?: boolean;
   /** Foto referensi POI dari backend, ditampilkan di layar foto. */
   readonly references?: PoiDetail["photoChallenges"] | undefined;
@@ -159,7 +160,7 @@ export function ChallengeScreen({ challenge, onBack, onDone, testMode = false, r
               )}
               <StoryButton
                 label="Lanjut"
-                onPress={(): void => onDone({ success: outcome, points: outcome ? challenge.poin : 0 })}
+                onPress={(): void => onDone({ success: outcome, points: outcome ? challenge.poin : 0, attempts: photoType ? 0 : attempts })}
               />
             </>
           )}

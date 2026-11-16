@@ -1,6 +1,6 @@
 // Progres dan lencana (UI21–UI22). Frame HP 390 × 844, gaya sama dengan layar Story hi-fi.
 // SEMENTARA: hi-fi D4 belum final.
-import type { ReactElement } from "react";
+import { type ReactElement, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { colors, componentColors, radius, shadows, spacing } from "../../design/tokens";
 import { GeaText } from "../../design/typography";
@@ -15,7 +15,7 @@ type Props = {
   readonly progressOf: (poiId: string) => PoiProgress;
   readonly totalPoints: number;
   readonly earned: readonly BadgeId[];
-  /** Lencana yang berlaku di versi peta ini (BD-02 hilang bila hanya sayap kiri). */
+  /** Lencana yang berlaku untuk pengunjung ini (sheet Badge_Poin; lihat availableBadges). */
   readonly available?: readonly BadgeDef[];
   readonly onBack: () => void;
   readonly onEndVisit: () => void;
@@ -25,9 +25,11 @@ export function ProgressScreen({ pois, progressOf, totalPoints, earned, availabl
   const active: readonly MapPoi[] = pois.filter((poi: MapPoi): boolean => poi.id !== null);
   const done: number = active.filter((poi: MapPoi): boolean => poi.status === "selesai").length;
   const ratio: number = active.length === 0 ? 0 : done / active.length;
+  // Lencana bisa banyak (sheet Badge_Poin): isi mengalir ke bawah dan halaman bisa digulir.
+  const [bodyHeight, setBodyHeight] = useState<number>(0);
 
   return (
-    <FrameStage background={colors.primary[300]}>
+    <FrameStage background={colors.primary[300]} frameHeight={BODY_TOP + bodyHeight + 32}>
       <ScanBackground />
 
       <Pressable
@@ -52,11 +54,12 @@ export function ProgressScreen({ pois, progressOf, totalPoints, earned, availabl
           <View style={styles.bar}>
             <View style={[styles.barFill, { width: `${ratio * 100}%` }]} />
           </View>
-          <GeaText variant="caption12" color={componentColors.cardCaption}>Benar di percobaan 1/2/3 = 20/10/5 poin</GeaText>
+          <GeaText variant="caption12" color={componentColors.cardCaption}>Mini Quiz 20/10/5 poin · tantangan sesuai sheet · bonus lencana</GeaText>
         </View>
       </View>
 
-      <GeaText variant="heading20" color={colors.primary[900]} style={styles.section}>Lencana</GeaText>
+      <View style={styles.body} onLayout={(event): void => setBodyHeight(event.nativeEvent.layout.height)}>
+      <GeaText variant="heading20" color={colors.primary[900]}>Lencana</GeaText>
       <View style={styles.badges}>
         {available.map((badge: BadgeDef): ReactElement => {
           const has: boolean = earned.includes(badge.id);
@@ -67,8 +70,11 @@ export function ProgressScreen({ pois, progressOf, totalPoints, earned, availabl
               </View>
               <View style={styles.flex}>
                 <GeaText variant="bold16" color={colors.primary[900]} numberOfLines={2}>{badge.name}</GeaText>
+                <GeaText variant="caption12" color={componentColors.cardCaption} numberOfLines={3}>
+                  {badge.description}
+                </GeaText>
                 <GeaText variant="caption12" color={has ? colors.secondaryGreen[900] : colors.primary[700]}>
-                  {has ? `+${badge.bonus} poin` : "Terkunci"}
+                  {has ? `+${badge.bonus} poin` : `Terkunci · +${badge.bonus} poin`}
                 </GeaText>
               </View>
             </View>
@@ -85,12 +91,12 @@ export function ProgressScreen({ pois, progressOf, totalPoints, earned, availabl
             return (
               <View
                 key={poi.museum.code}
-                accessibilityLabel={`${poi.museum.code} ${poi.museum.name}: ${quizPoints(state)} poin`}
+                accessibilityLabel={`${poi.museum.code} ${poi.museum.name}: ${poiPoints(state)} poin`}
                 style={[styles.chip, finished && styles.chipDone]}
               >
                 <GeaText variant="bold16" color={finished ? colors.white : colors.primary[900]}>{poi.museum.code}</GeaText>
                 <GeaText variant="caption12" color={finished ? colors.white : colors.primary[700]}>
-                  {finished ? `+${quizPoints(state)}` : state.closed ? "quest" : "–"}
+                  {finished ? `+${poiPoints(state)}` : state.closed ? "quest" : "–"}
                 </GeaText>
               </View>
             );
@@ -98,14 +104,23 @@ export function ProgressScreen({ pois, progressOf, totalPoints, earned, availabl
         </View>
       </View>
 
-      <Pressable accessibilityRole="button" onPress={onEndVisit} hitSlop={8} style={styles.end}>
+      <Pressable accessibilityRole="button" onPress={onEndVisit} hitSlop={8}>
         <GeaText variant="caption12" color={colors.tertiary[200]} style={styles.link}>
           Akhiri kunjungan dan hapus progres di HP ini
         </GeaText>
       </Pressable>
+      </View>
     </FrameStage>
   );
 }
+
+/** Poin satu POI: Mini Quiz + tantangan. */
+function poiPoints(state: PoiProgress): number {
+  return quizPoints(state) + (state.challengePoints ?? 0);
+}
+
+// Bagian lencana, koleksi, dan tautan akhir mengalir mulai y=290.
+const BODY_TOP = 290;
 
 const card = {
   borderRadius: radius.control,
@@ -147,12 +162,8 @@ const styles = StyleSheet.create({
   pointBox: { alignItems: "center", minWidth: 86 },
   bar: { height: 12, borderRadius: 6, backgroundColor: colors.primary[100], overflow: "hidden" },
   barFill: { height: 12, borderRadius: 6, backgroundColor: colors.secondaryGreen[600] },
-  section: { position: "absolute", left: 20, top: 290 },
+  body: { position: "absolute", left: 16, top: BODY_TOP, width: 358, gap: spacing[12] },
   badges: {
-    position: "absolute",
-    left: 16,
-    top: 322,
-    width: 358,
     flexDirection: "row",
     flexWrap: "wrap",
     gap: spacing[8],
@@ -160,7 +171,8 @@ const styles = StyleSheet.create({
   badge: {
     ...card,
     width: 175,
-    height: 72,
+    minHeight: 72,
+    paddingVertical: spacing[8],
     flexDirection: "row",
     alignItems: "center",
     gap: spacing[8],
@@ -183,10 +195,6 @@ const styles = StyleSheet.create({
   medalOn: { borderColor: colors.secondaryGreen[800], backgroundColor: colors.secondaryGreen[600] },
   list: {
     ...card,
-    position: "absolute",
-    left: 16,
-    top: 496,
-    width: 358,
     gap: spacing[12],
     padding: spacing[16],
   },
@@ -202,5 +210,4 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary[0],
   },
   chipDone: { backgroundColor: colors.secondaryGreen[600], borderColor: colors.secondaryGreen[800] },
-  end: { position: "absolute", left: 16, width: 358, top: 760 },
 });

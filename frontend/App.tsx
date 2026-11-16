@@ -6,7 +6,9 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { colors } from "./src/design/tokens";
 import { GeaFontsProvider } from "./src/design/typography";
 import type { PoiSummary, Visit } from "./src/domain/contracts";
-import { type BadgeId, earnedBadges, poiStatus, type PoiRef, totalPoints } from "./src/domain/points";
+import { availableBadges, type BadgeContext, type BadgeId, earnedBadges, poiStatus, type PoiRef, totalPoints } from "./src/domain/points";
+import { useQuestDays } from "./src/features/progress/useQuestDays";
+import { questKind } from "./src/features/stories/questPlan";
 import {
   activePois,
   museumPoiById,
@@ -23,7 +25,6 @@ import { usePreferences } from "./src/features/preferences/usePreferences";
 import { matchedTopics, profileForAge, recommendRoute, type Route } from "./src/features/preferences/recommend";
 import { ProgressScreen } from "./src/features/progress/ProgressScreen";
 import { wingEnabled, wingsMode } from "./src/config/wings";
-import { badges as allBadges, type BadgeDef } from "./src/domain/points";
 import { useVisitProgress } from "./src/features/progress/useVisitProgress";
 import { type ParsedQr, qrErrorMessage, wrapQr } from "./src/features/qr/qrPayload";
 import { type DummyScan, ScanQrScreen, type ScanState } from "./src/features/stories/hifi/ScanQrScreen";
@@ -138,11 +139,26 @@ function Home(): ReactElement {
       return { museum, id, status: poiStatus(state, verified) };
     }), [summaries, progress]);
 
+  // Lencana sheet Badge_Poin: tiap POI membawa kode dan jenis quest untuk profil pengunjung ini.
   const refs: readonly PoiRef[] = mapPois
     .filter((poi: MapPoi): boolean => poi.id !== null)
-    .map((poi: MapPoi): PoiRef => ({ id: poi.id ?? "", wing: poi.museum.wing }));
-  const badges: readonly BadgeId[] = earnedBadges(refs, progress);
-  const points: number = totalPoints(refs, progress);
+    .map((poi: MapPoi): PoiRef => ({
+      id: poi.id ?? "",
+      wing: poi.museum.wing,
+      code: poi.museum.code,
+      quest: questKind(poi.id ?? "", profile),
+    }));
+  const questsDone: number = refs.filter((ref: PoiRef): boolean => {
+    const state = progress[ref.id];
+    if (state === undefined || ref.quest === null) return false;
+    return ref.quest === "quiz" ? state.completed || state.failed : state.challengeDone === true;
+  }).length;
+  const questDays: number = useQuestDays(questsDone);
+  // Lencana prioritas rendah (BD-05, BD-08, BD-09; POI-12 s.d. POI-21) ditunda sesuai sheet Badge_Poin:
+  // konten POI-15 s.d. POI-20 belum ada. Ganti ke wingEnabled("right") setelah kontennya lengkap.
+  const badgeContext: BadgeContext = { kid: profile === "anak", questDays, rightWing: false };
+  const badges: readonly BadgeId[] = earnedBadges(refs, progress, badgeContext);
+  const points: number = totalPoints(refs, progress, badgeContext);
   // Rute rekomendasi dari preferensi, hanya dari ruangan yang ceritanya sudah tersedia.
   const route: Route | null = useMemo((): Route | null =>
     recommendRoute(
@@ -322,9 +338,7 @@ function Home(): ReactElement {
           progressOf={progressOf}
           totalPoints={points}
           earned={badges}
-          available={allBadges.filter((badge: BadgeDef): boolean =>
-            !(badge.id === "BD-01" && !wingEnabled("left")) && !(badge.id === "BD-02" && !wingEnabled("right"))
-          )}
+          available={availableBadges(badgeContext)}
           onBack={(): void => setScreen({ name: "map" })}
           onEndVisit={(): void => {
             visitState.endVisit();
