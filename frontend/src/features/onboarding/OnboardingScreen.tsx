@@ -6,6 +6,8 @@ import {
   Animated,
   Easing,
   Platform,
+  Pressable,
+  ScrollView,
   StyleSheet,
   useWindowDimensions,
   View,
@@ -14,6 +16,7 @@ import { Button } from "../../design/Button";
 import { PoiCard } from "../../design/Cards";
 import { colors, componentColors, spacing } from "../../design/tokens";
 import { GeaText } from "../../design/typography";
+import type { DecisionMessage, DeviceLocation } from "../../domain/contracts";
 import { onboardingAssets as img, SceneIllustrations, SceneLayer } from "./scene";
 
 // Ukuran frame Figma.
@@ -32,11 +35,15 @@ type Props = {
   readonly onCheckLocation: () => void;
   /** true selama pengecekan lokasi berjalan. */
   readonly checkingLocation: boolean;
+  readonly locationLabel: string;
+  readonly locationNotice: DecisionMessage | null;
+  readonly locationError: string | null;
+  readonly currentLocation: DeviceLocation | null;
   readonly onDone: () => void;
 };
 
 export function OnboardingScreen(
-  { onCheckLocation, checkingLocation, onDone }: Props,
+  { onCheckLocation, checkingLocation, locationLabel, locationNotice, locationError, currentLocation, onDone }: Props,
 ): ReactElement {
   const { width, height } = useWindowDimensions();
   const scale: number = Math.min(width / FRAME_W, height / FRAME_H);
@@ -88,10 +95,7 @@ export function OnboardingScreen(
   }
 
   async function finishPermissions(): Promise<void> {
-    // Lokasi dan kamera wajib: tanyakan sekali lagi bila belum pernah ditanya.
-    if (location?.granted !== true && location?.canAskAgain !== false) {
-      await askPermission("location");
-    }
+    // Izin lokasi diminta oleh proses pengecekan, sehingga layar menampilkan progresnya.
     if (camera?.granted !== true && camera?.canAskAgain !== false) {
       await askPermission("camera");
     }
@@ -148,6 +152,11 @@ export function OnboardingScreen(
           <LocationStep
             top={2636}
             checking={checkingLocation || step !== 3}
+            progressLabel={locationLabel}
+            notice={locationNotice}
+            error={locationError}
+            location={currentLocation}
+            onRetry={onCheckLocation}
             onNext={onDone}
           />
         </Animated.View>
@@ -301,9 +310,14 @@ function PermissionStep(props: PermissionProps): ReactElement {
 
 /** Onboarding #4: sedang mengecek lokasi. Lingkaran berdenyut selama pengecekan. */
 function LocationStep(
-  { top, checking, onNext }: {
+  { top, checking, progressLabel, notice, error, location, onRetry, onNext }: {
     readonly top: number;
     readonly checking: boolean;
+    readonly progressLabel: string;
+    readonly notice: DecisionMessage | null;
+    readonly error: string | null;
+    readonly location: DeviceLocation | null;
+    readonly onRetry: () => void;
     readonly onNext: () => void;
   },
 ): ReactElement {
@@ -320,11 +334,18 @@ function LocationStep(
     return (): void => loop.stop();
   }, [checking, pulse]);
   const ringScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] });
+  const hasResult: boolean = notice !== null || error !== null;
+  const title: string = checking
+    ? "Sedang mengecek lokasimu"
+    : error !== null ? "Lokasi belum bisa diperiksa" : notice?.title ?? "Periksa lokasimu";
+  const description: string = checking
+    ? progressLabel
+    : error ?? notice?.description ?? "Tekan Periksa lokasi lagi untuk membaca posisimu.";
 
   return (
     <>
       <GeaText variant="display42" color={colors.secondaryGreen[100]} style={[styles.abs, styles.upper, styles.center, { left: 34, top: top + 90, width: 321 }]}>
-        sedang mengecek lokasi mu
+        {title}
       </GeaText>
       <Image accessible={false} source={img.map} contentFit="fill" style={[styles.abs, { left: 51.23, top: top + 293.25, width: 288.6, height: 288.5 }]} />
       <Animated.View pointerEvents="none" style={[styles.abs, { left: 105, top: top + 365, width: 182, height: 182, transform: [{ scale: ringScale }] }]}>
@@ -333,15 +354,22 @@ function LocationStep(
       <Image accessible={false} source={img.ring1117} style={[styles.abs, { left: 145, top: top + 396, width: 100, height: 100 }]} />
       <Image accessible={false} source={img.ring1116} style={[styles.abs, { left: 162, top: top + 413, width: 66, height: 66 }]} />
       <Image accessible={false} source={img.pin} style={[styles.abs, { left: 171.5, top: top + 414.5, width: 48, height: 48 }]} />
-      <GeaText
-        variant="body16"
-        color={componentColors.bodyDark}
-        accessibilityLiveRegion="polite"
-        style={[styles.abs, styles.center, { left: 34, top: top + 644, width: 323 }]}
-      >
-        Tunggu terlebih dahulu ya...
-      </GeaText>
-      <NextButton top={top + 728} label="Lanjut" arrow={false} disabled={checking} onPress={onNext} />
+      {location !== null && (
+        <GeaText variant="caption12" color={componentColors.bodyDark} style={[styles.abs, styles.center, { left: 34, top: top + 590, width: 323 }]}>
+          {`${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)} · Akurasi ±${Math.round(location.accuracyMeters)} m`}
+        </GeaText>
+      )}
+      <ScrollView style={[styles.abs, { left: 34, top: top + 622, width: 323, height: 90 }]} contentContainerStyle={styles.locationMessage}>
+        <GeaText variant="body14" color={componentColors.bodyDark} accessibilityLiveRegion="polite" style={styles.center}>
+          {description}
+        </GeaText>
+      </ScrollView>
+      <NextButton top={top + 728} label="Lanjut" arrow={false} disabled={checking || !hasResult} onPress={onNext} />
+      {!checking && (
+        <Pressable accessibilityRole="button" onPress={onRetry} style={[styles.abs, { left: 34, top: top + 786, width: 323, paddingVertical: 8 }]}>
+          <GeaText variant="label16" color={componentColors.bodyDark} style={styles.center}>Periksa lokasi lagi</GeaText>
+        </Pressable>
+      )}
     </>
   );
 }
@@ -380,6 +408,7 @@ const styles = StyleSheet.create({
   },
   welcomeTitle: { width: 352, textAlign: "center" },
   center: { textAlign: "center" },
+  locationMessage: { flexGrow: 1, justifyContent: "center" },
   upper: { textTransform: "uppercase" },
   abs: { position: "absolute" },
   fill: { width: "100%", height: "100%" },

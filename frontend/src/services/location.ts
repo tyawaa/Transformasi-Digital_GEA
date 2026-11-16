@@ -6,6 +6,7 @@ export type LocationIssue =
   | "permission_denied"
   | "permission_blocked"
   | "disabled"
+  | "unavailable"
   | "accuracy_unavailable"
   | "timeout";
 
@@ -15,18 +16,57 @@ export type LocationReading =
 
 const POSITION_TIMEOUT_MS: number = 15000;
 
-function positionReading(result: Location.LocationObject): LocationReading {
-  if (result.coords.accuracy === null) {
+function positionReading(coords: Pick<Location.LocationObjectCoords, "latitude" | "longitude" | "accuracy">): LocationReading {
+  if (coords.accuracy === null) {
     return { status: "accuracy_unavailable" };
   }
   return {
     status: "available",
     location: locationSchema.parse({
-      latitude: result.coords.latitude,
-      longitude: result.coords.longitude,
-      accuracyMeters: result.coords.accuracy,
+      latitude: coords.latitude,
+      longitude: coords.longitude,
+      accuracyMeters: coords.accuracy,
     }),
   };
+}
+
+/** Browser meminta posisi baru; izin dan pencarian GPS selesai lewat callback yang sama. */
+async function readBrowserLocation(): Promise<LocationReading> {
+  if (!window.isSecureContext || !("geolocation" in navigator)) {
+    return { status: "unavailable" };
+  }
+  return new Promise<LocationReading>((resolve, reject): void => {
+    navigator.geolocation.getCurrentPosition(
+      (position: GeolocationPosition): void => {
+        try {
+          resolve(positionReading(position.coords));
+        } catch (cause: unknown) {
+          reject(cause);
+        }
+      },
+      (error: GeolocationPositionError): void => {
+        console.warn("gea_browser_location_failed", {
+          code: error.code,
+          message: error.message,
+          timeoutMs: POSITION_TIMEOUT_MS,
+        });
+        switch (error.code) {
+          case 1:
+            resolve({ status: "permission_denied" });
+            return;
+          case 2:
+            resolve({ status: "unavailable" });
+            return;
+          case 3:
+            resolve({ status: "timeout" });
+            return;
+          default:
+            reject(new Error(`Pengecekan lokasi browser gagal (kode ${error.code}): ${error.message}`));
+        }
+      },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: POSITION_TIMEOUT_MS },
+    );
+  });
 }
 
 /** Batas tunggu UI; API sekali baca Expo tidak menyediakan pembatalan native. */
@@ -40,7 +80,7 @@ async function readCurrentPosition(): Promise<LocationReading> {
       Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.High,
         mayShowUserSettingsDialog: false,
-      }).then(positionReading),
+      }).then((position: Location.LocationObject): LocationReading => positionReading(position.coords)),
       timeout,
     ]);
   } finally {
@@ -76,6 +116,10 @@ export async function openLocationServicesSettings(): Promise<void> {
 export async function readVisitorLocation(
   onProgress: (message: string) => void,
 ): Promise<LocationReading> {
+  if (Platform.OS === "web") {
+    onProgress("Mencari posisi lokasi browser. Izinkan lokasi jika diminta...");
+    return readBrowserLocation();
+  }
   onProgress("Memeriksa izin lokasi...");
   const current: Location.LocationPermissionResponse = await Location
     .getForegroundPermissionsAsync();
