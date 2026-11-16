@@ -26,7 +26,6 @@ import {
 import { GeaServiceError, readableError } from "../../../services/api";
 import { type StoriesSource, storiesMockEnabled } from "../../../services/stories";
 import { museumPoiById, type StoryContent, type Tantangan } from "../../../data/museum";
-import { mockMediaUrl } from "../../../services/media";
 import { SceneLayer } from "../../onboarding/scene";
 import { type ParsedQr, qrErrorMessage } from "../../qr/qrPayload";
 import type { PoiProgress } from "../progress";
@@ -254,23 +253,26 @@ export function StoryFlow(props: Props): ReactElement {
   }
 
   const [description, audio] = poi.cards;
-  // Kolom tambahan dari sheet (judul, fakta, penjelasan, foto survei) bila ada di data lokal.
+  // Data lokal: konten anak dan quest dari sheet (questPlan memakai data lokal di semua mode); judul, fakta,
+  // foto kedua, dan koleksi utamanya dari backend (description), data lokal hanya cadangan mode mock.
   const museumPoi = museumPoiById(poi.id_poi);
-  const local: StoryContent | null = museumPoi?.content ?? null;
-  const secondPhoto: string = museumPoi !== undefined && local?.fotoKedua !== undefined
-    ? mockMediaUrl(`/poi/${museumPoi.code}/${local.fotoKedua}`)
-    : description.photoUrl;
+  const local: StoryContent | null = source.kind === "mock" ? museumPoi?.content ?? null : null;
+  const secondPhoto: string = description.secondPhotoUrl;
   // Halaman ke-2 isi cerita ("Story Isi 2"): kartu koleksi yang disorot + fakta menarik.
-  const highlights: readonly string[] = splitHighlights(local?.sorotan).slice(0, 4);
+  const highlights: readonly string[] = splitHighlights(description.highlights ?? undefined).slice(0, 4);
   const pageCount: number = highlights.length > 0 ? 2 : 1;
   // Anak: judul dan fakta dari Konten_Cerita_Anak (teks cerita anak datang dari sumber data sesuai profil).
   const kid: boolean = visit.profil === "anak";
-  const judul: string | undefined = (kid ? local?.judulAnak : undefined) ?? local?.judul;
-  const fakta: string | undefined = (kid ? local?.faktaAnak : undefined) ?? local?.fakta;
+  const judul: string | undefined = (kid ? local?.judulAnak : undefined) ?? description.title ?? local?.judul;
+  const fakta: string | undefined = (kid ? local?.faktaAnak : undefined) ?? description.fact ?? local?.fakta;
   const pageTwoTitle: string = fakta !== undefined ? "Fakta Menarik" : "Cari di Ruangan Ini";
   const pageTwoText: string = `${fakta !== undefined ? `${fakta}\n\n` : ""}Ketuk kartu koleksi di atas, cari koleksinya di ruangan ini, lalu foto.`;
   const photos: readonly number[] = progress.photos ?? [];
-  const { challenge, hasQuiz }: QuestPlan = questPlan(poiId, visit.profil);
+  const plan: QuestPlan = questPlan(poiId, visit.profil);
+  const challenge: Tantangan | undefined = plan.challenge;
+  const hasQuiz: boolean = plan.hasQuiz &&
+    (poi.quest.type === "pilgan" || poi.quest.type === "cocokkan") &&
+    poi.quest.isDisabled !== true;
 
   /** POI tanpa Mini Quiz selesai setelah tantangan (atau setelah cerita bila tidak ada quest). */
   function finish(): void {
@@ -336,6 +338,7 @@ export function StoryFlow(props: Props): ReactElement {
     return (
       <ChallengeScreen
         challenge={challenge}
+        references={poi.photoChallenges}
         onBack={(): void => setStep("storyDone")}
         onDone={({ points }): void => {
           onProgress(poiId, { challengeDone: true, challengePoints: points, ...(hasQuiz ? {} : { completed: true }) });
@@ -382,7 +385,7 @@ export function StoryFlow(props: Props): ReactElement {
         conquered={hasQuiz ? progress.completed : challenge !== undefined ? challengeWon : progress.completed}
         score={score}
         reward={props.totalPoints}
-        explanation={hasQuiz && (progress.completed || progress.failed) ? local?.penjelasan : undefined}
+        explanation={hasQuiz && (progress.completed || progress.failed) ? poi.quest.penjelasan ?? local?.penjelasan : undefined}
         extra={[
           ...(props.nextStop != null ? [`Berikutnya di rutemu: ${props.nextStop}`] : []),
           ...newBadges.map((badge: BadgeDef): string => `Lencana baru: ${badge.name} (+${badge.bonus} poin)`),

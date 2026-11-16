@@ -35,7 +35,7 @@ import { type GeaApi, GeaServiceError } from "./api";
  */
 export interface StoriesSource {
   readonly kind: "mock" | "api";
-  /** profile: kelompok usia dari preferensi (anak 7–12, remaja 13–17, dewasa 18+). */
+  /** profile: kategori pengunjung dari preferensi usia (anak = Anak-anak 7–12, dewasa = Umum). */
   startQrVisit(idSesi: string, token: string, profile: Profile): Promise<Visit>;
   pois(): Promise<readonly PoiSummary[]>;
   poiDetail(idPoi: string, language: Language, profile: Profile): Promise<PoiDetail>;

@@ -15,35 +15,18 @@ import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import QRCode from "qrcode";
 
-const POI_NAMES = {
-  P01: "Paleogeografi & Sebaran Fauna Indonesia",
-  P02: "Kars Indonesia",
-  P03: "Gunung Api Indonesia",
-  P04: "Rona Muka Bumi Indonesia",
-  P05: "Animasi Geologi Indonesia",
-  P06: "Pelapukan, Erosi & Pengendapan",
-  P07: "Batuan & Mineral",
-  P08: "Terjadinya Tenaga Tektonik",
-  P09: "Alam Semesta & Pembentukan Bumi",
-  P10: "Keanekaragaman Batuan di Indonesia",
-  P11: "Kekayaan Sumber Daya Geologi",
-  P12: "Introduksi Sejarah Kehidupan",
-  P13: "Prakambrium",
-  P14: "Paleozoikum",
-  P15: "Mesozoikum",
-  P16: "Kenozoikum Tersier",
-  P17: "Vertebrata Kuarter",
-  P18: "Hominid",
-  P19: "Diorama Hominid",
-  P20: "Artefak",
-  P21: "Cekungan Bandung",
-};
+/** @type {{ readonly pois: readonly { readonly poiCode: string; readonly name: string }[] }} */
+const catalog = JSON.parse(await readFile(new URL("../data/checkpoints.json", import.meta.url), "utf8"));
+/** @type {{ readonly [code: string]: string }} */
+const POI_NAMES = Object.fromEntries(catalog.pois.map((poi) => [poi.poiCode.replace(/^POI-/, "P"), poi.name]));
 const ZONE_NAMES = { ZL: "Sayap Kiri · Geologi Indonesia", ZR: "Sayap Kanan · Sejarah Kehidupan" };
 
 function describe(base) {
-  const name = base.toUpperCase();
+  const name = base.toUpperCase().replace(/^POI-/, "P");
   if (/^P\d{2}$/.test(name)) {
-    return { kind: "POI", code: name, title: POI_NAMES[name] ?? "Koleksi", label: "QR Koleksi" };
+    const title = POI_NAMES[name];
+    if (title === undefined) throw new RangeError(`Kode ${base} tidak terdaftar dalam 20 POI A9.`);
+    return { kind: "POI", code: name, title, label: "QR Koleksi" };
   }
   if (name === "ZL" || name === "ZR") {
     return { kind: "ZONE", code: name, title: ZONE_NAMES[name], label: "QR Zona" };
@@ -73,13 +56,11 @@ for (const file of files) {
   const base = file.slice(0, -".token.txt".length);
   const info = describe(base);
   if (info === null) {
-    console.warn(`Lewati ${file}: beri nama P01–P21, ZL/ZR, atau ENTRANCE.`);
-    continue;
+    throw new Error(`Nama file ${file} tidak dikenali: gunakan POI-01–20, P01–20, ZL/ZR, atau ENTRANCE.`);
   }
   const token = (await readFile(join(inputDir, file), "utf8")).trim();
   if (!/^[0-9a-f]{64}$/.test(token)) {
-    console.warn(`Lewati ${file}: isi bukan token 64 karakter hex.`);
-    continue;
+    throw new Error(`Token pada ${file} harus 64 karakter hex dari qr:create.`);
   }
   const payload = `GEA1:${info.kind}:${info.code}:${token}`;
   const options = { errorCorrectionLevel: "M", margin: 2, width: 800 };

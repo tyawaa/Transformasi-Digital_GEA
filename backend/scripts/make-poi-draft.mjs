@@ -3,8 +3,7 @@
 //
 // Draft ini untuk C-1 (B6) dan PM: approved=false, audio masih null (B5), path foto mengikuti
 // nama file hasil frontend/scripts/sync-poi-photos.ps1 (images/Pxx/NN.jpg) dan harus diunggah dulu.
-// Catatan: scripts/prepare-seed.ts saat ini hanya menerima tepat 6 POI; draft ini berisi semua POI
-// yang sudah punya konten (P01–P14), jadi batas itu perlu disesuaikan C-1 sebelum dipakai.
+// prepare-seed.ts membutuhkan 20 POI lengkap dan dua zona; draft P01–P14 ini belum siap publikasi.
 import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { activePois, poiIdFor, questIdFor, zones } from "../../frontend/src/data/museum.ts";
@@ -32,12 +31,10 @@ const pois = activePois.map((poi, index) => {
     estimatedMinutes: 5,
     description: c.cerita,
     descriptionWords: wordCount(c.cerita),
-    // Varian usia: masuk ke tabel konten dengan profil='anak' (7–12) dan 'remaja' (13–17).
-    // description di atas = profil 'dewasa'. quest_teks anak/remaja boleh kosong (memakai versi dewasa).
+    // Varian anak: masuk ke tabel konten dengan profil='anak' (7–12). description di atas = profil 'dewasa'
+    // (Umum). quest_teks anak boleh kosong (memakai versi dewasa).
     descriptionAnak: c.ceritaAnak ?? null,
     descriptionAnakWords: c.ceritaAnak === undefined ? null : wordCount(c.ceritaAnak),
-    descriptionRemaja: c.ceritaRemaja ?? null,
-    descriptionRemajaWords: c.ceritaRemaja === undefined ? null : wordCount(c.ceritaRemaja),
     audioPath: null,
     audioDurationSeconds: null,
     question: {
@@ -53,7 +50,7 @@ const draft = {
   approved: false,
   language: "id",
   profile: "dewasa",
-  note: "DRAFT dari frontend (C-3). Perlu cek PM, audio B5, unggah foto, dan batas 6 POI di prepare-seed.ts.",
+  note: "DRAFT dari frontend (C-3). Perlu cek PM, audio B5, unggah foto, serta melengkapi 20 POI untuk prepare-seed.ts.",
   zones: zones.map((z) => ({
     idZona: ZONE_IDS[z.code],
     code: z.code,

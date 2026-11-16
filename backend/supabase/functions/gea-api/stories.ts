@@ -19,11 +19,13 @@ function profileFilter(profile: Profile): string {
 }
 
 /**
- * Pilih varian usia yang diminta; bila belum ada (mis. teks remaja belum ditulis),
+ * Pilih varian usia yang diminta; bila belum ada (mis. teks anak belum ditulis),
  * pakai varian "dewasa" agar pengunjung tetap bisa membaca cerita.
  */
 function pickProfile(rows: readonly JsonObject[], profile: Profile, code: string): JsonObject {
-  const exact: readonly JsonObject[] = rows.filter((row: JsonObject): boolean => row.profil === profile);
+  const exact: readonly JsonObject[] = rows.filter((row: JsonObject): boolean =>
+    row.profil === profile
+  );
   return requireSingle(
     exact.length > 0 ? exact : rows.filter((row: JsonObject): boolean => row.profil === "dewasa"),
     code,
@@ -52,7 +54,8 @@ export async function poiDetail(
   language: Language,
   profile: Profile,
 ): Promise<JsonObject> {
-  const [pois, contents, quests]: [
+  const [pois, contents, quests, media]: [
+    readonly JsonObject[],
     readonly JsonObject[],
     readonly JsonObject[],
     readonly JsonObject[],
@@ -68,7 +71,8 @@ export async function poiDetail(
     gateway.query(
       "konten",
       new URLSearchParams({
-        select: "profil,teks_cerita,path_audio,durasi_audio",
+        select:
+          "profil,teks_cerita,path_audio,durasi_audio,judul_cerita,fakta_menarik,koleksi_sorotan",
         id_poi: `eq.${poiId}`,
         bahasa: `eq.${language}`,
         profil: profileFilter(profile),
@@ -78,8 +82,20 @@ export async function poiDetail(
       "quest",
       new URLSearchParams({ select: "id_quest,tipe_quest", id_poi: `eq.${poiId}` }),
     ),
+    gateway.query(
+      "poi_media",
+      new URLSearchParams({
+        select: "nomor,path_foto,instruksi",
+        id_poi: `eq.${poiId}`,
+        order: "nomor.asc",
+      }),
+    ),
   ]);
   const poi: JsonObject = requireSingle(pois, "POI_NOT_FOUND");
+  const secondPhoto: JsonObject = requireSingle(
+    media.filter((image: JsonObject): boolean => image.nomor === 2),
+    "STORY_SECOND_PHOTO_NOT_AVAILABLE",
+  );
   const content: JsonObject = pickProfile(contents, profile, "CONTENT_VARIANT_NOT_AVAILABLE");
   const quest: JsonObject = requireSingle(quests, "QUEST_NOT_AVAILABLE");
   const questId: string = uuid(quest.id_quest, "id_quest");
@@ -87,7 +103,7 @@ export async function poiDetail(
     gateway.query(
       "quest_teks",
       new URLSearchParams({
-        select: "profil,instruksi,pertanyaan",
+        select: "profil,instruksi,pertanyaan,target_foto,penjelasan",
         id_quest: `eq.${questId}`,
         bahasa: `eq.${language}`,
         profil: profileFilter(profile),
@@ -108,12 +124,23 @@ export async function poiDetail(
     profile,
     "QUEST_VARIANT_NOT_AVAILABLE",
   );
-  if (options.length !== 4) {
-    throw new ApiError(
-      503,
-      "QUEST_OPTIONS_INCOMPLETE",
-      "Quest harus memiliki tepat empat opsi terjemahan.",
-    );
+  const questType: string = String(quest.tipe_quest);
+  if (questType === "pilgan" || questType === "cocokkan") {
+    if (options.length !== 4) {
+      throw new ApiError(
+        503,
+        "QUEST_OPTIONS_INCOMPLETE",
+        "Quest harus memiliki tepat empat opsi terjemahan.",
+      );
+    }
+  } else if (questType === "benar_salah") {
+    if (options.length !== 2) {
+      throw new ApiError(
+        503,
+        "QUEST_OPTIONS_INCOMPLETE",
+        "Quest benar/salah harus memiliki tepat dua opsi terjemahan.",
+      );
+    }
   }
   return {
     ...poi,
@@ -123,7 +150,11 @@ export async function poiDetail(
       {
         type: "description",
         text: content.teks_cerita,
+        title: content.judul_cerita,
+        fact: content.fakta_menarik,
+        highlights: content.koleksi_sorotan,
         photoUrl: gateway.mediaUrl(text(poi.path_foto, "path_foto", 1024)),
+        secondPhotoUrl: gateway.mediaUrl(text(secondPhoto.path_foto, "poi_media.path_foto", 1024)),
       },
       {
         type: "audio",
@@ -131,7 +162,21 @@ export async function poiDetail(
         durationSeconds: content.durasi_audio,
       },
     ],
-    quest: { idQuest: questId, type: quest.tipe_quest, ...question, options },
+    photoChallenges: media.filter((image: JsonObject): boolean =>
+      typeof image.nomor === "number" && image.nomor >= 3
+    )
+      .map((image: JsonObject): JsonObject => ({
+        sequence: image.nomor,
+        photoUrl: gateway.mediaUrl(text(image.path_foto, "poi_media.path_foto", 1024)),
+        instruction: text(image.instruksi, "poi_media.instruksi", 2000),
+      })),
+    quest: {
+      idQuest: questId,
+      type: questType,
+      isDisabled: profile === "anak" && questType !== "foto",
+      ...question,
+      options,
+    },
   };
 }
 

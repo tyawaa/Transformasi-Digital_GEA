@@ -1,0 +1,946 @@
+{
+  "schemaVersion": 1,
+  "bucket": "gea-media",
+  "pois": [
+    {
+      "poiCode": "P01",
+      "idPoi": "30000000-0000-4000-8000-000000000001",
+      "images": [
+        {
+          "sequence": 1,
+          "fileName": "1-utama.jpg",
+          "objectPath": "images/poi/P01/1-dc958904082a4fd4.jpg",
+          "sha256": "dc958904082a4fd42b812475bf10b5c1ff9cb6223e6c1f574659abb152eb7028",
+          "byteLength": 265685,
+          "instruction": null
+        },
+        {
+          "sequence": 2,
+          "fileName": "2-detail.jpg",
+          "objectPath": "images/poi/P01/2-9879c4419a07ce18.jpg",
+          "sha256": "9879c4419a07ce1808c65bdba27c6dfcde8ff49d22996654037bea054e1ad3f4",
+          "byteLength": 247942,
+          "instruction": null
+        },
+        {
+          "sequence": 3,
+          "fileName": "3-megalochelys.jpg",
+          "objectPath": "images/poi/P01/3-2c81f96cda4f86ad.jpg",
+          "sha256": "2c81f96cda4f86ad2daaf7b30db3a3239143e65a9092586b7d58e12b7f1271e0",
+          "byteLength": 239920,
+          "instruction": "Temukan objek pada gambar ini di area Paleogeografi & Sebaran Fauna Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 4,
+          "fileName": "4-elephas_celebensis.jpg",
+          "objectPath": "images/poi/P01/4-f8eca7903c59794c.jpg",
+          "sha256": "f8eca7903c59794cfea90a8d3ed724bd457ba38296aaf0f4c1c109e6926630d5",
+          "byteLength": 246369,
+          "instruction": "Temukan objek pada gambar ini di area Paleogeografi & Sebaran Fauna Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 5,
+          "fileName": "5-sinomastodon_bumiayuensis.jpg",
+          "objectPath": "images/poi/P01/5-9353cd84f3e87be2.jpg",
+          "sha256": "9353cd84f3e87be21de9d8ff387fd654fbcb480ddf85f09d2769418c357eb3d7",
+          "byteLength": 262915,
+          "instruction": "Temukan objek pada gambar ini di area Paleogeografi & Sebaran Fauna Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 6,
+          "fileName": "6.jpg",
+          "objectPath": "images/poi/P01/6-655d0acce9aaf810.jpg",
+          "sha256": "655d0acce9aaf810a46ded64e26717dd002c47f3fb8a6f31adb4a1dd8cff6100",
+          "byteLength": 260842,
+          "instruction": "Temukan objek pada gambar ini di area Paleogeografi & Sebaran Fauna Indonesia, lalu foto objek yang sama."
+        }
+      ]
+    },
+    {
+      "poiCode": "P02",
+      "idPoi": "30000000-0000-4000-8000-000000000002",
+      "images": [
+        {
+          "sequence": 1,
+          "fileName": "1-utama.jpg",
+          "objectPath": "images/poi/P02/1-defcbd088cd3e275.jpg",
+          "sha256": "defcbd088cd3e275a9f2a123f6dc9e06b4aaa3df2230fee3aac020f4e8ad22a8",
+          "byteLength": 385807,
+          "instruction": null
+        },
+        {
+          "sequence": 2,
+          "fileName": "2-detail.jpg",
+          "objectPath": "images/poi/P02/2-dbe0b194731cbd03.jpg",
+          "sha256": "dbe0b194731cbd03d23a0069d1db34ff92dddbbc1f0d0ff66c5f970e4a84607b",
+          "byteLength": 514909,
+          "instruction": null
+        },
+        {
+          "sequence": 3,
+          "fileName": "3-plate_coral.jpg",
+          "objectPath": "images/poi/P02/3-914fbc47e3960bbb.jpg",
+          "sha256": "914fbc47e3960bbb3c50d50b937554c864180fee939a04344619504f60e6cc99",
+          "byteLength": 328954,
+          "instruction": "Temukan objek pada gambar ini di area Kars Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 4,
+          "fileName": "4-batugamping.jpg",
+          "objectPath": "images/poi/P02/4-1c5ec7d04e567c55.jpg",
+          "sha256": "1c5ec7d04e567c559c4ea42462806df6abcf0a6d84ae3966d5ebfec57b7280e5",
+          "byteLength": 300081,
+          "instruction": "Temukan objek pada gambar ini di area Kars Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 5,
+          "fileName": "5-sinter_kapur.jpg",
+          "objectPath": "images/poi/P02/5-46b0ca3fe63b00cc.jpg",
+          "sha256": "46b0ca3fe63b00cc52ee7018f52877b12e56b75a09b87c94b4427535f429e7ff",
+          "byteLength": 314065,
+          "instruction": "Temukan objek pada gambar ini di area Kars Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 6,
+          "fileName": "6.jpg",
+          "objectPath": "images/poi/P02/6-7ed4a2228a80eb29.jpg",
+          "sha256": "7ed4a2228a80eb29c6a491d83a23e2099ac5a2b1cd67ffe66e79c42d209f5314",
+          "byteLength": 366382,
+          "instruction": "Temukan objek pada gambar ini di area Kars Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 7,
+          "fileName": "7.jpg",
+          "objectPath": "images/poi/P02/7-c463118e96ac8085.jpg",
+          "sha256": "c463118e96ac8085fe868c2ace1c70a33558de5201d19eb6a723906dfd12c942",
+          "byteLength": 278882,
+          "instruction": "Temukan objek pada gambar ini di area Kars Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 9,
+          "fileName": "9.jpg",
+          "objectPath": "images/poi/P02/9-d5a2e2667bfe9e23.jpg",
+          "sha256": "d5a2e2667bfe9e23798c54447b5da96c01c825f6ee5c48daa324f84d80be79be",
+          "byteLength": 433374,
+          "instruction": "Temukan objek pada gambar ini di area Kars Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 10,
+          "fileName": "10.jpg",
+          "objectPath": "images/poi/P02/10-db5ed41fca284189.jpg",
+          "sha256": "db5ed41fca284189df2f0c7f19da98c0b36cd786e1882d18e5a13a51bf77a34b",
+          "byteLength": 326225,
+          "instruction": "Temukan objek pada gambar ini di area Kars Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 11,
+          "fileName": "11.jpg",
+          "objectPath": "images/poi/P02/11-1917b05f43a955b3.jpg",
+          "sha256": "1917b05f43a955b3baf95c9643baa94d628f12bd02bbff9e2f3310ba556b0986",
+          "byteLength": 316773,
+          "instruction": "Temukan objek pada gambar ini di area Kars Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 12,
+          "fileName": "12.jpg",
+          "objectPath": "images/poi/P02/12-83439ffe0d96cdac.jpg",
+          "sha256": "83439ffe0d96cdac6db998cce0bb2c9f4e310cff1550dde504edc9febe77f5c4",
+          "byteLength": 401961,
+          "instruction": "Temukan objek pada gambar ini di area Kars Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 13,
+          "fileName": "13.jpg",
+          "objectPath": "images/poi/P02/13-7d316c3232e81ed8.jpg",
+          "sha256": "7d316c3232e81ed841b1872504b0bd24e21d68f4da71710994a6d17be6a050e2",
+          "byteLength": 289722,
+          "instruction": "Temukan objek pada gambar ini di area Kars Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 14,
+          "fileName": "14.jpg",
+          "objectPath": "images/poi/P02/14-75e8932da9bad79a.jpg",
+          "sha256": "75e8932da9bad79a7c251b955ff30dcc210ab15597e9024b96ff02f26915541f",
+          "byteLength": 314186,
+          "instruction": "Temukan objek pada gambar ini di area Kars Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 16,
+          "fileName": "16.jpg",
+          "objectPath": "images/poi/P02/16-fa1099a747636a8b.jpg",
+          "sha256": "fa1099a747636a8bf0d3c836ab5e616747f8821f9e46c4ebbee3881c2cbc32f8",
+          "byteLength": 224766,
+          "instruction": "Temukan objek pada gambar ini di area Kars Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 17,
+          "fileName": "17.jpg",
+          "objectPath": "images/poi/P02/17-7fa4fcba87cad00f.jpg",
+          "sha256": "7fa4fcba87cad00f903d8e0d96fe533203d94042a5161a349d54079f7ce327ac",
+          "byteLength": 351222,
+          "instruction": "Temukan objek pada gambar ini di area Kars Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 18,
+          "fileName": "18.jpg",
+          "objectPath": "images/poi/P02/18-52c55447c3a504ed.jpg",
+          "sha256": "52c55447c3a504ed8e9680a0b6cec2ac700cd79e6fcbcb7fb7aa5378abe1add6",
+          "byteLength": 161980,
+          "instruction": "Temukan objek pada gambar ini di area Kars Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 19,
+          "fileName": "19.jpg",
+          "objectPath": "images/poi/P02/19-6e4f6562ee0b0a41.jpg",
+          "sha256": "6e4f6562ee0b0a4142cf92f9e73acc00642a1f1c44491cd3dacfdce07ac319fa",
+          "byteLength": 298312,
+          "instruction": "Temukan objek pada gambar ini di area Kars Indonesia, lalu foto objek yang sama."
+        }
+      ]
+    },
+    {
+      "poiCode": "P03",
+      "idPoi": "30000000-0000-4000-8000-000000000003",
+      "images": [
+        {
+          "sequence": 1,
+          "fileName": "1-utama.jpg",
+          "objectPath": "images/poi/P03/1-47e16c4217a64e61.jpg",
+          "sha256": "47e16c4217a64e61dd235d108209f48a5872308d9e9a600a9d5842e6a55f4eaa",
+          "byteLength": 285294,
+          "instruction": null
+        },
+        {
+          "sequence": 2,
+          "fileName": "2-detail.jpg",
+          "objectPath": "images/poi/P03/2-603febd082de7fc1.jpg",
+          "sha256": "603febd082de7fc1e425384fd0da7435cdb7fa2740b356760a1f1524ba5faa12",
+          "byteLength": 381983,
+          "instruction": null
+        },
+        {
+          "sequence": 3,
+          "fileName": "3-dasit.jpg",
+          "objectPath": "images/poi/P03/3-f77f49dbc1ba6ea1.jpg",
+          "sha256": "f77f49dbc1ba6ea1e583bb76f68ec02107229b629edf09105ac40b0157c6d7f1",
+          "byteLength": 350820,
+          "instruction": "Temukan objek pada gambar ini di area Gunung Api Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 4,
+          "fileName": "4-batupasir.jpg",
+          "objectPath": "images/poi/P03/4-868877c3b4578139.jpg",
+          "sha256": "868877c3b457813989a20a7368eebf773f9063a604c0cf3031e7f47b39b780a8",
+          "byteLength": 318272,
+          "instruction": "Temukan objek pada gambar ini di area Gunung Api Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 5,
+          "fileName": "5-obsidian.jpg",
+          "objectPath": "images/poi/P03/5-dc6076784edd8058.jpg",
+          "sha256": "dc6076784edd80589bd379aae67edd0ee96392eab8455e0c206eee82a0cff237",
+          "byteLength": 320214,
+          "instruction": "Temukan objek pada gambar ini di area Gunung Api Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 6,
+          "fileName": "6.jpg",
+          "objectPath": "images/poi/P03/6-bd86a966e6b71820.jpg",
+          "sha256": "bd86a966e6b718208673a9799f4b45f2a0c5a076524d1fae3b1c242df40df722",
+          "byteLength": 347651,
+          "instruction": "Temukan objek pada gambar ini di area Gunung Api Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 7,
+          "fileName": "7.jpg",
+          "objectPath": "images/poi/P03/7-b864223808a36ab8.jpg",
+          "sha256": "b864223808a36ab830ff3f529a8fb018be10040ef304c1bfdee903e02e4d5ca5",
+          "byteLength": 264714,
+          "instruction": "Temukan objek pada gambar ini di area Gunung Api Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 8,
+          "fileName": "8.jpg",
+          "objectPath": "images/poi/P03/8-99d2d3e0ab0608e9.jpg",
+          "sha256": "99d2d3e0ab0608e93c6fe3cb93c7669c0f3396ce7848e8409e79f58d9d58032a",
+          "byteLength": 279481,
+          "instruction": "Temukan objek pada gambar ini di area Gunung Api Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 9,
+          "fileName": "9.jpg",
+          "objectPath": "images/poi/P03/9-713ba4b805e31df8.jpg",
+          "sha256": "713ba4b805e31df8b6178a066e81da28f954e65476ef9dcd285a9f40445d1504",
+          "byteLength": 280563,
+          "instruction": "Temukan objek pada gambar ini di area Gunung Api Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 11,
+          "fileName": "11.jpg",
+          "objectPath": "images/poi/P03/11-8b2f83db04494cd6.jpg",
+          "sha256": "8b2f83db04494cd62d433f42c35c7f6ca3d1797f53b378c5fbb59b2673efbcf2",
+          "byteLength": 237109,
+          "instruction": "Temukan objek pada gambar ini di area Gunung Api Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 13,
+          "fileName": "13.jpg",
+          "objectPath": "images/poi/P03/13-f5d3981b004486dd.jpg",
+          "sha256": "f5d3981b004486dd6fdc41003470c3b3fa678306e21d9fefcbdac30b75563ac7",
+          "byteLength": 331225,
+          "instruction": "Temukan objek pada gambar ini di area Gunung Api Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 14,
+          "fileName": "14.jpg",
+          "objectPath": "images/poi/P03/14-38ff8166d563fcec.jpg",
+          "sha256": "38ff8166d563fcec684029d8d18b47c5bc7541e013115335369bf2ecf8e766f2",
+          "byteLength": 361749,
+          "instruction": "Temukan objek pada gambar ini di area Gunung Api Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 16,
+          "fileName": "16.jpg",
+          "objectPath": "images/poi/P03/16-3a0059ffd82000fa.jpg",
+          "sha256": "3a0059ffd82000fa53b7b62e5807dc0aeab2e96d7681c0aa8c91b828520bf9dc",
+          "byteLength": 246387,
+          "instruction": "Temukan objek pada gambar ini di area Gunung Api Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 17,
+          "fileName": "17.jpg",
+          "objectPath": "images/poi/P03/17-d2c977f143f725c0.jpg",
+          "sha256": "d2c977f143f725c025b77d4c22fdae4f24997acda4c2a0d08d31025c60d90e08",
+          "byteLength": 273643,
+          "instruction": "Temukan objek pada gambar ini di area Gunung Api Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 19,
+          "fileName": "19.jpg",
+          "objectPath": "images/poi/P03/19-868877c3b4578139.jpg",
+          "sha256": "868877c3b457813989a20a7368eebf773f9063a604c0cf3031e7f47b39b780a8",
+          "byteLength": 318272,
+          "instruction": "Temukan objek pada gambar ini di area Gunung Api Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 20,
+          "fileName": "20.jpg",
+          "objectPath": "images/poi/P03/20-80dc7a3ffc88547a.jpg",
+          "sha256": "80dc7a3ffc88547a1ad01624700753c3513d0408e285d40c307cbf354a6d6172",
+          "byteLength": 283737,
+          "instruction": "Temukan objek pada gambar ini di area Gunung Api Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 21,
+          "fileName": "21.jpg",
+          "objectPath": "images/poi/P03/21-fdacc6b3f952168c.jpg",
+          "sha256": "fdacc6b3f952168c85c1a626ecdb20640542dd4451e15eac964e657b4538717d",
+          "byteLength": 257459,
+          "instruction": "Temukan objek pada gambar ini di area Gunung Api Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 22,
+          "fileName": "22.jpg",
+          "objectPath": "images/poi/P03/22-1c0500e35081097c.jpg",
+          "sha256": "1c0500e35081097c0e5020f7944ab47e729eb1757a9afd4627f066d2b9000af1",
+          "byteLength": 359976,
+          "instruction": "Temukan objek pada gambar ini di area Gunung Api Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 23,
+          "fileName": "23.jpg",
+          "objectPath": "images/poi/P03/23-26a2823ba16144ff.jpg",
+          "sha256": "26a2823ba16144ff210af58b147ba40339774e95e6142a86427f64dc08f354c2",
+          "byteLength": 355840,
+          "instruction": "Temukan objek pada gambar ini di area Gunung Api Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 24,
+          "fileName": "24.jpg",
+          "objectPath": "images/poi/P03/24-5437555fbd5e6889.jpg",
+          "sha256": "5437555fbd5e68892f541f407a70325d0fe27c1e55576b69586235f546d1dff5",
+          "byteLength": 283717,
+          "instruction": "Temukan objek pada gambar ini di area Gunung Api Indonesia, lalu foto objek yang sama."
+        }
+      ]
+    },
+    {
+      "poiCode": "P04",
+      "idPoi": "30000000-0000-4000-8000-000000000004",
+      "images": [
+        {
+          "sequence": 1,
+          "fileName": "1-utama.jpg",
+          "objectPath": "images/poi/P04/1-39c97c7120d24327.jpg",
+          "sha256": "39c97c7120d2432771d0db5127a953797d9f916487d7383b4cb2f9c8e91cfc1d",
+          "byteLength": 304591,
+          "instruction": null
+        },
+        {
+          "sequence": 2,
+          "fileName": "2-detail.jpg",
+          "objectPath": "images/poi/P04/2-03c925dd0d061bf1.jpg",
+          "sha256": "03c925dd0d061bf1142d771295c8b28ee05449e879fa9ce6290db5a04f34f67a",
+          "byteLength": 265121,
+          "instruction": null
+        },
+        {
+          "sequence": 3,
+          "fileName": "3-sesar.jpg",
+          "objectPath": "images/poi/P04/3-f03aefef7541fa35.jpg",
+          "sha256": "f03aefef7541fa359b97be95741524ea09bb1f0d71ff60ca2c68d93ee00e4bf1",
+          "byteLength": 232938,
+          "instruction": "Temukan objek pada gambar ini di area Rona Muka Bumi Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 4,
+          "fileName": "4-sekis_mika.jpg",
+          "objectPath": "images/poi/P04/4-bdc8f3492c332720.jpg",
+          "sha256": "bdc8f3492c332720bcc442f15b9a0c07528082cf7c9e418cdfb7c4b8e998ea87",
+          "byteLength": 322291,
+          "instruction": "Temukan objek pada gambar ini di area Rona Muka Bumi Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 5,
+          "fileName": "5-genes.jpg",
+          "objectPath": "images/poi/P04/5-4d3edea30e59eb67.jpg",
+          "sha256": "4d3edea30e59eb67450660ce2eba85efb570716c8dd3d3605b226a6a5e605c34",
+          "byteLength": 251848,
+          "instruction": "Temukan objek pada gambar ini di area Rona Muka Bumi Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 6,
+          "fileName": "6.jpg",
+          "objectPath": "images/poi/P04/6-5445709a117d7ac8.jpg",
+          "sha256": "5445709a117d7ac82794e3f3aa1e8af0d60695cee4fe678a8270a8f9a6837469",
+          "byteLength": 271760,
+          "instruction": "Temukan objek pada gambar ini di area Rona Muka Bumi Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 7,
+          "fileName": "7.jpg",
+          "objectPath": "images/poi/P04/7-5a06c4a4900272ee.jpg",
+          "sha256": "5a06c4a4900272eecd7326ea03b234dba308b653e36e1135ee234c8b855f9842",
+          "byteLength": 267870,
+          "instruction": "Temukan objek pada gambar ini di area Rona Muka Bumi Indonesia, lalu foto objek yang sama."
+        }
+      ]
+    },
+    {
+      "poiCode": "P05",
+      "idPoi": "30000000-0000-4000-8000-000000000005",
+      "images": [
+        {
+          "sequence": 1,
+          "fileName": "1-utama.jpg",
+          "objectPath": "images/poi/P05/1-6c04b30187e5b331.jpg",
+          "sha256": "6c04b30187e5b331ab62b979aedf894f144496f253caa7e24bb745cd7d9df614",
+          "byteLength": 193804,
+          "instruction": null
+        },
+        {
+          "sequence": 2,
+          "fileName": "2-detail.jpg",
+          "objectPath": "images/poi/P05/2-5d6b63ff79af8687.jpg",
+          "sha256": "5d6b63ff79af86879e235867fe592bc771ffc7c76c2c7ae5c09de5f51a350ec4",
+          "byteLength": 150100,
+          "instruction": null
+        },
+        {
+          "sequence": 3,
+          "fileName": "3-animasi_geologi.jpg",
+          "objectPath": "images/poi/P05/3-d3d126fb93ee2610.jpg",
+          "sha256": "d3d126fb93ee26104a856195a591b501e66df4689493399ac7a18740b65d24de",
+          "byteLength": 175317,
+          "instruction": "Temukan objek pada gambar ini di area Animasi Geologi Indonesia, lalu foto objek yang sama."
+        }
+      ]
+    },
+    {
+      "poiCode": "P06",
+      "idPoi": "30000000-0000-4000-8000-000000000006",
+      "images": [
+        {
+          "sequence": 1,
+          "fileName": "1-utama.jpg",
+          "objectPath": "images/poi/P06/1-f3c626f3af09d576.jpg",
+          "sha256": "f3c626f3af09d5760f041691d978a82e745e2750b1b3c05c700b543d313ee4e2",
+          "byteLength": 265664,
+          "instruction": null
+        },
+        {
+          "sequence": 2,
+          "fileName": "2-detail.jpg",
+          "objectPath": "images/poi/P06/2-bf3681211f72f5e5.jpg",
+          "sha256": "bf3681211f72f5e59aca9a73ab01016f2e9e0d601ec9a24e3e1431c80525f9ed",
+          "byteLength": 280294,
+          "instruction": null
+        },
+        {
+          "sequence": 3,
+          "fileName": "3-batugamping.jpg",
+          "objectPath": "images/poi/P06/3-e3b4a72b60762d58.jpg",
+          "sha256": "e3b4a72b60762d5873678e8ad9169ad01bc8e1804d051682b34a513ff73de70f",
+          "byteLength": 284527,
+          "instruction": "Temukan objek pada gambar ini di area Pelapukan, Erosi & Pengendapan, lalu foto objek yang sama."
+        }
+      ]
+    },
+    {
+      "poiCode": "P07",
+      "idPoi": "30000000-0000-4000-8000-000000000007",
+      "images": [
+        {
+          "sequence": 1,
+          "fileName": "1-utama.jpg",
+          "objectPath": "images/poi/P07/1-0e2b2372a7eb6ea8.jpg",
+          "sha256": "0e2b2372a7eb6ea8d1ee927680ae13cabc392f19eec68c864badd5b231bd3c06",
+          "byteLength": 292195,
+          "instruction": null
+        },
+        {
+          "sequence": 2,
+          "fileName": "2-detail.jpg",
+          "objectPath": "images/poi/P07/2-9b0a958ab3c27da9.jpg",
+          "sha256": "9b0a958ab3c27da9f70a23e8ae532fa46b487f2852dd79345eb44d2c02dd7f54",
+          "byteLength": 323292,
+          "instruction": null
+        },
+        {
+          "sequence": 3,
+          "fileName": "3-amethyst.jpg",
+          "objectPath": "images/poi/P07/3-4027dd3f8a5bfc20.jpg",
+          "sha256": "4027dd3f8a5bfc20488c32bc3df152d345f4c60213809b6ed4fc3b0009895e04",
+          "byteLength": 251913,
+          "instruction": "Temukan objek pada gambar ini di area Batuan & Mineral, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 4,
+          "fileName": "4-rhodochrosite.jpg",
+          "objectPath": "images/poi/P07/4-7ea265061d42374f.jpg",
+          "sha256": "7ea265061d42374fa35883e7d55b05a5a79795d619564b4f3b5c096f44aba1f4",
+          "byteLength": 187449,
+          "instruction": "Temukan objek pada gambar ini di area Batuan & Mineral, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 5,
+          "fileName": "5-lapis_lazuli.jpg",
+          "objectPath": "images/poi/P07/5-161ea19e15523456.jpg",
+          "sha256": "161ea19e155234565ab25bee59fe5cf289d0e0c9e1806c941745c134a9a40b9d",
+          "byteLength": 279700,
+          "instruction": "Temukan objek pada gambar ini di area Batuan & Mineral, lalu foto objek yang sama."
+        }
+      ]
+    },
+    {
+      "poiCode": "P08",
+      "idPoi": "30000000-0000-4000-8000-000000000008",
+      "images": [
+        {
+          "sequence": 1,
+          "fileName": "1-utama.jpg",
+          "objectPath": "images/poi/P08/1-c63291c6518574a5.jpg",
+          "sha256": "c63291c6518574a53faa7452b09f6919db2c9d016f8b1a5703411dc2c16edfd9",
+          "byteLength": 267854,
+          "instruction": null
+        },
+        {
+          "sequence": 2,
+          "fileName": "2-detail.jpg",
+          "objectPath": "images/poi/P08/2-4b636920ef182ea5.jpg",
+          "sha256": "4b636920ef182ea5126251a238887aa46af4d1090b7862780d3b73cf0fbd2cf6",
+          "byteLength": 347325,
+          "instruction": null
+        },
+        {
+          "sequence": 3,
+          "fileName": "3-sekis_mika.jpg",
+          "objectPath": "images/poi/P08/3-18474154dd6f10d7.jpg",
+          "sha256": "18474154dd6f10d755f58ad8707e4e07742b93a1ec0e2f137b784ffcdceb6227",
+          "byteLength": 442431,
+          "instruction": "Temukan objek pada gambar ini di area Terjadinya Tenaga Tektonik, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 4,
+          "fileName": "4-peridotit.jpg",
+          "objectPath": "images/poi/P08/4-b97799f60c551edf.jpg",
+          "sha256": "b97799f60c551edfc6f26176c27fd87453cb8b14c5bf92530c1bff824a9b6fdb",
+          "byteLength": 241096,
+          "instruction": "Temukan objek pada gambar ini di area Terjadinya Tenaga Tektonik, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 5,
+          "fileName": "5-dabas.jpg",
+          "objectPath": "images/poi/P08/5-76ae8cf6777a915f.jpg",
+          "sha256": "76ae8cf6777a915f3decd554ef6fcb4adccbb0d0980e5e0767f5fb428d931a86",
+          "byteLength": 448680,
+          "instruction": "Temukan objek pada gambar ini di area Terjadinya Tenaga Tektonik, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 6,
+          "fileName": "6.jpg",
+          "objectPath": "images/poi/P08/6-201792771dbbad3c.jpg",
+          "sha256": "201792771dbbad3c936ae7eba680e4bb763ac861d16df4f2784c370c687650a0",
+          "byteLength": 307232,
+          "instruction": "Temukan objek pada gambar ini di area Terjadinya Tenaga Tektonik, lalu foto objek yang sama."
+        }
+      ]
+    },
+    {
+      "poiCode": "P09",
+      "idPoi": "30000000-0000-4000-8000-000000000009",
+      "images": [
+        {
+          "sequence": 1,
+          "fileName": "1-utama.jpg",
+          "objectPath": "images/poi/P09/1-6e8e6a47d27a4e7c.jpg",
+          "sha256": "6e8e6a47d27a4e7c1728d65c9c6c46a6042a4376dcae48449b419a2a8884f990",
+          "byteLength": 349833,
+          "instruction": null
+        },
+        {
+          "sequence": 2,
+          "fileName": "2-detail.jpg",
+          "objectPath": "images/poi/P09/2-2ee92f2562d5c8d2.jpg",
+          "sha256": "2ee92f2562d5c8d266cef36cdf42bcb1ab1f6f923e96eb6e4d804837ad915322",
+          "byteLength": 311348,
+          "instruction": null
+        },
+        {
+          "sequence": 3,
+          "fileName": "3-meteorit_besi.jpg",
+          "objectPath": "images/poi/P09/3-578d99663aa96d11.jpg",
+          "sha256": "578d99663aa96d11fb9a33880eec881c02708daad94af0faf4f7373658793f77",
+          "byteLength": 286849,
+          "instruction": "Temukan objek pada gambar ini di area Alam Semesta & Pembentukan Bumi, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 4,
+          "fileName": "4-tektit.jpg",
+          "objectPath": "images/poi/P09/4-8354ee6f5d0279e6.jpg",
+          "sha256": "8354ee6f5d0279e6a1d3859e7bedcafa64638a1efd5b2a3dba4bc17f82a2f471",
+          "byteLength": 239051,
+          "instruction": "Temukan objek pada gambar ini di area Alam Semesta & Pembentukan Bumi, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 5,
+          "fileName": "5-meteorit_namibia.jpg",
+          "objectPath": "images/poi/P09/5-8291ee6c82b31880.jpg",
+          "sha256": "8291ee6c82b31880d0567dc3dcf1880eb49928bfbf704f8cba6b70472ea30b01",
+          "byteLength": 272184,
+          "instruction": "Temukan objek pada gambar ini di area Alam Semesta & Pembentukan Bumi, lalu foto objek yang sama."
+        }
+      ]
+    },
+    {
+      "poiCode": "P10",
+      "idPoi": "30000000-0000-4000-8000-000000000010",
+      "images": [
+        {
+          "sequence": 1,
+          "fileName": "1-utama.jpg",
+          "objectPath": "images/poi/P10/1-80dc7a3ffc88547a.jpg",
+          "sha256": "80dc7a3ffc88547a1ad01624700753c3513d0408e285d40c307cbf354a6d6172",
+          "byteLength": 283737,
+          "instruction": null
+        },
+        {
+          "sequence": 2,
+          "fileName": "2-detail.jpg",
+          "objectPath": "images/poi/P10/2-daa6f9aa87171008.jpg",
+          "sha256": "daa6f9aa87171008c123c498dff8ad1b96752768d78fff2653536421352bf605",
+          "byteLength": 376560,
+          "instruction": null
+        },
+        {
+          "sequence": 3,
+          "fileName": "3-peridotit.jpg",
+          "objectPath": "images/poi/P10/3-6f7211a71905c02a.jpg",
+          "sha256": "6f7211a71905c02a970f45ed30e88eb02a6f98edbe7fc487596cc2cf6b537e52",
+          "byteLength": 302175,
+          "instruction": "Temukan objek pada gambar ini di area Keanekaragaman Batuan di Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 4,
+          "fileName": "4-kerak_mangan.jpg",
+          "objectPath": "images/poi/P10/4-e59e422365fac562.jpg",
+          "sha256": "e59e422365fac5625e65ce374f98e510474f0ef45de2800a79a7c4b38e29275f",
+          "byteLength": 326666,
+          "instruction": "Temukan objek pada gambar ini di area Keanekaragaman Batuan di Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 5,
+          "fileName": "5-rijang.jpg",
+          "objectPath": "images/poi/P10/5-5d163e11af8d0f44.jpg",
+          "sha256": "5d163e11af8d0f4450838c7ad8c810f374b01d5c3c434fc89fcce1a8f929c7c1",
+          "byteLength": 285955,
+          "instruction": "Temukan objek pada gambar ini di area Keanekaragaman Batuan di Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 7,
+          "fileName": "7.jpg",
+          "objectPath": "images/poi/P10/7-13693ae0b070288d.jpg",
+          "sha256": "13693ae0b070288da1bb3bd17cf244378cd187b1680029687bdc551ec03ad0af",
+          "byteLength": 292206,
+          "instruction": "Temukan objek pada gambar ini di area Keanekaragaman Batuan di Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 10,
+          "fileName": "10.jpg",
+          "objectPath": "images/poi/P10/10-11c115b192be0fda.jpg",
+          "sha256": "11c115b192be0fda9de406bd2895591bbf8c80b835b8ab3bf1020915ccc716a9",
+          "byteLength": 392578,
+          "instruction": "Temukan objek pada gambar ini di area Keanekaragaman Batuan di Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 11,
+          "fileName": "11.jpg",
+          "objectPath": "images/poi/P10/11-27d4a84b8ae0d32e.jpg",
+          "sha256": "27d4a84b8ae0d32e52d4f01c9539a57d3719edcf6af9c00fa55c695917bf82fd",
+          "byteLength": 419458,
+          "instruction": "Temukan objek pada gambar ini di area Keanekaragaman Batuan di Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 13,
+          "fileName": "13.jpg",
+          "objectPath": "images/poi/P10/13-f6bc5d594ebc62c5.jpg",
+          "sha256": "f6bc5d594ebc62c57ebc2a07af82369d5018b4040eb43e135ad5d6681f8c484b",
+          "byteLength": 335064,
+          "instruction": "Temukan objek pada gambar ini di area Keanekaragaman Batuan di Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 14,
+          "fileName": "14.jpg",
+          "objectPath": "images/poi/P10/14-76ddfe44326e185a.jpg",
+          "sha256": "76ddfe44326e185a511c4bfe1b27273932486fa4cdda9d62bd50eb436c4de04b",
+          "byteLength": 305507,
+          "instruction": "Temukan objek pada gambar ini di area Keanekaragaman Batuan di Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 15,
+          "fileName": "15.jpg",
+          "objectPath": "images/poi/P10/15-e1a15fe0a4e67daa.jpg",
+          "sha256": "e1a15fe0a4e67daa86e39b70391ed96c741428ce57467118ac021a5313987a17",
+          "byteLength": 310908,
+          "instruction": "Temukan objek pada gambar ini di area Keanekaragaman Batuan di Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 16,
+          "fileName": "16.jpg",
+          "objectPath": "images/poi/P10/16-4da3ac9a59797137.jpg",
+          "sha256": "4da3ac9a5979713750e8e9046f4f7f0775b8e1b6f7ff0f7cf78f0ea7a0e9e32b",
+          "byteLength": 288649,
+          "instruction": "Temukan objek pada gambar ini di area Keanekaragaman Batuan di Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 17,
+          "fileName": "17.jpg",
+          "objectPath": "images/poi/P10/17-bdb4562258bf012f.jpg",
+          "sha256": "bdb4562258bf012f58c1f0c93997c912801c19eb8efe6f14c48496248fa58a12",
+          "byteLength": 298540,
+          "instruction": "Temukan objek pada gambar ini di area Keanekaragaman Batuan di Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 18,
+          "fileName": "18.jpg",
+          "objectPath": "images/poi/P10/18-4b94cc5bcc71c3c5.jpg",
+          "sha256": "4b94cc5bcc71c3c554f82c95b44cf5dad04663acff11c1a452f318135870daf7",
+          "byteLength": 207961,
+          "instruction": "Temukan objek pada gambar ini di area Keanekaragaman Batuan di Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 19,
+          "fileName": "19.jpg",
+          "objectPath": "images/poi/P10/19-0b03d817e7b77b4a.jpg",
+          "sha256": "0b03d817e7b77b4ab883e7dc78a9666e937eafc89b15673253c887cc9a05703a",
+          "byteLength": 362016,
+          "instruction": "Temukan objek pada gambar ini di area Keanekaragaman Batuan di Indonesia, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 20,
+          "fileName": "20.jpg",
+          "objectPath": "images/poi/P10/20-7c9d7c11ac8e37ef.jpg",
+          "sha256": "7c9d7c11ac8e37efdb81f2fe6e1dda0c4a4c9fd37f75a4a8f6e8d9992f01ac86",
+          "byteLength": 383103,
+          "instruction": "Temukan objek pada gambar ini di area Keanekaragaman Batuan di Indonesia, lalu foto objek yang sama."
+        }
+      ]
+    },
+    {
+      "poiCode": "P11",
+      "idPoi": "30000000-0000-4000-8000-000000000011",
+      "images": [
+        {
+          "sequence": 1,
+          "fileName": "1-utama.jpg",
+          "objectPath": "images/poi/P11/1-c5a4d0a549a944cd.jpg",
+          "sha256": "c5a4d0a549a944cdb734d015530e772f03f7329f69d084bbef088c5a8718be46",
+          "byteLength": 327778,
+          "instruction": null
+        },
+        {
+          "sequence": 2,
+          "fileName": "2-detail.jpg",
+          "objectPath": "images/poi/P11/2-a0ab2b1b59aeba63.jpg",
+          "sha256": "a0ab2b1b59aeba63d193e5eb4ef9cdbbcf1dee7b8acd1a45d059cd6a82951b8a",
+          "byteLength": 317389,
+          "instruction": null
+        },
+        {
+          "sequence": 3,
+          "fileName": "3-bijih_tembaga.jpg",
+          "objectPath": "images/poi/P11/3-f13e3b2127e0edc7.jpg",
+          "sha256": "f13e3b2127e0edc742f71a1cee8b0f6f6c67d9db1b760821fcc2b9492c484975",
+          "byteLength": 315338,
+          "instruction": "Temukan objek pada gambar ini di area Kekayaan Sumber Daya Geologi, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 4,
+          "fileName": "4-bijih_timbal.jpg",
+          "objectPath": "images/poi/P11/4-8162fe23588cd325.jpg",
+          "sha256": "8162fe23588cd3250c72fec2978f7d97a49f35ff9e20f889ada75b6780c4956a",
+          "byteLength": 382306,
+          "instruction": "Temukan objek pada gambar ini di area Kekayaan Sumber Daya Geologi, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 5,
+          "fileName": "5-batubara.jpg",
+          "objectPath": "images/poi/P11/5-df77bb0eb5b8e098.jpg",
+          "sha256": "df77bb0eb5b8e098423e95d40c41b90e17d91211d684b7da28d376797039be90",
+          "byteLength": 346114,
+          "instruction": "Temukan objek pada gambar ini di area Kekayaan Sumber Daya Geologi, lalu foto objek yang sama."
+        }
+      ]
+    },
+    {
+      "poiCode": "P12",
+      "idPoi": "30000000-0000-4000-8000-000000000012",
+      "images": [
+        {
+          "sequence": 1,
+          "fileName": "1-utama.jpg",
+          "objectPath": "images/poi/P12/1-c3ef64734d3142ec.jpg",
+          "sha256": "c3ef64734d3142ecb7e2a253a14d23d4984dbd9d1c7b85c6116acc03a9c9f4c4",
+          "byteLength": 318603,
+          "instruction": null
+        },
+        {
+          "sequence": 2,
+          "fileName": "2-detail.jpg",
+          "objectPath": "images/poi/P12/2-c3ef64734d3142ec.jpg",
+          "sha256": "c3ef64734d3142ecb7e2a253a14d23d4984dbd9d1c7b85c6116acc03a9c9f4c4",
+          "byteLength": 318603,
+          "instruction": null
+        },
+        {
+          "sequence": 3,
+          "fileName": "3.jpg",
+          "objectPath": "images/poi/P12/3-6ae4d4b13d2394ef.jpg",
+          "sha256": "6ae4d4b13d2394ef16269df27b290dc4787d2853f8c971a47f444d8b8374216f",
+          "byteLength": 113231,
+          "instruction": "Temukan objek pada gambar ini di area Introduksi Sejarah Kehidupan, lalu foto objek yang sama."
+        }
+      ]
+    },
+    {
+      "poiCode": "P13",
+      "idPoi": "30000000-0000-4000-8000-000000000013",
+      "images": [
+        {
+          "sequence": 1,
+          "fileName": "1-utama.jpg",
+          "objectPath": "images/poi/P13/1-8a65b621c957447c.jpg",
+          "sha256": "8a65b621c957447c8f4e37e69f6a99bc36f12c72cc22fbfcb483a8cfcfc60d21",
+          "byteLength": 357515,
+          "instruction": null
+        },
+        {
+          "sequence": 2,
+          "fileName": "2-detail.jpg",
+          "objectPath": "images/poi/P13/2-4208b62b2b494cd3.jpg",
+          "sha256": "4208b62b2b494cd3256338776855fb466ad508291beb1531a05b4aae1de80684",
+          "byteLength": 274868,
+          "instruction": null
+        },
+        {
+          "sequence": 3,
+          "fileName": "3-stromatolite.jpg",
+          "objectPath": "images/poi/P13/3-dc08ebb4742ff224.jpg",
+          "sha256": "dc08ebb4742ff2243dd7fb021c9f56ed4327fe9dbea90369993190a769441be1",
+          "byteLength": 547913,
+          "instruction": "Temukan objek pada gambar ini di area Prakambrium, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 4,
+          "fileName": "4.jpg",
+          "objectPath": "images/poi/P13/4-608289c59a6a5231.jpg",
+          "sha256": "608289c59a6a5231ec5f228c88f77af2ad809a1562ed2c91e00ffa756fe25e83",
+          "byteLength": 758774,
+          "instruction": "Temukan objek pada gambar ini di area Prakambrium, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 5,
+          "fileName": "5.jpg",
+          "objectPath": "images/poi/P13/5-3b66dd185292921f.jpg",
+          "sha256": "3b66dd185292921f8d92fcd9cfeac41834ad3846acf415602e6664d70ce3d4d8",
+          "byteLength": 626717,
+          "instruction": "Temukan objek pada gambar ini di area Prakambrium, lalu foto objek yang sama."
+        }
+      ]
+    },
+    {
+      "poiCode": "P14",
+      "idPoi": "30000000-0000-4000-8000-000000000014",
+      "images": [
+        {
+          "sequence": 1,
+          "fileName": "1-utama.jpg",
+          "objectPath": "images/poi/P14/1-29355e95e6069a98.jpg",
+          "sha256": "29355e95e6069a98d6bd8a301bba923ce72fd3f0fc826522302c958b119520b5",
+          "byteLength": 290200,
+          "instruction": null
+        },
+        {
+          "sequence": 2,
+          "fileName": "2-detail.jpg",
+          "objectPath": "images/poi/P14/2-53f941d5dcce62ca.jpg",
+          "sha256": "53f941d5dcce62cafccfcf54de382a8237563e43d8425731615d228100290b2f",
+          "byteLength": 296594,
+          "instruction": null
+        },
+        {
+          "sequence": 3,
+          "fileName": "3-coelacanth.jpg",
+          "objectPath": "images/poi/P14/3-bee704a2a86d42a7.jpg",
+          "sha256": "bee704a2a86d42a79c56807fc14e34d86f0a1dd9c28c000780e2a9606b784d22",
+          "byteLength": 326538,
+          "instruction": "Temukan objek pada gambar ini di area Paleozoikum, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 4,
+          "fileName": "4-ammonoid.jpg",
+          "objectPath": "images/poi/P14/4-2047bbb90e1519de.jpg",
+          "sha256": "2047bbb90e1519de8720700ee5d7a2195bc287e1ae1f656e226fd87316161c03",
+          "byteLength": 594493,
+          "instruction": "Temukan objek pada gambar ini di area Paleozoikum, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 5,
+          "fileName": "5.jpg",
+          "objectPath": "images/poi/P14/5-95257774948cfa06.jpg",
+          "sha256": "95257774948cfa06f2c7beddbec8fd2cbbd8705de3a2dfa64264af7446aaf8c1",
+          "byteLength": 464592,
+          "instruction": "Temukan objek pada gambar ini di area Paleozoikum, lalu foto objek yang sama."
+        },
+        {
+          "sequence": 6,
+          "fileName": "6.jpg",
+          "objectPath": "images/poi/P14/6-90d3dcac249a1738.jpg",
+          "sha256": "90d3dcac249a1738a56fa511df6f550c42643e8e819099ebeedbda8886a65bd5",
+          "byteLength": 275402,
+          "instruction": "Temukan objek pada gambar ini di area Paleozoikum, lalu foto objek yang sama."
+        }
+      ]
+    }
+  ]
+}

@@ -5,7 +5,7 @@ Auth anonim, dan Supabase Storage. Aplikasi yang direncanakan adalah Expo/React 
 Express atau server hosting tambahan. Project tujuan: `rjlihrvudakfhehbkncw`
 (`https://rjlihrvudakfhehbkncw.supabase.co`).
 
-Database cloud sudah memiliki tiga migrasi GEA (16 tabel public/private), bucket `gea-media`, Auth
+Database cloud memiliki skema GEA (16 tabel public/private), bucket `gea-media`, Auth
 anonim aktif, dan fungsi `gea-api` terdeploy. Endpoint health:
 `https://rjlihrvudakfhehbkncw.supabase.co/functions/v1/gea-api/health`. Pengujian cloud
 memverifikasi Auth/API/geofence dan penolakan akses langsung ke kunci. Dataset published masih
@@ -13,7 +13,8 @@ kosong dan konfigurasi area museum belum diisi; ini bukan data demo.
 
 Backend ini menyediakan skema ERD, API Stories, sesi, QR, jawaban, progres, dan evaluasi geofence.
 Frontend awal Expo tersedia di `../frontend` untuk landing, GPS, QR pintu masuk, dan daftar POI.
-Konten museum yang disetujui, file media, koordinat museum, dan uji lapangan belum tersedia.
+Master 20 POI dan sepuluh cerita final tersimpan sebagai draft; file media, kelengkapan kuis, koordinat museum,
+dan uji lapangan belum tersedia. Draft dapat dilengkapi bertahap sebelum dipublikasikan.
 Keputusan penggunaan Supabase sudah disetujui dalam pengerjaan ini; handoff teknologi aplikasi tetap
 perlu dicocokkan dengan C3.
 
@@ -115,7 +116,7 @@ Publishable key bukan pengganti access token pengunjung.
 | POST   | `/sessions/{id}/pois/{poiId}/close`       | Menyimpan kartu ditutup pada sesi ini                                             |
 | GET    | `/sessions/{id}/progress`                 | Sesi, kartu, dan hasil quest milik pengunjung                                     |
 
-Bahasa: `id`/`en`. Profil (kelompok usia): `anak` (7–12), `remaja` (13–17), `dewasa` (18+); nilai lama `umum`/`pelajar` diterima sebagai `dewasa`/`anak`. Detail POI mengembalikan `cards` dengan jenis
+Bahasa: `id`/`en`. Profil sesuai sheet: `anak` (Anak-anak, 7–12) dan `dewasa` (Umum, 13+); nilai lama `umum`/`remaja`/`pelajar` diterima sebagai `dewasa`/`dewasa`/`anak`. Detail POI mengembalikan `cards` dengan jenis
 `description` dan `audio`, ditambah satu `quest` dengan empat opsi. Kunci jawaban dan hint tidak
 dikirim di detail; hint hanya dikirim setelah jawaban salah. Field domain mengikuti nama ERD
 (`id_poi`, `id_zona`, dsb); objek request dan keputusan menggunakan camelCase seperti tabel di atas.
@@ -198,7 +199,7 @@ Representasi museum adalah lingkaran pusat+radius dalam meter, usulan teknis ses
 masih perlu mengesahkan batasnya berdasarkan survei/peta gedung. Konfigurasi melalui secret
 `GEA_MUSEUM_LATITUDE`, `GEA_MUSEUM_LONGITUDE`, `GEA_MUSEUM_RADIUS_METERS`, dan `GEA_MUSEUM_ZONE_ID`
 yang merujuk zona dalam DB. Koordinat memakai derajat geografis WGS84. Zona/checkpoint pada ERD
-berbeda dari batas seluruh museum. Radius checkpoint 10 m dan ambang akurasi GPS 20 m tidak boleh
+berbeda dari batas seluruh museum. Radius checkpoint 15 m dan ambang akurasi GPS 20 m tidak boleh
 dijadikan radius museum secara otomatis.
 
 | Kondisi                             | Status backend         | Perilaku aplikasi                                                 |
@@ -220,7 +221,33 @@ Endpoint evaluasi tidak menerbitkan izin sesi. Endpoint pembuatan sesi mengevalu
 sehingga boolean izin dari client tidak dipercaya. Koordinat client tetap dapat dipalsukan; ini
 validasi geofence untuk prototipe, bukan sistem anti-spoofing GPS.
 
-## QR dan data enam POI
+## A9: dataset 20 POI dan format QR
+
+Scope saat ini adalah POI-01 sampai POI-20: 11 koleksi Left Wing dan 9 koleksi Right Wing. POI-21
+dikeluarkan. Sumber data checkpoint adalah `data/checkpoints.json`; koordinat desimal WGS84 sudah
+dikonfirmasi pemilik data. Nilai koordinat asal dan folder foto referensi disimpan untuk
+penelusuran. Radius tiap POI adalah 15 m, terpisah dari batas museum dan radius zona. Koordinat
+POI-10 adalah `-6.900649, 107.621063`; POI-11 adalah `-6.900694, 107.621056`.
+Pemilik data mengonfirmasi seluruh POI sudah disurvei pada 10 November 2026. Status
+tersebut disimpan sebagai `surveyCompleted: true`. Akurasi GPS dan nama surveyor yang belum dicatat
+tetap `null` dan tidak menentukan status penyelesaian survei.
+
+```powershell
+cd backend
+npm run checkpoints:check
+```
+
+Perintah ini memeriksa kode/UUID unik, relasi zona, rentang koordinat, dan radius. Hasilnya
+menampilkan titik bersama dan status survei yang telah dikonfirmasi. A9 menyediakan data untuk
+E10/C3 dan mapping ID untuk B6/C2; pemicu kartu GPS koleksi belum tersedia di API.
+
+Master cloud disimpan di `public.poi`: `kode_poi`, `nama`, `nama_asli`, `id_zona`,
+`latitude`, `longitude`, dan `radius` (meter). Migrasi `20261112000400_poi_checkpoint_fields.sql`
+menambah kolom checkpoint; `20261112000500_checkpoint_master.sql` mengisi dua zona dan 20 POI.
+Pengisian master memperbarui identitas/koordinat dengan UUID tetap, mempertahankan cerita, media,
+denah, kuis, serta status publikasi. Koordinat GPS zona dan poligon museum tetap terpisah.
+Untuk pembaruan master berikutnya, `npm run checkpoints:prepare -- output.sql` menghasilkan
+SQL dari dataset yang sudah divalidasi, untuk diterapkan sebagai migrasi baru.
 
 QR berisi token acak 32 byte dalam bentuk 64 karakter hex. Database hanya menyimpan hash SHA-256,
 target entrance/POI, masa berlaku, dan pencabutan. Token tidak tersedia dari API daftar/detail. QR
@@ -229,43 +256,79 @@ dikonfirmasi PM), dibatasi juga expiry QR. QR statis masih dapat disalin; token 
 anti-replay kehadiran fisik.
 
 ```powershell
-npm run qr:create -- entrance ZONA_UUID 2026-12-01T00:00:00Z .local/entrance
-npm run qr:create -- poi POI_UUID 2026-12-01T00:00:00Z .local/poi-1
+New-Item -ItemType Directory -Path .local -Force
+npm run qr:create -- entrance LEFT_WING 2026-12-01T00:00:00Z .local/entrance
+npm run qr:create -- poi POI-01 2026-12-01T00:00:00Z .local/poi-01
 ```
 
-Beri nama prefix sesuai kode PM agar aplikasi mengenali jenis QR: `.local/P03` untuk koleksi
-P03 (target UUID `30000000-0000-4000-8000-000000000003`), `.local/ZL`/`.local/ZR` untuk zona, dan
-`.local/ENTRANCE` untuk pintu masuk. Setelah semua token dibuat:
+Target boleh berupa kode dataset atau UUID terdaftar. Contoh tanggal adalah masa berlaku QR, bukan
+tanggal survei, dan harus diganti sesuai keputusan tim. Jalankan SQL hasil `qr:create` sebagai admin
+setelah data target tersedia di database. Untuk mencabut token, isi `revoked_at`. Token tidak
+dicetak ke log dan folder `.local` diabaikan Git.
 
 ```powershell
-npm run qr:sheet            # baca .local/*.token.txt
+npm run qr:sheet
 ```
 
-Hasilnya di `.local/qr/`: satu PNG per QR berisi `GEA1:POI:P03:<token>` (format yang dibaca
-aplikasi tanpa internet) dan `lembar-qr.html` untuk dicetak A4 (Ctrl+P → simpan PDF). Folder
-`.local` tidak masuk Git karena QR berisi token.
+Perintah C3 ini membaca `.local/*.token.txt` dan menghasilkan PNG serta `lembar-qr.html` di
+`.local/qr/` untuk dicetak. Nama file `POI-01.token.txt` dan `P01.token.txt` sama-sama dikenali.
+Label dan nama koleksi diambil dari dataset A9 sehingga POI-21 ditolak.
 
-Buat folder `.local` terlebih dahulu. Jalankan SQL yang dihasilkan sebagai admin melalui migrasi/SQL
-Editor, lalu ubah isi `.token.txt` menjadi QR fisik melalui alat tim. Token tidak dicetak ke log dan
-file token diabaikan Git. UUID/expiry contoh wajib diganti. Untuk mencabut, isi `revoked_at` pada
-baris token. Tidak ada QR mock di jalur produksi.
+Kontrak QR terintegrasi: `GEA1:POI:P01:<token64hex>` untuk koleksi, `GEA1:ENTRANCE:-:<token64hex>`
+untuk pintu masuk, dan `GEA1:ZONE:ZL|ZR:<token64hex>` untuk label zona. Frontend mengenali label
+secara offline dan tetap menerima token 64 hex polos. Hanya token dikirim ke backend; keabsahan
+token dan `idPoi` ditentukan respons backend. Label zona saja tidak memberikan bukti verifikasi
+quest.
 
-Isi `data/poi-template.json` bersama PM/PD2. Nilai `null` sengaja menandai konten belum ada.
-Template memuat enam ID POI dan quest yang stabil, bukan enam koleksi museum yang telah disetujui.
-Generator menghasilkan seed awal satu varian bahasa/profil, bukan pengubah data yang sudah ada.
-Varian tambahan ditambahkan lewat migrasi data sesuai PK komposit ERD.
+## B6: seed konten 20 POI
+
+Cerita final Indonesia/profil dewasa (sebelumnya umum) untuk POI-01, POI-02, dan POI-04–11 tersimpan di
+`data/approved-stories.json`; demo frontend dan generator seed memakai sumber yang sama untuk
+judul, cerita, fakta, dan koleksi sorotan. Nama checkpoint, media, dan soal tetap dari dataset/input
+masing-masing. Teks lampiran dipertahankan apa adanya. Terapkan migrasi `20261112000100_story_metadata.sql`
+sebelum memakai respons API dengan metadata tersebut. Untuk database yang sudah berisi varian
+konten, `npm run stories:prepare -- .local/approved-stories-update.sql` menyiapkan SQL
+pembaruan teks. Jalankan SQL itu setelah diperiksa; seluruh pembaruan dibatalkan jika ada varian
+yang belum tersedia. Perintah ini hanya menghasilkan file, tidak mengubah cloud.
+
+Database kosong dapat menerima 10 cerita terlebih dahulu sebagai draft. Migrasi
+`20261112000200_partial_story_drafts.sql` mengizinkan data yang belum tersedia disimpan sebagai
+`NULL`; migrasi `20261112000300_approved_story_drafts.sql` mengisi zona yang dipakai, identitas
+10 POI, dan varian cerita dari sumber final. Profil legacy `umum` dinormalisasi menjadi `dewasa`
+oleh migrasi `20261112000150_legacy_story_profile.sql` agar seed lama tetap valid setelah migrasi
+kelompok usia. Jalankan `npm run db:push` untuk menerapkan
+migrasi yang belum ada di cloud. Koordinat zona, foto, denah, prioritas, estimasi, audio, dan quest
+yang belum tersedia tetap kosong. Cerita terlihat oleh admin di tabel `poi`/`konten`; API pengunjung
+tetap hanya menampilkan POI dengan `is_published=true`. Publikasi memerlukan detail POI, media,
+dan kuis lengkap. Pembaruan kolom POI atau audio yang membuat paket terpublikasi tidak lengkap
+ditolak; kosongkan status publikasi dahulu jika perlu mengeditnya sebagai draft.
+
+Untuk cerita final berikutnya, `npm run stories:drafts -- output.sql` menyiapkan SQL penambahan
+draft dari dataset final. Perintah ini menambahkan identitas yang belum ada dan memperbarui teks
+varian yang sama, tanpa mengganti media, detail POI, status publikasi, atau soal yang sudah ada.
+Tambahan cerita dapat diterapkan lewat migrasi data baru; generator tidak mengubah database.
+
+Isi `data/poi-template.json` bersama PM/PD2. Nama, UUID POI/quest dan relasi dua zona sudah diisi
+untuk 20 POI. Enam UUID awal dipertahankan. Nilai `null` menandai konten, media, posisi denah,
+estimasi durasi, serta pusat/radius zona yang belum tersedia. Koordinat POI di dataset A9 tidak
+boleh dijadikan pusat/radius zona secara otomatis. Tabel `poi` menyimpan koordinat/radius checkpoint
+terpisah dari posisi denah. Generator
+menghasilkan seed awal satu varian bahasa/profil, bukan pengubah data yang sudah ada. Varian
+tambahan ditambahkan lewat migrasi data sesuai PK komposit ERD.
 
 ```powershell
-npm run seed:prepare -- data/poi-approved.json supabase/migrations/20261103000400_approved_pois.sql
+npm run seed:prepare -- data/poi-approved.json supabase/migrations/20261112000600_approved_pois.sql
 ```
 
-Generator menolak `approved:false`, kolom kosong, deskripsi >100 kata, audio di luar 30-90 detik,
-atau opsi yang bukan empat label A-D dengan tepat satu kunci. Media harus diunggah ke bucket
-`gea-media` dengan object path `images/...` dan `audio/...`. Bucket ini **publik** hanya untuk
-foto/narasi museum yang disetujui, maksimal 10 MiB per file; bukan untuk foto pengunjung. Admin
-mengunggah media; client tidak memiliki izin upload. Sebelum menyebut B3 selesai, periksa seluruh
-URL media dan cocokkan durasi file sebenarnya, bukan hanya metadata JSON.
-
+Generator seed awal ini hanya untuk database kosong, sebelum draft dimasukkan. Sesudah draft ada,
+lengkapi baris yang sama lewat pembaruan data, bukan mengulang seed awal. Generator mewajibkan
+20 POI dan dua zona serta menolak `approved:false`, kolom kosong, deskripsi
+lebih dari 100 kata, audio di luar 30-90 detik, atau opsi yang bukan empat label A-D dengan tepat
+satu kunci. Media harus diunggah ke bucket `gea-media` dengan object path `images/...` dan
+`audio/...`. Bucket ini **publik** hanya untuk foto/narasi museum yang disetujui, maksimal 10 MiB
+per file; bukan untuk foto pengunjung. Admin mengunggah media; client tidak memiliki izin upload.
+Sebelum menyebut B6 selesai, periksa seluruh URL media dan cocokkan durasi file sebenarnya, bukan
+hanya metadata JSON.
 
 ## Handoff dan batas selesai
 
@@ -274,7 +337,7 @@ URL media dan cocokkan durasi file sebenarnya, bukan hanya metadata JSON.
   kunjungan.
 - PD1: landing inside/outside/GPS lemah/izin ditolak/belum dikonfigurasi.
 - PM: koordinat/radius museum, aturan manual, expiry QR, batas percobaan, varian konten wajib.
-- PM/PD2: enam koleksi disetujui, foto, teks, audio, soal dan kunci; belum tersedia di repo.
+- PM/PD2: lengkapi foto, teks, audio, soal dan kunci untuk 20 koleksi pada template B6.
 
 Percobaan salah saat ini boleh diulang tanpa batas; poin, lencana, quest foto, pergantian preferensi
 sesi, dan GPS spesifik koleksi belum termasuk API sprint ini. Geofence museum bukan bukti
@@ -289,5 +352,164 @@ belum selesai sebelum konten asli dan media terunggah serta URL diperiksa.
 
 `npm run poi:draft` menulis `data/poi-sprint2-draft.json` (14 POI P01–P14, format sama dengan
 `poi-template.json`) dari konten frontend. Status `approved:false`, audio masih `null` (B5), dan foto
-harus diunggah ke `images/Pxx/NN.jpg`. `prepare-seed.ts` saat ini hanya menerima tepat 6 POI, jadi
-batas itu perlu diubah C-1 sebelum draft ini dipakai.
+harus diunggah ke `images/Pxx/NN.jpg`. `prepare-seed.ts` membutuhkan tepat 20 POI lengkap dan dua
+zona; draft 14 POI ini perlu dilengkapi sebelum dipakai sebagai seed publikasi.
+
+## A8: Skema tabel Sprint 2 — poin, lencana, dan progres
+
+Migrasi `20261112000600_sprint2_points_badges_progress.sql` menambah tabel berikut:
+
+| Tabel | Fungsi |
+| --- | --- |
+| `public.badge` | Master lencana (kode BD-01–BD-05, bonus poin, is_active) |
+| `public.user_badge` | Lencana yang diraih per sesi, unik per `(id_sesi, kode_badge)` |
+| `public.points` | Poin yang diperoleh per komponen per POI per sesi; unique key `(id_sesi, id_poi, komponen)` mencegah poin ganda |
+| `public.poi_progress` | Status progres POI per sesi: `belum`/`sebagian`/`selesai` |
+
+View kompatibilitas tersedia agar kode yang mereferensikan nama lama tetap berjalan:
+`session` → `sesi_kunjungan`, `quest_attempt` → `private.quest_attempts`, `checkpoint` → `poi`.
+
+Seed awal menyertakan 5 lencana: BD-01 (Penjelajah Sayap Kiri), BD-02 (Penjelajah Sayap Kanan),
+BD-03 (Pemburu Foto — `is_active=false`, menunggu Sprint 3), BD-04 (Otak Geologi), BD-05 (Geolog Sejati).
+RLS aktif; hanya `service_role` yang dapat mengakses semua tabel ini secara langsung.
+
+```powershell
+npm test -- --filter a8_schema
+```
+
+## E11: Poin engine dan evaluasi lencana
+
+Engine poin diimplementasikan dalam fungsi `private.evaluasi_lencana()` yang dipanggil otomatis
+di dalam RPC `jawab_quest` setelah setiap jawaban benar. Skema poin:
+
+| Percobaan | Poin |
+| --- | --- |
+| Ke-1 (jawaban langsung benar) | 20 |
+| Ke-2 | 10 |
+| Ke-3 | 5 |
+| Gagal (habis percobaan) | 0 |
+| Foto (Sprint 3) | 5 |
+
+Evaluasi lencana otomatis memeriksa kondisi setiap kali poin baru tercatat:
+
+| Kode | Kondisi |
+| --- | --- |
+| BD-01 | Semua POI aktif di zona Sayap Kiri (`ZL`) selesai |
+| BD-02 | Semua POI aktif di zona Sayap Kanan (`ZR`) selesai |
+| BD-04 | Semua quest dijawab benar di percobaan pertama |
+| BD-05 | Semua POI aktif dari seluruh zona selesai |
+
+Lencana yang sudah diraih tidak diberikan ulang (constraint `unique(id_sesi, kode_badge)`).
+BD-03 (`is_active=false`) tidak dievaluasi sampai modul foto aktif di Sprint 3.
+
+## E12: API quest dan poin — update Sprint 2
+
+### POST `/sessions/{id}/quests/{questId}/answers`
+
+Payload diperluas untuk mendukung semua tipe quest:
+
+```json
+{
+  "requestId": "uuid",
+  "labelOpsi": "B",
+  "jawabanTeks": "tektonik",
+  "photoTaken": true
+}
+```
+
+`labelOpsi` wajib untuk tipe `pilgan`, `benar_salah`, `cocokkan`. `jawabanTeks` wajib untuk
+`isian_singkat`. `photoTaken: true` menandai quest foto selesai. Semua field selain `requestId`
+bersifat opsional secara sintaks; validasi logika ada di fungsi SQL `jawab_quest`.
+
+Respons sekarang menyertakan informasi poin dan lencana:
+
+```json
+{
+  "data": {
+    "idQuest": "uuid",
+    "idPoi": "uuid",
+    "answerCorrect": true,
+    "attemptCount": 1,
+    "completed": true,
+    "pointsAwarded": 20,
+    "totalPoints": 60,
+    "newBadges": ["BD-04"]
+  }
+}
+```
+
+`pointsAwarded` adalah poin dari percobaan ini. `totalPoints` adalah akumulasi seluruh sesi.
+`newBadges` adalah array kode lencana yang baru diraih dari jawaban ini (kosong jika tidak ada).
+
+### GET `/sessions/{id}/progress`
+
+Respons diperluas dengan field:
+
+```json
+{
+  "data": {
+    "session": { ... },
+    "cards": [ ... ],
+    "quests": [ ... ],
+    "totalPoints": 80,
+    "badges": ["BD-01", "BD-04"],
+    "poiProgress": {
+      "uuid-poi": "selesai",
+      "uuid-poi-2": "sebagian"
+    }
+  }
+}
+```
+
+### Flag `isDisabled` pada quest (profil anak)
+
+Endpoint detail POI (`GET /pois/{id}`) menyertakan flag `isDisabled: true` pada quest
+untuk pengunjung dengan `profile=anak` jika tipe quest bukan `foto`. Frontend wajib
+menonaktifkan input jawaban saat `isDisabled=true`. Blokir ini hanya di level API —
+database tidak memblokir pengiriman jawaban secara langsung agar kompatibilitas test suite terjaga.
+
+### Tipe quest yang didukung
+
+Migrasi `20261112000700_quest_types_and_variations.sql` memperluas constraint `tipe_quest`:
+
+| Tipe | Kolom kunci | Keterangan |
+| --- | --- | --- |
+| `pilgan` | `label_opsi` A–D | Default Sprint 1; wajib 4 opsi + 1 kunci |
+| `foto` | `target_foto`, `photoTaken` | Aktif Sprint 2; hanya quest ini yang bisa dikerjakan profil anak |
+| `isian_singkat` | `kunci_isian`, `jawabanTeks` | Matching case-insensitive |
+| `benar_salah` | `label_opsi` A/B | Wajib tepat 2 opsi |
+| `cocokkan` | `label_opsi`, `variasi_jawaban` | Wajib 4 opsi |
+
+```powershell
+npm test -- --filter quest_types
+```
+
+## B6: Seed Konten & Quest Sprint 2 (11 POI)
+
+Seed data konten museum dan quest tantangan bersumber dari spreadsheet kurasi tim editorial/konten (`Template_Scratch_Data_Museum_Geologi` dari Naomi). Fokus utama Sprint 2 adalah **11 POI High Priority (Sayap Kiri / Left Wing, POI-01 s.d. POI-11)**.
+
+File SQL seed: [`data/b6_seed_content_poi.sql`](./data/b6_seed_content_poi.sql).
+
+### Cakupan data yang sudah ter-seed di Supabase Remote:
+1. **Konten Cerita Profil Dewasa (11 POI)**:
+   - Bahasa `id`, teks cerita, judul cerita, fakta menarik, dan koleksi sorotan.
+2. **Konten Cerita Profil Anak (11 POI)**:
+   - Bahasa `id`, versi kalimat ringan dan ramah anak.
+3. **Quest & Tantangan (11 POI)**:
+   - 5 variasi tipe quest: `foto` (POI-01, 03, 07, 10), `pilgan` (POI-02, 09, 11), `benar_salah` (POI-04), `isian_singkat` (POI-05, 08), dan `cocokkan` (POI-06).
+   - Master opsi jawaban dan kunci untuk `pilgan`, `benar_salah`, dan `cocokkan`.
+   - `target_foto`, `kunci_isian`, variasi jawaban, dan penjelasan setelah menjawab.
+4. **Quest Versi Anak (4 POI)**:
+   - Tipe `foto` aktif untuk profil anak pada POI-01, POI-03, POI-07, dan POI-10. Quest non-foto pada profil anak otomatis ditandai `isDisabled: true` oleh API.
+
+### Menjalankan ulang seed ke Supabase Remote:
+```powershell
+cd backend
+Get-Content "data/b6_seed_content_poi.sql" -Raw | npx supabase db query --remote --yes
+```
+
+Verifikasi di remote:
+```sql
+select count(*) as total_konten from public.konten; -- 22 baris (11 dewasa, 11 anak)
+select count(*) as total_quest from public.quest;   -- 11 quest terpasang
+```
