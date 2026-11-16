@@ -483,3 +483,33 @@ Migrasi `20261112000700_quest_types_and_variations.sql` memperluas constraint `t
 ```powershell
 npm test -- --filter quest_types
 ```
+
+## B6: Seed Konten & Quest Sprint 2 (11 POI)
+
+Seed data konten museum dan quest tantangan bersumber dari spreadsheet kurasi tim editorial/konten (`Template_Scratch_Data_Museum_Geologi` dari Naomi). Fokus utama Sprint 2 adalah **11 POI High Priority (Sayap Kiri / Left Wing, POI-01 s.d. POI-11)**.
+
+File SQL seed: [`data/b6_seed_content_poi.sql`](./data/b6_seed_content_poi.sql).
+
+### Cakupan data yang sudah ter-seed di Supabase Remote:
+1. **Konten Cerita Profil Dewasa (11 POI)**:
+   - Bahasa `id`, teks cerita, judul cerita, fakta menarik, dan koleksi sorotan.
+2. **Konten Cerita Profil Anak (11 POI)**:
+   - Bahasa `id`, versi kalimat ringan dan ramah anak.
+3. **Quest & Tantangan (11 POI)**:
+   - 5 variasi tipe quest: `foto` (POI-01, 03, 07, 10), `pilgan` (POI-02, 09, 11), `benar_salah` (POI-04), `isian_singkat` (POI-05, 08), dan `cocokkan` (POI-06).
+   - Master opsi jawaban dan kunci untuk `pilgan`, `benar_salah`, dan `cocokkan`.
+   - `target_foto`, `kunci_isian`, variasi jawaban, dan penjelasan setelah menjawab.
+4. **Quest Versi Anak (4 POI)**:
+   - Tipe `foto` aktif untuk profil anak pada POI-01, POI-03, POI-07, dan POI-10. Quest non-foto pada profil anak otomatis ditandai `isDisabled: true` oleh API.
+
+### Menjalankan ulang seed ke Supabase Remote:
+```powershell
+cd backend
+Get-Content "data/b6_seed_content_poi.sql" -Raw | npx supabase db query --remote --yes
+```
+
+Verifikasi di remote:
+```sql
+select count(*) as total_konten from public.konten; -- 22 baris (11 dewasa, 11 anak)
+select count(*) as total_quest from public.quest;   -- 11 quest terpasang
+```
