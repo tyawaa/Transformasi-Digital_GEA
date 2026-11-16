@@ -30,9 +30,14 @@ export function ChallengeScreen({ challenge, onBack, onDone, testMode = false }:
   const [wrong, setWrong] = useState<boolean>(false);
   const [height, setHeight] = useState<number>(0);
   const photoType: boolean = challenge.tipe === "foto" || challenge.tipe === "cariObjek";
+  // Quest foto dengan pertanyaan pembuka (kolom Opsi A–D di sheet, mis. P01): jawab dulu, lalu foto.
+  // Pertanyaan tidak menghalangi: setelah benar atau kesempatan habis, lanjut ke foto.
+  const hasWarmup: boolean = photoType && (challenge.opsi?.length ?? 0) > 0;
+  const [warmupDone, setWarmupDone] = useState<boolean>(!hasWarmup);
   const left: number = challenge.batasPercobaan - attempts;
+  const choices: readonly string[] = challenge.tipe === "benarSalah" ? ["Benar", "Salah"] : hasWarmup ? challenge.opsi ?? [] : [];
 
-  if (photoType && outcome === null) {
+  if (photoType && warmupDone && outcome === null) {
     return (
       <PhotoTaskScreen
         title={challenge.judul}
@@ -44,6 +49,15 @@ export function ChallengeScreen({ challenge, onBack, onDone, testMode = false }:
         testMode={testMode}
       />
     );
+  }
+
+  function checkWarmup(index: number): void {
+    const used: number = attempts + 1;
+    setAttempts(used);
+    if ("ABCD"[index] === challenge.kunci || used >= challenge.batasPercobaan) {
+      setWrong(false);
+      setWarmupDone(true);
+    } else setWrong(true);
   }
 
   function check(value: string): void {
@@ -63,7 +77,7 @@ export function ChallengeScreen({ challenge, onBack, onDone, testMode = false }:
       <View style={styles.card} onLayout={(event): void => setHeight(event.nativeEvent.layout.height)}>
         <View style={styles.header}>
           <GeaText variant="label16" color={colors.primary[700]}>TANTANGAN</GeaText>
-          {!photoType && outcome === null && (
+          {(!photoType || !warmupDone) && outcome === null && (
             <GeaText variant="label16" color={colors.primary[700]} accessibilityLabel={`Sisa ${left} kesempatan`}>
               {"●".repeat(left)}{"○".repeat(attempts)}
             </GeaText>
@@ -75,17 +89,22 @@ export function ChallengeScreen({ challenge, onBack, onDone, testMode = false }:
           ? (
             <>
               <GeaText variant="body16" color={componentColors.bodyDark}>{challenge.instruksi}</GeaText>
-              {challenge.tipe === "benarSalah"
+              {choices.length > 0
                 ? (
-                  <View accessibilityRole="radiogroup" style={styles.options}>
-                    {["Benar", "Salah"].map((label: string): ReactElement => (
+                  <View accessibilityRole="radiogroup" style={hasWarmup ? styles.optionList : styles.options}>
+                    {choices.map((label: string, index: number): ReactElement => (
                       <Pressable
                         key={label}
                         accessibilityRole="radio"
-                        onPress={(): void => check(label)}
-                        style={({ pressed }) => [styles.option, pressed && styles.pressed]}
+                        onPress={(): void => {
+                          if (hasWarmup) checkWarmup(index);
+                          else check(label);
+                        }}
+                        style={({ pressed }) => [styles.option, hasWarmup && styles.optionRow, pressed && styles.pressed]}
                       >
-                        <GeaText variant="bold16" color={colors.primary[900]}>{label}</GeaText>
+                        <GeaText variant="bold16" color={colors.primary[900]}>
+                          {hasWarmup ? `${"ABCD"[index]}. ${label}` : label}
+                        </GeaText>
                       </Pressable>
                     ))}
                   </View>
@@ -162,6 +181,8 @@ const styles = StyleSheet.create({
   },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   options: { flexDirection: "row", gap: spacing[12] },
+  optionList: { gap: spacing[8] },
+  optionRow: { flex: 0, alignItems: "flex-start", padding: spacing[12] },
   option: {
     flex: 1,
     alignItems: "center",

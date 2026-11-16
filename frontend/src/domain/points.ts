@@ -80,7 +80,8 @@ export function earnedBadges(
   const all: boolean = pois.every((poi: PoiRef): boolean => done(states[poi.id]));
   const perfect: boolean = pois.every((poi: PoiRef): boolean => {
     const state: StoryState | undefined = states[poi.id];
-    return state !== undefined && state.completed && state.attempts === 1;
+    // attempts 0 = POI tanpa Mini Quiz (Sprint 3: satu quest per POI), tidak menggugurkan lencana.
+    return state !== undefined && state.completed && state.attempts <= 1;
   });
   const result: BadgeId[] = [];
   if (wingDone("left")) result.push("BD-01");

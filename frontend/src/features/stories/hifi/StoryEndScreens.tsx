@@ -16,9 +16,11 @@ const MASCOT_RATIO = 214.85 / 200;
 
 /** "Kisah selesai. Lanjutkan penjelajahanmu!" setelah Story Isi. */
 export function StoryFinishedScreen(
-  { poiName, actionLabel, onAction, onSkip }: {
+  { poiName, hasActivity, actionLabel, onAction, onSkip }: {
     readonly poiName: string;
-    /** "Lakukan Tantangan", atau "Lanjut ke Mini Quiz" bila POI tidak punya tantangan. */
+    /** false = tidak ada quest untuk profil ini (mis. anak di POI tanpa quest foto). */
+    readonly hasActivity: boolean;
+    /** "Lakukan Tantangan", "Lanjut ke Mini Quiz", atau "Lihat Hasil". */
     readonly actionLabel: string;
     readonly onAction: () => void;
     readonly onSkip: () => void;
@@ -27,7 +29,9 @@ export function StoryFinishedScreen(
   return (
     <MascotSplash
       title="Kisah selesai. Lanjutkan penjelajahanmu!"
-      description={`Selamat explorer, kamu baru saja menamatkan cerita tentang ${poiName}. Ayo hidupkan ceritamu dengan tantangan!`}
+      description={hasActivity
+        ? `Selamat explorer, kamu baru saja menamatkan cerita tentang ${poiName}. Ayo hidupkan ceritamu dengan tantangan!`
+        : `Selamat explorer, kamu baru saja menamatkan cerita tentang ${poiName}. Yuk, lanjut ke koleksi berikutnya!`}
       actionLabel={actionLabel}
       onAction={onAction}
       onSkip={onSkip}
