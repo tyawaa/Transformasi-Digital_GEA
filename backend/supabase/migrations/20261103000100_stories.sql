@@ -2,7 +2,6 @@
 create schema if not exists private;
 revoke all on schema private from public, anon, authenticated;
 grant usage on schema private to service_role;
-
 create table public.zona (
   id_zona uuid primary key default gen_random_uuid(),
   nama text not null check (length(btrim(nama)) > 0),
@@ -11,13 +10,11 @@ create table public.zona (
   radius double precision not null check (radius > 0 and radius < 'Infinity'::float8)
 );
 comment on column public.zona.radius is 'Meter; radius zona/checkpoint, bukan otomatis batas museum.';
-
 create table public.zona_keyword (
   id_zona uuid not null references public.zona on delete cascade,
   keyword text not null check (length(btrim(keyword)) > 0),
   primary key (id_zona, keyword)
 );
-
 create table public.poi (
   id_poi uuid primary key default gen_random_uuid(),
   id_zona uuid not null references public.zona,
@@ -30,13 +27,11 @@ create table public.poi (
   is_published boolean not null default false
 );
 comment on column public.poi.estimasi_durasi is 'Estimasi durasi kunjungan dalam menit.';
-
 create table public.poi_keyword (
   id_poi uuid not null references public.poi on delete cascade,
   keyword text not null check (length(btrim(keyword)) > 0),
   primary key (id_poi, keyword)
 );
-
 create table public.memiliki_jarak (
   id_poi_asal uuid not null references public.poi on delete cascade,
   id_poi_tujuan uuid not null references public.poi on delete cascade,
@@ -44,7 +39,6 @@ create table public.memiliki_jarak (
   primary key (id_poi_asal, id_poi_tujuan),
   check (id_poi_asal <> id_poi_tujuan)
 );
-
 create table public.konten (
   id_poi uuid not null references public.poi on delete cascade,
   bahasa text not null check (bahasa in ('id', 'en')),
@@ -58,13 +52,11 @@ create table public.konten (
   primary key (id_poi, bahasa, profil)
 );
 comment on column public.konten.durasi_audio is 'Detik; sprint mewajibkan audio 30-90 detik.';
-
 create table public.quest (
   id_quest uuid primary key default gen_random_uuid(),
   id_poi uuid not null unique references public.poi on delete cascade,
   tipe_quest text not null check (tipe_quest = 'pilgan')
 );
-
 create table public.quest_teks (
   id_quest uuid not null references public.quest on delete cascade,
   bahasa text not null check (bahasa in ('id', 'en')),
@@ -74,7 +66,6 @@ create table public.quest_teks (
   hint text not null check (length(btrim(hint)) > 0),
   primary key (id_quest, bahasa, profil)
 );
-
 create table public.quest_opsi (
   id_quest uuid not null references public.quest on delete cascade,
   label_opsi text not null check (label_opsi in ('A', 'B', 'C', 'D')),
@@ -82,7 +73,6 @@ create table public.quest_opsi (
   primary key (id_quest, label_opsi)
 );
 create unique index quest_satu_kunci on public.quest_opsi (id_quest) where is_correct;
-
 create table public.quest_opsi_text (
   id_quest uuid not null,
   label_opsi text not null,
@@ -91,7 +81,6 @@ create table public.quest_opsi_text (
   primary key (id_quest, label_opsi, bahasa),
   foreign key (id_quest, label_opsi) references public.quest_opsi on delete cascade
 );
-
 create table public.sesi_kunjungan (
   id_sesi uuid primary key,
   user_id uuid not null references auth.users on delete cascade,
@@ -105,7 +94,6 @@ create table public.sesi_kunjungan (
   end_time timestamptz
 );
 create index sesi_pemilik on public.sesi_kunjungan (user_id);
-
 create table public.menampilkan_kartu (
   id_sesi uuid not null references public.sesi_kunjungan on delete cascade,
   id_poi uuid not null references public.poi,
@@ -113,7 +101,6 @@ create table public.menampilkan_kartu (
   waktu_ditutup timestamptz,
   primary key (id_sesi, id_poi)
 );
-
 create table public.mengerjakan (
   id_sesi uuid not null references public.sesi_kunjungan on delete cascade,
   id_quest uuid not null references public.quest,
@@ -127,7 +114,6 @@ create table public.mengerjakan (
   primary key (id_sesi, id_quest),
   foreign key (id_quest, label_opsi_terakhir) references public.quest_opsi
 );
-
 create table private.qr_tokens (
   token_hash text primary key check (token_hash ~ '^[0-9a-f]{64}$'),
   scope text not null check (scope in ('entrance', 'poi')),
@@ -140,14 +126,12 @@ create table private.qr_tokens (
     (scope = 'poi' and id_poi is not null and id_zona is null)
   )
 );
-
 create table private.poi_verification (
   id_sesi uuid not null references public.sesi_kunjungan on delete cascade,
   id_poi uuid not null references public.poi,
   expires_at timestamptz not null,
   primary key (id_sesi, id_poi)
 );
-
 create table private.quest_attempts (
   id_sesi uuid not null references public.sesi_kunjungan on delete cascade,
   request_id uuid not null,
@@ -157,7 +141,6 @@ create table private.quest_attempts (
   created_at timestamptz not null default now(),
   primary key (id_sesi, request_id)
 );
-
 -- Semua akses aplikasi melalui Edge Function; bearer user tidak boleh membaca kunci
 -- atau menulis hasil penilaian langsung lewat Data API.
 do $$
@@ -174,7 +157,6 @@ begin
         then 'private' else 'public' end, table_name);
   end loop;
 end $$;
-
 do $$
 declare target text;
 begin
@@ -188,7 +170,6 @@ begin
 end $$;
 revoke all on all tables in schema private from public, anon, authenticated;
 grant all on all tables in schema private to service_role;
-
 -- Seorang pengunjung hanya dapat menggunakan sesi miliknya yang masih aktif.
 create function private.require_session(p_user_id uuid, p_id_sesi uuid)
 returns public.sesi_kunjungan language plpgsql set search_path = '' as $$
@@ -204,7 +185,6 @@ begin
   end if;
   return visit;
 end $$;
-
 create function public.buat_sesi_gps(
   p_user_id uuid, p_id_sesi uuid, p_id_zona uuid, p_bahasa text, p_profil text
 ) returns jsonb language plpgsql set search_path = '' as $$
@@ -221,7 +201,6 @@ begin
   end if;
   return to_jsonb(visit) - 'user_id';
 end $$;
-
 create function public.buat_sesi_qr(
   p_user_id uuid, p_id_sesi uuid, p_token_hash text, p_bahasa text, p_profil text
 ) returns jsonb language plpgsql set search_path = '' as $$
@@ -241,7 +220,6 @@ begin
   end if;
   return to_jsonb(visit) - 'user_id';
 end $$;
-
 create function public.verifikasi_qr_poi(p_user_id uuid, p_id_sesi uuid, p_token_hash text)
 returns jsonb language plpgsql set search_path = '' as $$
 declare qr private.qr_tokens; valid_until timestamptz;
@@ -257,7 +235,6 @@ begin
     on conflict (id_sesi, id_poi) do update set expires_at = excluded.expires_at;
   return jsonb_build_object('idPoi', qr.id_poi, 'verified', true, 'expiresAt', valid_until);
 end $$;
-
 create function public.jawab_quest(
   p_user_id uuid, p_id_sesi uuid, p_id_quest uuid, p_label_opsi text, p_request_id uuid
 ) returns jsonb language plpgsql set search_path = '' as $$
@@ -307,7 +284,6 @@ begin
     values (p_id_sesi, p_request_id, p_id_quest, p_label_opsi, result);
   return result;
 end $$;
-
 create function public.tutup_kartu(p_user_id uuid, p_id_sesi uuid, p_id_poi uuid)
 returns jsonb language plpgsql set search_path = '' as $$
 begin
@@ -320,7 +296,6 @@ begin
     on conflict (id_sesi, id_poi) do nothing;
   return jsonb_build_object('idPoi', p_id_poi, 'statusKartu', 'ditutup');
 end $$;
-
 create function public.progres_kunjungan(p_user_id uuid, p_id_sesi uuid)
 returns jsonb language plpgsql set search_path = '' as $$
 declare visit public.sesi_kunjungan;
@@ -332,7 +307,6 @@ begin
     'quests', coalesce((select jsonb_agg(to_jsonb(m)) from public.mengerjakan m
       where m.id_sesi = p_id_sesi), '[]'::jsonb));
 end $$;
-
 -- Fungsi internal hanya bisa dipanggil service-role di Edge, tidak oleh publishable key.
 do $$
 declare target regprocedure;
