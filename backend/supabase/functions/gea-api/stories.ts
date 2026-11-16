@@ -90,7 +90,7 @@ export async function poiDetail(
     gateway.query(
       "quest_teks",
       new URLSearchParams({
-        select: "profil,instruksi,pertanyaan",
+        select: "profil,instruksi,pertanyaan,target_foto,kunci_isian,penjelasan",
         id_quest: `eq.${questId}`,
         bahasa: `eq.${language}`,
         profil: profileFilter(profile),
@@ -111,12 +111,23 @@ export async function poiDetail(
     profile,
     "QUEST_VARIANT_NOT_AVAILABLE",
   );
-  if (options.length !== 4) {
-    throw new ApiError(
-      503,
-      "QUEST_OPTIONS_INCOMPLETE",
-      "Quest harus memiliki tepat empat opsi terjemahan.",
-    );
+  const questType: string = String(quest.tipe_quest);
+  if (questType === "pilgan" || questType === "cocokkan") {
+    if (options.length !== 4) {
+      throw new ApiError(
+        503,
+        "QUEST_OPTIONS_INCOMPLETE",
+        "Quest harus memiliki tepat empat opsi terjemahan.",
+      );
+    }
+  } else if (questType === "benar_salah") {
+    if (options.length !== 2) {
+      throw new ApiError(
+        503,
+        "QUEST_OPTIONS_INCOMPLETE",
+        "Quest benar/salah harus memiliki tepat dua opsi terjemahan.",
+      );
+    }
   }
   return {
     ...poi,
@@ -137,7 +148,13 @@ export async function poiDetail(
         durationSeconds: content.durasi_audio,
       },
     ],
-    quest: { idQuest: questId, type: quest.tipe_quest, ...question, options },
+    quest: {
+      idQuest: questId,
+      type: questType,
+      isDisabled: profile === "anak" && questType !== "foto",
+      ...question,
+      options,
+    },
   };
 }
 
