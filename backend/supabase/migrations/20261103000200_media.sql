@@ -4,4 +4,4 @@ values (
   'gea-media', 'gea-media', true, 10485760,
   array['image/jpeg', 'image/png', 'image/webp', 'audio/mpeg', 'audio/mp4', 'audio/ogg']
 );
--- Public download diperbolehkan bucket; insert/update/delete hanya admin/service-role.
+-- Public download diperbolehkan bucket; insert/update/delete hanya admin/service-role.;

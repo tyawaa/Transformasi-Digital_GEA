@@ -7,14 +7,12 @@ alter table public.zona
     (latitude is null and longitude is null and radius is null) or
     (latitude is not null and longitude is not null and radius is not null)
   );
-
 alter table public.poi
   alter column path_foto drop not null,
   alter column denah_x drop not null,
   alter column denah_y drop not null,
   alter column prioritas drop not null,
   alter column estimasi_durasi drop not null;
-
 alter table public.konten
   alter column path_audio drop not null,
   alter column durasi_audio drop not null,
@@ -22,7 +20,6 @@ alter table public.konten
     (path_audio is null and durasi_audio is null) or
     (path_audio is not null and durasi_audio is not null)
   );
-
 create or replace function private.check_poi_publication()
 returns trigger language plpgsql set search_path = '' as $$
 declare quest_id uuid; variant public.konten;
@@ -52,11 +49,9 @@ begin
   end loop;
   return new;
 end $$;
-
 drop trigger check_poi_publication on public.poi;
 create trigger check_poi_publication before insert or update on public.poi
   for each row execute function private.check_poi_publication();
-
 create function private.check_published_content_audio()
 returns trigger language plpgsql set search_path = '' as $$
 begin
