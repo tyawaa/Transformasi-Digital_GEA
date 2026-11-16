@@ -337,9 +337,13 @@ function LocationStep(
   const hasResult: boolean = notice !== null || error !== null;
   const title: string = checking
     ? "Sedang mengecek lokasimu"
-    : error !== null ? "Lokasi belum bisa diperiksa" : notice?.title ?? "Periksa lokasimu";
+    : error !== null
+    ? location !== null ? "Pemeriksaan area gagal" : "Lokasi belum bisa diperiksa"
+    : notice?.title ?? "Periksa lokasimu";
   const description: string = checking
     ? progressLabel
+    : error !== null && location !== null
+    ? `Posisi berhasil dibaca, tetapi pemeriksaan ke layanan museum gagal. ${error}`
     : error ?? notice?.description ?? "Tekan Periksa lokasi lagi untuk membaca posisimu.";
 
   return (

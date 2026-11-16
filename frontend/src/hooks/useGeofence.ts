@@ -15,6 +15,7 @@ export type GeofenceState = {
   readonly status: GeofenceStatus;
   /** Checkpoint terdekat yang sedang dimasuki (ruang aktif). */
   readonly active: Checkpoint | null;
+  readonly currentFix: Fix | null;
   /** Akurasi terakhir lebih buruk dari 20 m: tampilkan banner "GPS lemah". */
   readonly weak: boolean;
   /** Checkpoint yang kartunya sedang ditampilkan (belum ditutup). */
@@ -37,6 +38,7 @@ export function useGeofence(
 ): GeofenceState {
   const [status, setStatus] = useState<GeofenceStatus>("off");
   const [active, setActive] = useState<Checkpoint | null>(null);
+  const [currentFix, setCurrentFix] = useState<Fix | null>(null);
   const [weak, setWeak] = useState(false);
   const [card, setCard] = useState<string | null>(null);
   const [simulated, setSimulated] = useState<Fix | null>(null);
@@ -51,6 +53,7 @@ export function useGeofence(
   const reset = (): void => {
     inside.current = [];
     setActive(null);
+    setCurrentFix(null);
     setWeak(false);
     setCard(null);
   };
@@ -75,6 +78,7 @@ export function useGeofence(
   }, [visitId]);
 
   const handleFix = useCallback((fix: Fix): void => {
+    setCurrentFix(fix);
     const step = stepGeofence(inside.current, fix, checkpointsRef.current);
     setWeak(step.weak);
     if (step.weak) return;
@@ -96,6 +100,12 @@ export function useGeofence(
     if (nearest !== null) setCard(nearest.id);
   }, []);
 
+  useEffect((): void => {
+    if (visitId !== null && currentFix !== null) handleFix(currentFix);
+    // Evaluasi ulang posisi terakhir saat data checkpoint selesai dimuat.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checkpoints, visitId, handleFix]);
+
   // GPS asli (dimatikan saat simulasi aktif).
   useEffect((): (() => void) | undefined => {
     if (visitId === null || simulated !== null) return undefined;
@@ -106,11 +116,16 @@ export function useGeofence(
         const permission = await Location.getForegroundPermissionsAsync();
         if (cancelled) return;
         if (!permission.granted) {
+          setCurrentFix(null);
           setStatus("no_permission");
           return;
         }
+        const watchOptions: Location.LocationOptions & PositionOptions = {
+          accuracy: Location.Accuracy.High, timeInterval: 1000, distanceInterval: 0,
+          enableHighAccuracy: true, maximumAge: 0, timeout: 15000,
+        };
         subscription = await Location.watchPositionAsync(
-          { accuracy: Location.Accuracy.High, timeInterval: 1000, distanceInterval: 0 },
+          watchOptions,
           (position: Location.LocationObject): void => {
             handleFix({
               latitude: position.coords.latitude,
@@ -121,8 +136,12 @@ export function useGeofence(
         );
         if (cancelled) subscription.remove();
         else setStatus("watching");
-      } catch {
-        if (!cancelled) setStatus("no_permission");
+      } catch (cause: unknown) {
+        console.warn("gea_gps_watch_failed", { error: cause instanceof Error ? cause.message : String(cause) });
+        if (!cancelled) {
+          setCurrentFix(null);
+          setStatus("no_permission");
+        }
       }
     })();
     return (): void => {
@@ -154,5 +173,5 @@ export function useGeofence(
     setSimulated(fix);
   }, []);
 
-  return { status, active, weak, card, dismiss, simulate };
+  return { status, active, currentFix, weak, card, dismiss, simulate };
 }

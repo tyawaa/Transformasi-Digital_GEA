@@ -4,7 +4,7 @@ import type { BadgeId, VisitProgress } from "../../domain/contracts.ts";
 export type PoiProgress = {
   /** Kartu cerita sudah dibaca sampai selesai dan ditutup. */
   readonly closed: boolean;
-  /** Batas waktu verifikasi QR koleksi (ms epoch). Quest terkunci tanpa ini. */
+  /** Batas waktu verifikasi GPS atau QR koleksi (ms epoch). Quest terkunci tanpa ini. */
   readonly verifiedUntil: number | null;
   /** Kuis dijawab benar. */
   readonly completed: boolean;
@@ -59,7 +59,7 @@ export function restoreServerVisit(server: VisitProgress): RestoredVisit {
   };
 }
 
-/** Server menentukan progres; hanya masa berlaku verifikasi QR yang dipertahankan dari perangkat. */
+/** Server menentukan progres; masa berlaku verifikasi koleksi dipertahankan dari perangkat. */
 export function mergeServerProgress(local: ProgressMap, server: ProgressMap): ProgressMap {
   const verified: ProgressMap = Object.fromEntries(Object.entries(local).map(([id, state]): [string, PoiProgress] => [
     id, { ...emptyProgress, verifiedUntil: state.verifiedUntil },
