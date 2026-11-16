@@ -2,8 +2,13 @@ import { ValidationError } from "./errors.ts";
 
 export type JsonObject = { readonly [key: string]: unknown };
 export type Language = "id" | "en";
-/** Kelompok usia pengunjung: anak 7–12, remaja 13–17, dewasa 18+. */
-export type Profile = "anak" | "remaja" | "dewasa";
+/** Kategori pengunjung sesuai sheet: anak = Anak-anak (7–12), dewasa = Umum (13 tahun ke atas). */
+export type Profile = "anak" | "dewasa";
+
+export function array(value: unknown, field: string): readonly unknown[] {
+  if (!Array.isArray(value)) throw new ValidationError(`${field} harus berupa array.`);
+  return value;
+}
 
 export function object(value: unknown, field: string): JsonObject {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
@@ -42,11 +47,11 @@ export function language(value: unknown): Language {
 }
 
 export function profile(value: unknown): Profile {
-  // Nilai lama dari aplikasi versi sebelumnya.
-  if (value === "umum") return "dewasa";
+  // Nilai lama dari aplikasi versi sebelumnya. Sheet hanya punya Anak-anak dan Umum.
+  if (value === "umum" || value === "remaja") return "dewasa";
   if (value === "pelajar") return "anak";
-  if (value !== "anak" && value !== "remaja" && value !== "dewasa") {
-    throw new ValidationError("profile harus anak, remaja, atau dewasa.");
+  if (value !== "anak" && value !== "dewasa") {
+    throw new ValidationError("profile harus anak atau dewasa.");
   }
   return value;
 }

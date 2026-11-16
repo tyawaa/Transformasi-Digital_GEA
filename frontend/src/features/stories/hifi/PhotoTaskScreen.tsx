@@ -7,6 +7,8 @@ import { type ReactElement, useRef, useState } from "react";
 import { ActivityIndicator, Linking, Pressable, StyleSheet, View } from "react-native";
 import { colors, componentColors, radius, shadows, spacing } from "../../../design/tokens";
 import { GeaText } from "../../../design/typography";
+import type { PoiDetail } from "../../../domain/contracts";
+import { mediaSource } from "../../../services/media";
 import { ScanBackground } from "./backgrounds";
 import { FrameStage, StoryButton } from "./parts";
 
@@ -23,10 +25,12 @@ type Props = {
   readonly onDone: () => void;
   /** Mode uji (data mock): tombol untuk lanjut tanpa kamera. */
   readonly testMode?: boolean;
+  /** Foto referensi dari backend ("Temukan gambar ini"), bila ada untuk POI ini. */
+  readonly references?: PoiDetail["photoChallenges"] | undefined;
 };
 
 export function PhotoTaskScreen(
-  { title, instruction, target, hint, onBack, onDone, testMode = false }: Props,
+  { title, instruction, target, hint, onBack, onDone, testMode = false, references = [] }: Props,
 ): ReactElement {
   const [permission, requestPermission] = useCameraPermissions();
   const camera = useRef<CameraView>(null);
@@ -100,6 +104,7 @@ export function PhotoTaskScreen(
 
       {/* Info + tombol: ikut memanjang, halaman digulir bila tidak muat */}
       <View style={styles.info} onLayout={(event): void => setBoxHeight(event.nativeEvent.layout.height)}>
+        {references.length > 0 && <ReferenceGallery challenges={references} />}
         <View style={styles.card}>
           <GeaText variant="label16" color={colors.primary[700]}>CARI &amp; FOTO</GeaText>
           <GeaText variant="bold16" color={componentColors.bodyDark}>{instruction}</GeaText>
@@ -149,6 +154,51 @@ export function PhotoTaskScreen(
   );
 }
 
+/** Foto referensi nomor 3+ dari backend; tiap gambar punya instruksinya sendiri (dari kode tim). */
+function ReferenceGallery({ challenges }: { readonly challenges: PoiDetail["photoChallenges"] }): ReactElement | null {
+  const [index, setIndex] = useState<number>(0);
+  const challenge: PoiDetail["photoChallenges"][number] | undefined = challenges[index];
+  if (challenge === undefined) return null;
+  const last: boolean = index === challenges.length - 1;
+  return (
+    <View style={styles.gallery}>
+      <GeaText variant="heading20" color={colors.primary[900]}>Temukan gambar ini</GeaText>
+      <Image
+        source={mediaSource(challenge.photoUrl)}
+        accessibilityLabel={`Referensi tantangan foto ${index + 1}`}
+        contentFit="contain"
+        style={styles.referencePhoto}
+      />
+      <GeaText variant="body14" color={componentColors.bodyDark}>{challenge.instruction}</GeaText>
+      {challenges.length > 1 && (
+        <View style={styles.galleryNav}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Referensi sebelumnya"
+            disabled={index === 0}
+            accessibilityState={{ disabled: index === 0 }}
+            onPress={(): void => setIndex(index - 1)}
+            style={[styles.referenceButton, index === 0 && styles.disabled]}
+          >
+            <GeaText variant="label16" color={colors.primary[900]}>Sebelumnya</GeaText>
+          </Pressable>
+          <GeaText variant="label16" color={colors.primary[900]}>{index + 1} / {challenges.length}</GeaText>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Referensi berikutnya"
+            disabled={last}
+            accessibilityState={{ disabled: last }}
+            onPress={(): void => setIndex(index + 1)}
+            style={[styles.referenceButton, last && styles.disabled]}
+          >
+            <GeaText variant="label16" color={colors.primary[900]}>Berikutnya</GeaText>
+          </Pressable>
+        </View>
+      )}
+    </View>
+  );
+}
+
 const INFO_TOP = 474;
 
 const styles = StyleSheet.create({
@@ -192,4 +242,15 @@ const styles = StyleSheet.create({
   button: { boxShadow: shadows.drop },
   center: { textAlign: "center" },
   link: { textDecorationLine: "underline" },
+  gallery: { gap: spacing[8], padding: spacing[12], borderRadius: radius.control, backgroundColor: colors.primary[0] },
+  referencePhoto: {
+    width: "100%",
+    height: 240,
+    borderWidth: 6,
+    borderColor: colors.secondaryGreen[300],
+    backgroundColor: colors.primary[100],
+  },
+  galleryNav: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  referenceButton: { paddingVertical: spacing[8], paddingHorizontal: spacing[8] },
+  disabled: { opacity: 0.4 },
 });

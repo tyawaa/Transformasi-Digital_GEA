@@ -66,7 +66,7 @@ type VisitSessionState = {
 export function useVisitSession(
   api: GeaApi,
   runOperation: RunOperation,
-  /** Kelompok usia dari preferensi (anak / remaja / dewasa). */
+  /** Kategori pengunjung dari preferensi usia (anak / dewasa = Umum). */
   profile: Profile = "dewasa",
 ): VisitSessionState {
   const [notice, setNotice] = useState<DecisionMessage | null>(null);

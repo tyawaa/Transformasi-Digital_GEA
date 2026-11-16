@@ -6,6 +6,7 @@ import { TextField } from "../../../design/TextField";
 import { colors, componentColors, radius, shadows, spacing } from "../../../design/tokens";
 import { GeaText } from "../../../design/typography";
 import type { Tantangan } from "../../../data/museum";
+import type { PoiDetail } from "../../../domain/contracts";
 import { StoryBackground } from "./backgrounds";
 import { BackButton, FrameStage, StoryButton } from "./parts";
 import { PhotoTaskScreen } from "./PhotoTaskScreen";
@@ -16,6 +17,8 @@ type Props = {
   /** points = poin sheet bila berhasil, 0 bila kesempatan habis. */
   readonly onDone: (result: { readonly success: boolean; readonly points: number }) => void;
   readonly testMode?: boolean;
+  /** Foto referensi POI dari backend, ditampilkan di layar foto. */
+  readonly references?: PoiDetail["photoChallenges"] | undefined;
 };
 
 /** Huruf kecil, tanpa spasi berlebih dan tanda baca, agar "Big Bang!" = "big bang". */
@@ -23,7 +26,7 @@ function normalize(text: string): string {
   return text.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, "").replace(/\s+/g, " ").trim();
 }
 
-export function ChallengeScreen({ challenge, onBack, onDone, testMode = false }: Props): ReactElement {
+export function ChallengeScreen({ challenge, onBack, onDone, testMode = false, references }: Props): ReactElement {
   const [outcome, setOutcome] = useState<boolean | null>(null);
   const [attempts, setAttempts] = useState<number>(0);
   const [answer, setAnswer] = useState<string>("");
@@ -47,6 +50,7 @@ export function ChallengeScreen({ challenge, onBack, onDone, testMode = false }:
         onBack={onBack}
         onDone={(): void => setOutcome(true)}
         testMode={testMode}
+        references={references}
       />
     );
   }

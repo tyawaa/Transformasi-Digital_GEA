@@ -29,17 +29,17 @@ export const healthSchema = z.object({
 });
 export type BackendHealth = z.infer<typeof healthSchema>;
 
-/** Kelompok usia pengunjung: anak 7–12, remaja 13–17, dewasa 18+. */
-export const profileSchema = z.enum(["anak", "remaja", "dewasa"]);
+/** Kategori pengunjung sesuai sheet: anak = Anak-anak (7–12), dewasa = Umum (13 tahun ke atas). */
+export const profileSchema = z.enum(["anak", "dewasa"]);
 export type Profile = z.infer<typeof profileSchema>;
 
 /**
- * Profil dari server / penyimpanan. Nilai lama "umum" dan "pelajar" (sebelum migrasi usia
- * atau kunjungan yang tersimpan di HP) dibaca sebagai "dewasa" dan "anak".
+ * Profil dari server / penyimpanan. Nilai lama "umum" dan "remaja" dibaca sebagai "dewasa" (Umum),
+ * "pelajar" sebagai "anak" (kunjungan lama yang tersimpan di HP atau server yang belum dimigrasi).
  */
 const storedProfileSchema = z
   .enum(["anak", "remaja", "dewasa", "umum", "pelajar"])
-  .transform((value): Profile => (value === "umum" ? "dewasa" : value === "pelajar" ? "anak" : value));
+  .transform((value): Profile => (value === "anak" || value === "pelajar" ? "anak" : "dewasa"));
 
 export const visitSchema = z.object({
   id_sesi: z.uuid(),
@@ -69,6 +69,10 @@ export const descriptionCardSchema = z.object({
   type: z.literal("description"),
   text: z.string().min(1),
   photoUrl: z.url(),
+  secondPhotoUrl: z.url(),
+  title: z.string().min(1).nullable().optional(),
+  fact: z.string().min(1).nullable().optional(),
+  highlights: z.string().min(1).nullable().optional(),
 });
 export const audioCardSchema = z.object({
   type: z.literal("audio"),
@@ -79,12 +83,24 @@ export const questOptionSchema = z.object({
   label_opsi: optionLabelSchema,
   teks_opsi: z.string().min(1),
 });
+export const questTypeSchema = z.enum([
+  "pilgan",
+  "foto",
+  "isian_singkat",
+  "benar_salah",
+  "cocokkan",
+]);
+export type QuestType = z.infer<typeof questTypeSchema>;
+
 export const questSchema = z.object({
   idQuest: z.uuid(),
-  type: z.literal("pilgan"),
+  type: questTypeSchema.default("pilgan"),
   instruksi: z.string().min(1),
   pertanyaan: z.string().min(1),
-  options: z.array(questOptionSchema).length(4),
+  options: z.array(questOptionSchema).default([]),
+  target_foto: z.string().nullable().optional(),
+  penjelasan: z.string().nullable().optional(),
+  isDisabled: z.boolean().optional(),
 });
 export const poiDetailSchema = z.object({
   id_poi: z.uuid(),
@@ -98,6 +114,11 @@ export const poiDetailSchema = z.object({
   language: languageSchema,
   profile: storedProfileSchema,
   cards: z.tuple([descriptionCardSchema, audioCardSchema]),
+  photoChallenges: z.array(z.object({
+    sequence: z.number().int().min(3),
+    photoUrl: z.url(),
+    instruction: z.string().min(1),
+  })),
   quest: questSchema,
 });
 export type DescriptionCard = z.infer<typeof descriptionCardSchema>;

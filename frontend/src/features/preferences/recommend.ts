@@ -6,11 +6,12 @@ import type { Preferences } from "./usePreferences";
 export const ageOptions = ["7-12 Tahun", "13-17 Tahun", "18-24 Tahun", ">24 Tahun"] as const;
 export const durationOptions = ["< 30 menit", "30-45 Menit", "45 menit-1.5 Jam", "> 1.5 jam"] as const;
 
-/** Gaya cerita sesuai umur: anak (7–12), remaja (13–17), dewasa (18+ atau belum memilih). */
+/**
+ * Kategori pengunjung sesuai sheet (Kategori_Pengunjung): 7–12 tahun = Anak-anak ("anak"); selain itu,
+ * termasuk bila belum memilih, = Umum ("dewasa").
+ */
 export function profileForAge(prefs: Preferences | null): Profile {
-  if (prefs?.age === "7-12 Tahun") return "anak";
-  if (prefs?.age === "13-17 Tahun") return "remaja";
-  return "dewasa";
+  return prefs?.age === "7-12 Tahun" ? "anak" : "dewasa";
 }
 
 /** Topik minat dan ruangan (kode POI) yang membahasnya. SEMENTARA: cek ke tim konten. */

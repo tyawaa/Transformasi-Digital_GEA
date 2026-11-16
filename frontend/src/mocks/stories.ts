@@ -1,5 +1,6 @@
 // Data mode uji (EXPO_PUBLIC_STORIES_SOURCE=mock). Isi POI diambil dari src/data/museum.ts
-// (Excel survei). Foto dan audio masih file dummy sampai media asli diunggah (B5/B6).
+// (Excel survei), termasuk cerita final dari backend/data/approved-stories.json.
+// Foto editorial memakai URL Storage dari manifest; audio mock masih file dummy.
 // Bentuk setiap objek mengikuti respons API backend (lihat backend/README.md).
 import {
   type OptionLabel,
@@ -8,6 +9,7 @@ import {
   type Profile,
 } from "../domain/contracts";
 import { activePois, type MuseumPoi, poiIdFor, questIdFor } from "../data/museum";
+import { poiPhotoChallenges, poiStoryPhoto } from "../data/poiMedia";
 import { wrapQr } from "../features/qr/qrPayload";
 import { mockMediaUrl } from "../services/media";
 
@@ -33,9 +35,9 @@ function withContent(poi: MuseumPoi): poi is MuseumPoi & { content: NonNullable<
 
 const pois = activePois.filter(withContent);
 
-/** Foto utama POI: foto survei jika ada, selain itu ilustrasi sementara. */
+/** Gambar nomor 1 selalu dipakai untuk ringkasan dan foto cerita pertama. */
 function mainPhoto(poi: MuseumPoi): string {
-  return mockMediaUrl(`/poi/${poi.code}/${poi.content?.fotoUtama ?? 0}`);
+  return poiStoryPhoto(poi.idPoi, 1);
 }
 
 export const mockPoiSummaries: readonly PoiSummary[] = pois.map((poi): PoiSummary => ({
@@ -57,9 +59,18 @@ export const mockPoiDetails: readonly PoiDetail[] = pois.map((poi, index: number
   language: "id",
   profile: "dewasa",
   cards: [
-    { type: "description", text: poi.content.cerita, photoUrl: mainPhoto(poi) },
+    {
+      type: "description",
+      text: poi.content.cerita,
+      photoUrl: mainPhoto(poi),
+      secondPhotoUrl: poiStoryPhoto(poi.idPoi, 2),
+      title: poi.content.judul,
+      fact: poi.content.fakta,
+      highlights: poi.content.sorotan,
+    },
     { type: "audio", audioUrl: mockMediaUrl("/narasi.wav"), durationSeconds: 30 },
   ],
+  photoChallenges: poiPhotoChallenges(poi.idPoi),
   quest: {
     idQuest: questIdFor(poi.number),
     type: "pilgan",
@@ -73,13 +84,13 @@ export const mockPoiDetails: readonly PoiDetail[] = pois.map((poi, index: number
 }));
 
 /**
- * Teks cerita sesuai kelompok usia (ceritaAnak / ceritaRemaja). Seperti backend,
- * usia yang belum punya teks sendiri memakai versi dewasa.
+ * Teks cerita anak (ceritaAnak, dari Konten_Cerita_Anak). Seperti backend, bila belum ada teks anak
+ * dipakai versi Umum (dewasa).
  */
 export function mockPoiForProfile(detail: PoiDetail, profile: Profile): PoiDetail {
   if (profile === "dewasa") return detail;
   const content = pois.find((poi): boolean => poiIdFor(poi.number) === detail.id_poi)?.content;
-  const text: string | undefined = profile === "anak" ? content?.ceritaAnak : content?.ceritaRemaja;
+  const text: string | undefined = profile === "anak" ? content?.ceritaAnak : undefined;
   if (text === undefined) return detail;
   const [description, audio] = detail.cards;
   return { ...detail, profile, cards: [{ ...description, text }, audio] };
