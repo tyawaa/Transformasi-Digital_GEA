@@ -108,6 +108,40 @@ export class SupabaseGateway {
     }`;
   }
 
+  /** Mengunggah media editorial; nama berbasis hash menjaga URL gambar tidak berubah isinya. */
+  async uploadMedia(path: string, bytes: Uint8Array<ArrayBuffer>): Promise<void> {
+    const publicUrl: string = this.mediaUrl(path);
+    const upload: Response = await requestWithRetry(
+      publicUrl.replace("/object/public/", "/object/"),
+      {
+        method: "POST",
+        headers: {
+          ...this.headers(),
+          "content-type": "image/jpeg",
+          "cache-control": "max-age=31536000",
+          "x-upsert": "true",
+        },
+        body: bytes,
+      },
+      `storage.upload:${path}`,
+    );
+    await upload.body?.cancel();
+    const response: Response = await requestWithRetry(
+      publicUrl,
+      { method: "HEAD" },
+      `storage.verify:${path}`,
+    );
+    if (Number(response.headers.get("content-length")) !== bytes.byteLength) {
+      throw new UpstreamError(
+        502,
+        `storage.verify:${path}`,
+        `Expected ${bytes.byteLength} bytes, received content-length=${
+          response.headers.get("content-length")
+        }.`,
+      );
+    }
+  }
+
   private headers(): { readonly [key: string]: string } {
     return {
       apikey: this.config.serviceRoleKey,

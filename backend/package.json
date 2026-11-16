@@ -23,7 +23,10 @@
     "qr:sheet": "node scripts/make-qr-sheet.mjs",
     "demo:geofence": "deno run scripts/demo-geofence.ts",
     "smoke": "deno run --allow-env --allow-net scripts/smoke.ts",
-    "poi:draft": "node scripts/make-poi-draft.mjs"
+    "poi:draft": "node scripts/make-poi-draft.mjs",
+    "media:resize": "powershell -NoProfile -File scripts/prepare-poi-images.ps1 -Source assets -Output .local/poi-media -MaxSize 1600 -Quality 82",
+    "media:prepare": "deno run --allow-read --allow-write scripts/prepare-poi-media.ts",
+    "media:upload": "deno run --allow-read --allow-env --allow-net scripts/upload-poi-media.ts"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.14",

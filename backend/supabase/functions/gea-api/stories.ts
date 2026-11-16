@@ -54,7 +54,8 @@ export async function poiDetail(
   language: Language,
   profile: Profile,
 ): Promise<JsonObject> {
-  const [pois, contents, quests]: [
+  const [pois, contents, quests, media]: [
+    readonly JsonObject[],
     readonly JsonObject[],
     readonly JsonObject[],
     readonly JsonObject[],
@@ -81,8 +82,20 @@ export async function poiDetail(
       "quest",
       new URLSearchParams({ select: "id_quest,tipe_quest", id_poi: `eq.${poiId}` }),
     ),
+    gateway.query(
+      "poi_media",
+      new URLSearchParams({
+        select: "nomor,path_foto,instruksi",
+        id_poi: `eq.${poiId}`,
+        order: "nomor.asc",
+      }),
+    ),
   ]);
   const poi: JsonObject = requireSingle(pois, "POI_NOT_FOUND");
+  const secondPhoto: JsonObject = requireSingle(
+    media.filter((image: JsonObject): boolean => image.nomor === 2),
+    "STORY_SECOND_PHOTO_NOT_AVAILABLE",
+  );
   const content: JsonObject = pickProfile(contents, profile, "CONTENT_VARIANT_NOT_AVAILABLE");
   const quest: JsonObject = requireSingle(quests, "QUEST_NOT_AVAILABLE");
   const questId: string = uuid(quest.id_quest, "id_quest");
@@ -130,6 +143,7 @@ export async function poiDetail(
         fact: content.fakta_menarik,
         highlights: content.koleksi_sorotan,
         photoUrl: gateway.mediaUrl(text(poi.path_foto, "path_foto", 1024)),
+        secondPhotoUrl: gateway.mediaUrl(text(secondPhoto.path_foto, "poi_media.path_foto", 1024)),
       },
       {
         type: "audio",
@@ -137,6 +151,14 @@ export async function poiDetail(
         durationSeconds: content.durasi_audio,
       },
     ],
+    photoChallenges: media.filter((image: JsonObject): boolean =>
+      typeof image.nomor === "number" && image.nomor >= 3
+    )
+      .map((image: JsonObject): JsonObject => ({
+        sequence: image.nomor,
+        photoUrl: gateway.mediaUrl(text(image.path_foto, "poi_media.path_foto", 1024)),
+        instruction: text(image.instruksi, "poi_media.instruksi", 2000),
+      })),
     quest: { idQuest: questId, type: quest.tipe_quest, ...question, options },
   };
 }

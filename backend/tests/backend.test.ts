@@ -7,6 +7,8 @@ import { prepareStoryDrafts } from "../scripts/prepare-story-drafts.ts";
 import { prepareCheckpointSeed } from "../scripts/prepare-checkpoint-seed.ts";
 import catalog from "../data/checkpoints.json" with { type: "json" };
 import { parseCheckpointDataset } from "../scripts/checkpoint-dataset.ts";
+import mediaManifest from "../data/poi-media.json" with { type: "json" };
+import { parsePoiMediaManifest, preparePoiMediaSql } from "../scripts/poi-media.ts";
 import { handleRequest } from "../supabase/functions/gea-api/app.ts";
 import {
   type BackendConfig,
@@ -216,6 +218,56 @@ Deno.test("integrasi SQL: migrasi, enam POI, hak akses, QR, jawaban, idempotensi
         database.exec("update public.poi set longitude=null where kode_poi='POI-10'"),
         /check constraint/,
       );
+    });
+    await test.step("media aset asli: 1–2 untuk cerita, 3+ untuk referensi foto; idempoten dan tidak memublikasikan", async (): Promise<void> => {
+      const manifest = parsePoiMediaManifest(mediaManifest);
+      const sql: string = preparePoiMediaSql(manifest);
+      const before = await database.query(
+        "select id_poi,is_published from public.poi order by id_poi",
+      );
+      await database.exec("begin");
+      try {
+        await database.exec(sql);
+        await database.exec(sql);
+        const after = await database.query(
+          "select id_poi,is_published from public.poi order by id_poi",
+        );
+        deepStrictEqual(after.rows, before.rows);
+        const result = await database.query(
+          "select id_poi,nomor,path_foto,instruksi from public.poi_media order by id_poi,nomor",
+        );
+        equal(
+          result.rows.length,
+          manifest.pois.reduce((total, poi): number => total + poi.images.length, 0),
+        );
+        for (const poi of manifest.pois) {
+          const images = result.rows.map((row): JsonObject => object(row, "media")).filter((
+            row,
+          ): boolean => row.id_poi === poi.idPoi);
+          deepStrictEqual(
+            images.map((image): unknown => image.nomor),
+            poi.images.map((image): number => image.sequence),
+          );
+          equal(images[0]?.instruksi, null);
+          equal(images[1]?.instruksi, null);
+          ok(images.slice(2).every((image): boolean => typeof image.instruksi === "string"));
+          const main = await database.query("select path_foto from public.poi where id_poi=$1", [
+            poi.idPoi,
+          ]);
+          equal(object(main.rows[0], "poi").path_foto, poi.images[0]?.objectPath);
+        }
+        const permissions = await database.query(
+          "select has_table_privilege('authenticated','public.poi_media','select') as client_read,has_table_privilege('service_role','public.poi_media','select') as admin_read",
+        );
+        equal(object(permissions.rows[0], "permissions").client_read, false);
+        equal(object(permissions.rows[0], "permissions").admin_read, true);
+        await rejects(
+          database.exec("update public.poi_media set instruksi=null where nomor=3"),
+          /check constraint/,
+        );
+      } finally {
+        await database.exec("rollback");
+      }
     });
     await database.exec("delete from public.poi; delete from public.zona;");
     await database.exec(

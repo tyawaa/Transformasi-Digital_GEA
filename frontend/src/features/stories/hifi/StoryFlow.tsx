@@ -26,7 +26,6 @@ import {
 import { GeaServiceError, readableError } from "../../../services/api";
 import type { StoriesSource } from "../../../services/stories";
 import { museumPoiById, type StoryContent } from "../../../data/museum";
-import { mockMediaUrl } from "../../../services/media";
 import { SceneLayer } from "../../onboarding/scene";
 import { type ParsedQr, qrErrorMessage } from "../../qr/qrPayload";
 import type { PoiProgress } from "../progress";
@@ -208,12 +207,10 @@ export function StoryFlow(props: Props): ReactElement {
   }
 
   const [description, audio] = poi.cards;
-  // Data lokal hanya untuk pilihan foto survei dan penjelasan kuis di mode mock.
+  // Data lokal hanya untuk penjelasan kuis di mode mock.
   const museumPoi = museumPoiById(poi.id_poi);
   const local: StoryContent | null = source.kind === "mock" ? museumPoi?.content ?? null : null;
-  const secondPhoto: string = museumPoi !== undefined && local?.fotoKedua !== undefined
-    ? mockMediaUrl(`/poi/${museumPoi.code}/${local.fotoKedua}`)
-    : description.photoUrl;
+  const secondPhoto: string = description.secondPhotoUrl;
   // Halaman ke-2 isi cerita ("Story Isi 2"): kartu koleksi yang disorot + fakta menarik.
   const highlights: readonly string[] = splitHighlights(description.highlights ?? undefined).slice(0, 4);
   const pageCount: number = highlights.length > 0 ? 2 : 1;
@@ -253,6 +250,7 @@ export function StoryFlow(props: Props): ReactElement {
     return (
       <SideQuestScreen
         poiName={poi.nama}
+        photoChallenges={poi.photoChallenges}
         locked={!verified}
         tasks={[
           { icon: "camera", label: `Scan QR di dekat koleksi ${poi.nama}`, done: verified || progress.attempts > 0 },

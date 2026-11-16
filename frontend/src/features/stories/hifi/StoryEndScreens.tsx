@@ -1,11 +1,13 @@
 // SEMENTARA: layar "Kisah Selesai" dan "Side Quest" mengikuti draft desain PD yang belum final.
 // Semua teks dan tata letak dikumpulkan di file ini supaya mudah diganti saat hi-fi final keluar.
 import { Image } from "expo-image";
-import type { ReactElement } from "react";
+import { type ReactElement, useState } from "react";
 import { Linking, Pressable, Share, StyleSheet, View } from "react-native";
 import { Button } from "../../../design/Button";
 import { colors, componentColors, radius, shadows, spacing } from "../../../design/tokens";
 import { GeaText } from "../../../design/typography";
+import type { PoiDetail } from "../../../domain/contracts";
+import { mediaSource } from "../../../services/media";
 import { StoryBackground } from "./backgrounds";
 import { BackButton, FrameStage, StoryButton } from "./parts";
 
@@ -141,8 +143,9 @@ const taskIcons: Record<SideQuestTask["icon"], number> = {
 
 /** Draft daftar Side Quest dengan kotak centang per tugas. */
 export function SideQuestScreen(
-  { poiName, tasks, locked, actionLabel, onAction, onBack }: {
+  { poiName, photoChallenges, tasks, locked, actionLabel, onAction, onBack }: {
     readonly poiName: string;
+    readonly photoChallenges: PoiDetail["photoChallenges"];
     readonly tasks: readonly SideQuestTask[];
     readonly locked: boolean;
     readonly actionLabel: string;
@@ -150,15 +153,18 @@ export function SideQuestScreen(
     readonly onBack: () => void;
   },
 ): ReactElement {
+  const [contentHeight, setContentHeight] = useState<number>(0);
   return (
-    <FrameStage background={colors.primary[300]}>
+    <FrameStage background={colors.primary[300]} frameHeight={124 + contentHeight + 48}>
       <StoryBackground />
       <BackButton onPress={onBack} />
+      <View style={side.content} onLayout={(event): void => setContentHeight(event.nativeEvent.layout.height)}>
       <View style={side.intro}>
         <GeaText variant="label16" color={componentColors.bodyDark} style={finished.center}>
           Selamat explorer, kamu baru saja menamatkan cerita tentang {poiName}. Ayo hidupkan ceritamu dengan Side Quest!
         </GeaText>
       </View>
+      {photoChallenges.length > 0 && <PhotoChallengeGallery challenges={photoChallenges} />}
       <View style={side.list}>
         {tasks.map((task: SideQuestTask): ReactElement => (
           <View
@@ -182,8 +188,37 @@ export function SideQuestScreen(
           </GeaText>
         )}
       </View>
-      <StoryButton label={actionLabel} onPress={onAction} style={finished.button} />
+      <StoryButton label={actionLabel} onPress={onAction} style={side.button} />
+      </View>
     </FrameStage>
+  );
+}
+
+/** Referensi foto nomor 3+; setiap gambar tetap punya instruksi dan nomor aslinya. */
+function PhotoChallengeGallery({ challenges }: { readonly challenges: PoiDetail["photoChallenges"] }): ReactElement {
+  const [index, setIndex] = useState<number>(0);
+  const challenge: PoiDetail["photoChallenges"][number] | undefined = challenges[index];
+  if (challenge === undefined) throw new RangeError(`Referensi foto ke-${index + 1} belum tersedia.`);
+  return (
+    <View style={side.gallery}>
+      <GeaText variant="heading28" color={colors.primary[900]}>Temukan gambar ini</GeaText>
+      <Image
+        source={mediaSource(challenge.photoUrl)}
+        accessibilityLabel={`Referensi tantangan foto ${index + 1}`}
+        contentFit="contain"
+        style={side.referencePhoto}
+      />
+      <GeaText variant="body16Tight" color={componentColors.bodyDark}>{challenge.instruction}</GeaText>
+      <View style={side.galleryNav}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Referensi sebelumnya" disabled={index === 0} accessibilityState={{ disabled: index === 0 }} onPress={(): void => setIndex(index - 1)} style={[side.referenceButton, index === 0 && side.disabled]}>
+          <GeaText variant="label16" color={colors.primary[900]}>Sebelumnya</GeaText>
+        </Pressable>
+        <GeaText variant="label16" color={colors.primary[900]}>{index + 1} / {challenges.length}</GeaText>
+        <Pressable accessibilityRole="button" accessibilityLabel="Referensi berikutnya" disabled={index === challenges.length - 1} accessibilityState={{ disabled: index === challenges.length - 1 }} onPress={(): void => setIndex(index + 1)} style={[side.referenceButton, index === challenges.length - 1 && side.disabled]}>
+          <GeaText variant="label16" color={colors.primary[900]}>Berikutnya</GeaText>
+        </Pressable>
+      </View>
+    </View>
   );
 }
 
@@ -211,17 +246,20 @@ const finished = StyleSheet.create({
 });
 
 const side = StyleSheet.create({
+  content: { position: "absolute", left: 16, top: 124, width: 358, gap: spacing[24] },
   intro: {
-    position: "absolute",
-    left: 16,
-    top: 124,
-    width: 358,
     padding: spacing[24],
     borderRadius: radius.control,
     backgroundColor: colors.white,
   },
   // "Story - Mini quiz": daftar tugas mulai y≈350, kartu krem berbingkai cokelat.
-  list: { position: "absolute", left: 16, top: 350, width: 358, gap: spacing[8] },
+  list: { gap: spacing[8] },
+  button: { alignSelf: "stretch", boxShadow: shadows.drop },
+  gallery: { gap: spacing[12], padding: spacing[12], borderRadius: radius.control, backgroundColor: colors.primary[0] },
+  referencePhoto: { width: "100%", height: 320, borderWidth: 8, borderColor: colors.secondaryGreen[300], backgroundColor: colors.primary[100] },
+  galleryNav: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  referenceButton: { paddingVertical: spacing[12], paddingHorizontal: spacing[8] },
+  disabled: { opacity: 0.4 },
   icon: { width: 28, height: 28 },
   task: {
     flexDirection: "row",

@@ -69,6 +69,7 @@ export const descriptionCardSchema = z.object({
   type: z.literal("description"),
   text: z.string().min(1),
   photoUrl: z.url(),
+  secondPhotoUrl: z.url(),
   title: z.string().min(1).nullable().optional(),
   fact: z.string().min(1).nullable().optional(),
   highlights: z.string().min(1).nullable().optional(),
@@ -101,6 +102,11 @@ export const poiDetailSchema = z.object({
   language: languageSchema,
   profile: storedProfileSchema,
   cards: z.tuple([descriptionCardSchema, audioCardSchema]),
+  photoChallenges: z.array(z.object({
+    sequence: z.number().int().min(3),
+    photoUrl: z.url(),
+    instruction: z.string().min(1),
+  })),
   quest: questSchema,
 });
 export type DescriptionCard = z.infer<typeof descriptionCardSchema>;
