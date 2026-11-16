@@ -19,9 +19,7 @@ import {
   type BadgeDef,
   badges,
   type BadgeId,
-  isOutOfAttempts,
   MAX_ATTEMPTS,
-  quizPoints,
 } from "../../../domain/points";
 import { GeaServiceError, readableError } from "../../../services/api";
 import type { StoriesSource } from "../../../services/stories";
@@ -57,6 +55,7 @@ type Props = {
   readonly initialToken?: string | null;
   readonly progressOf: (poiId: string) => PoiProgress;
   readonly onProgress: (poiId: string, patch: Partial<PoiProgress>) => void;
+  readonly onAnswer: (answer: AnswerResult) => void;
   readonly totalPoints: number;
   readonly earnedBadges: readonly BadgeId[];
   readonly allCompleted: boolean;
@@ -247,18 +246,28 @@ export function StoryFlow(props: Props): ReactElement {
   }
 
   if (step === "sideQuest") {
+    const quizAvailable: boolean = poi.quest.isDisabled !== true &&
+      (poi.quest.type === "pilgan" || poi.quest.type === "benar_salah" || poi.quest.type === "cocokkan");
+    const questNotice: string | null = poi.quest.isDisabled === true
+      ? "Nikmati cerita dan gambar di ruangan ini, lalu lanjutkan penjelajahanmu."
+      : quizAvailable ? null : "Tantangan ini segera hadir. Kamu tetap bisa mencari objek pada gambar dan melanjutkan penjelajahan.";
     return (
       <SideQuestScreen
         poiName={poi.nama}
         photoChallenges={poi.photoChallenges}
+        notice={questNotice}
         locked={!verified}
         tasks={[
           { icon: "camera", label: `Scan QR di dekat koleksi ${poi.nama}`, done: verified || progress.attempts > 0 },
           { icon: "search", label: poi.quest.instruksi, done: progress.attempts > 0 },
-          { icon: "quiz", label: `Jawab mini quiz (maksimal ${MAX_ATTEMPTS} kesempatan)`, done: progress.completed },
+          ...(quizAvailable ? [{ icon: "quiz" as const, label: `Jawab mini quiz (maksimal ${MAX_ATTEMPTS} kesempatan)`, done: progress.completed }] : []),
         ]}
-        actionLabel={verified ? "Lakukan Side Quest" : "Scan QR koleksi"}
+        actionLabel={!quizAvailable ? "Lanjutkan Penjelajahan" : verified ? "Lakukan Side Quest" : "Scan QR koleksi"}
         onAction={(): void => {
+          if (!quizAvailable) {
+            setStep("final");
+            return;
+          }
           if (verified) setStep("quiz");
           else {
             setScanState("scanning");
@@ -273,7 +282,7 @@ export function StoryFlow(props: Props): ReactElement {
   const newBadges: readonly BadgeDef[] = badges.filter((badge: BadgeDef): boolean =>
     props.earnedBadges.includes(badge.id) && !badgesAtStart.current.includes(badge.id)
   );
-  const earned: number = quizPoints(progress);
+  const earned: number = progress.pointsAwarded;
 
   return (
     <FrameStage
@@ -301,10 +310,10 @@ export function StoryFlow(props: Props): ReactElement {
             <GeaText variant="body16Tight" color={componentColors.cardBody} numberOfLines={3}>{description.text}</GeaText>
             <StoryButton label="Mulai Cerita" onPress={(): void => setStep("story")} style={styles.summaryButton} />
           </View>
-          <Pressable accessibilityRole="button" hitSlop={8} style={styles.audioMode} onPress={(): void => openNarration("story")}>
+          {audio !== null && <Pressable accessibilityRole="button" hitSlop={8} style={styles.audioMode} onPress={(): void => openNarration("story")}>
             <GeaText variant="body16" color={colors.primary[800]}>Aktifkan Mode Audio</GeaText>
             <AudioCircle />
-          </Pressable>
+          </Pressable>}
         </>
       )}
 
@@ -322,7 +331,7 @@ export function StoryFlow(props: Props): ReactElement {
           <SceneLayer layer={isiPanelLayer} />
           {/* Panel cokelat diperpanjang ke bawah saat cerita panjang dan halaman digulir. */}
           <View style={[styles.isiFill, { height: Math.max(0, ISI_TOP + isiHeight + ISI_BOTTOM - ISI_FILL_TOP) }]} />
-          <Pressable
+          {audio !== null && <Pressable
             accessibilityRole="button"
             accessibilityLabel={step === "narration" ? "Tutup narasi" : "Dengarkan narasi"}
             hitSlop={8}
@@ -333,7 +342,7 @@ export function StoryFlow(props: Props): ReactElement {
             }}
           >
             <AudioCircle active={step === "narration"} />
-          </Pressable>
+          </Pressable>}
           <View
             style={styles.isiContent}
             onLayout={(event): void => setIsiHeight(event.nativeEvent.layout.height)}
@@ -342,7 +351,7 @@ export function StoryFlow(props: Props): ReactElement {
               <GeaText variant="heading28" color={colors.secondaryYellow[100]} numberOfLines={2}>
                 {step === "narration" ? "Dengarkan Narasi" : step === "story2" ? pageTwoTitle : description.title ?? poi.nama}
               </GeaText>
-              {step === "narration"
+              {step === "narration" && audio !== null
                 ? <StoryAudio key={audio.audioUrl} audioUrl={audio.audioUrl} durationSeconds={audio.durationSeconds} />
                 : (
                   <View>
@@ -389,12 +398,13 @@ export function StoryFlow(props: Props): ReactElement {
         <Quiz
           poi={poi}
           attemptsUsed={progress.attempts}
-          submit={(requestId: string, label: OptionLabel): Promise<AnswerResult> =>
-            source.answerQuest(visit.id_sesi, poi.quest.idQuest, requestId, label)}
+          submit={async (requestId: string, label: OptionLabel): Promise<AnswerResult> => {
+            const answer: AnswerResult = await source.answerQuest(visit.id_sesi, poi.quest.idQuest, requestId, label);
+            props.onAnswer(answer);
+            return answer;
+          }}
           onWrong={(answer: AnswerResult): void => {
-            const failed: boolean = answer.failed ?? isOutOfAttempts(answer.attemptCount);
-            onProgress(poiId, { attempts: answer.attemptCount, failed });
-            if (failed) {
+            if (answer.failed) {
               setToast(null);
               setStep("quizDone");
               return;
@@ -405,8 +415,7 @@ export function StoryFlow(props: Props): ReactElement {
               description: answer.hint ?? "Coba amati koleksinya lagi.",
             });
           }}
-          onCorrect={(answer: AnswerResult): void => {
-            onProgress(poiId, { completed: true, attempts: answer.attemptCount });
+          onCorrect={(): void => {
             setToast(null);
             setStep("quizDone");
           }}

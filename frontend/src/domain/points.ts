@@ -1,7 +1,8 @@
 // Aturan poin, progres, dan lencana Sprint 2 (E11, keputusan A7).
-// Sumber hitungan resmi nantinya ada di Supabase (E11/E12 milik C-2). Sampai endpoint itu ada,
-// aplikasi menghitung dengan aturan yang sama dari data percobaan agar tampilan bisa diuji.
-// Modul ini sengaja tanpa import supaya bisa diuji langsung dengan Node.
+// Perhitungan lokal hanya untuk mode mock; mode API memakai hasil resmi Supabase.
+import type { BadgeId } from "./contracts.ts";
+
+export type { BadgeId } from "./contracts.ts";
 
 export const MAX_ATTEMPTS = 3;
 
@@ -40,8 +41,6 @@ export function poiStatus(state: StoryState | undefined, verified: boolean): Poi
   if (state.closed || state.attempts > 0 || verified) return "sebagian";
   return "belum";
 }
-
-export type BadgeId = "BD-01" | "BD-02" | "BD-04" | "BD-05";
 
 export type BadgeDef = {
   readonly id: BadgeId;

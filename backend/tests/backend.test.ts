@@ -311,6 +311,27 @@ Deno.test("integrasi SQL: migrasi, enam POI, hak akses, QR, jawaban, idempotensi
           )).rows,
           before.rows,
         );
+        await database.exec(
+          "update public.poi set path_foto='images/story.jpg',denah_x=0,denah_y=0,prioritas=1,estimasi_durasi=5 where id_poi in (select id_poi from public.quest)",
+        );
+        await database.exec(
+          "update public.poi set is_published=true where id_poi in (select id_poi from public.quest)",
+        );
+        equal(
+          (await database.query("select * from public.poi where is_published")).rows.length,
+          11,
+        );
+        await database.exec("savepoint missing_photo_quest");
+        await database.exec(
+          "delete from public.quest_teks where id_quest='40000000-0000-4000-8000-000000000001' and profil='anak'",
+        );
+        await rejects(
+          database.exec(
+            "update public.poi set is_published=true where id_poi='30000000-0000-4000-8000-000000000001'",
+          ),
+          /POI_VARIANT_INCOMPLETE/,
+        );
+        await database.exec("rollback to savepoint missing_photo_quest");
       } finally {
         await database.exec("rollback");
       }
@@ -491,18 +512,19 @@ Deno.test("integrasi SQL: migrasi, enam POI, hak akses, QR, jawaban, idempotensi
         database.exec("update public.poi set path_foto=null where is_published"),
         /POI_DETAILS_INCOMPLETE/,
       );
-      await rejects(
-        database.exec("update public.konten set path_audio=null,durasi_audio=null"),
-        /POI_AUDIO_INCOMPLETE/,
-      );
       await database.exec("begin");
       try {
         await database.exec("update public.poi set is_published=false;");
         await database.exec("update public.konten set path_audio=null,durasi_audio=null;");
+        await database.exec("update public.poi set is_published=true;");
+        equal((await database.query("select * from public.poi where is_published")).rows.length, 6);
+        await database.exec("update public.konten set path_audio=null,durasi_audio=null;");
+        await database.exec("savepoint incomplete_audio");
         await rejects(
-          database.exec("update public.poi set is_published=true;"),
-          /POI_AUDIO_INCOMPLETE/,
+          database.exec("update public.konten set path_audio='audio/incomplete.mp3'"),
+          /check constraint/,
         );
+        await database.exec("rollback to savepoint incomplete_audio");
       } finally {
         await database.exec("rollback");
       }

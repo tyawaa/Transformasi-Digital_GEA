@@ -4,7 +4,7 @@ import { type ReactElement, useEffect, useMemo, useState } from "react";
 import { Platform, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { colors } from "./src/design/tokens";
-import { GeaFontsProvider } from "./src/design/typography";
+import { GeaFontsProvider, GeaText } from "./src/design/typography";
 import type { PoiSummary, Visit } from "./src/domain/contracts";
 import { type BadgeId, earnedBadges, poiStatus, type PoiRef, totalPoints } from "./src/domain/points";
 import {
@@ -28,6 +28,7 @@ import { useVisitProgress } from "./src/features/progress/useVisitProgress";
 import { type ParsedQr, qrErrorMessage, wrapQr } from "./src/features/qr/qrPayload";
 import { type DummyScan, ScanQrScreen, type ScanState } from "./src/features/stories/hifi/ScanQrScreen";
 import { StoryFlow } from "./src/features/stories/hifi/StoryFlow";
+import { StoryButton } from "./src/features/stories/hifi/parts";
 import { useOperation } from "./src/hooks/useOperation";
 import { useAuthRefresh } from "./src/hooks/useAuthRefresh";
 import { useVisitSession } from "./src/hooks/useVisitSession";
@@ -141,8 +142,12 @@ function Home(): ReactElement {
   const refs: readonly PoiRef[] = mapPois
     .filter((poi: MapPoi): boolean => poi.id !== null)
     .map((poi: MapPoi): PoiRef => ({ id: poi.id ?? "", wing: poi.museum.wing }));
-  const badges: readonly BadgeId[] = earnedBadges(refs, progress);
-  const points: number = totalPoints(refs, progress);
+  const badges: readonly BadgeId[] = storiesSource.kind === "api"
+    ? visitState.rewards.badges
+    : earnedBadges(refs, progress);
+  const points: number = storiesSource.kind === "api"
+    ? visitState.rewards.totalPoints
+    : totalPoints(refs, progress);
   // Rute rekomendasi dari preferensi, hanya dari ruangan yang ceritanya sudah tersedia.
   const route: Route | null = useMemo((): Route | null =>
     recommendRoute(
@@ -249,6 +254,16 @@ function Home(): ReactElement {
   if (onboarding.state === "loading" || preferences.state === "loading" || !visitState.ready) {
     return <View style={{ flex: 1, backgroundColor: colors.primary[300] }} />;
   }
+  if (visitState.error !== null) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", padding: 24, gap: 16, backgroundColor: colors.primary[300] }}>
+        <GeaText variant="heading24" color={colors.primary[900]}>Progres kunjungan belum dapat dimuat</GeaText>
+        <GeaText variant="body16" color={colors.primary[900]} accessibilityRole="alert">{visitState.error}</GeaText>
+        <StoryButton label="Coba lagi" onPress={visitState.retry} />
+        <StoryButton label="Akhiri kunjungan ini" onPress={visitState.endVisit} />
+      </View>
+    );
+  }
   if (onboarding.state === "show") {
     return (
       <>
@@ -285,6 +300,7 @@ function Home(): ReactElement {
           initialToken={screen.token}
           progressOf={progressOf}
           onProgress={visitState.update}
+          onAnswer={visitState.recordAnswer}
           totalPoints={points}
           earnedBadges={badges}
           allCompleted={allDone}

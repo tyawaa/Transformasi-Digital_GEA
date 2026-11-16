@@ -143,9 +143,10 @@ const taskIcons: Record<SideQuestTask["icon"], number> = {
 
 /** Draft daftar Side Quest dengan kotak centang per tugas. */
 export function SideQuestScreen(
-  { poiName, photoChallenges, tasks, locked, actionLabel, onAction, onBack }: {
+  { poiName, photoChallenges, notice, tasks, locked, actionLabel, onAction, onBack }: {
     readonly poiName: string;
     readonly photoChallenges: PoiDetail["photoChallenges"];
+    readonly notice: string | null;
     readonly tasks: readonly SideQuestTask[];
     readonly locked: boolean;
     readonly actionLabel: string;
@@ -165,6 +166,7 @@ export function SideQuestScreen(
         </GeaText>
       </View>
       {photoChallenges.length > 0 && <PhotoChallengeGallery challenges={photoChallenges} />}
+      {notice !== null && <GeaText variant="body16" color={componentColors.bodyDark}>{notice}</GeaText>}
       <View style={side.list}>
         {tasks.map((task: SideQuestTask): ReactElement => (
           <View

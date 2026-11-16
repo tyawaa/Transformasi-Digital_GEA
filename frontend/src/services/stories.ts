@@ -14,10 +14,9 @@ import {
   poiVerificationSchema,
   type Profile,
   type Visit,
-  type VisitProgress,
 } from "../domain/contracts";
-import { isOutOfAttempts } from "../domain/points";
-import type { ProgressMap } from "../features/stories/progress";
+import { isOutOfAttempts, quizPoints } from "../domain/points";
+import { type RestoredVisit, restoreServerVisit } from "../features/stories/progress";
 import {
   MOCK_ENTRANCE_TOKEN,
   mockAnswerKeys,
@@ -43,7 +42,7 @@ export interface StoriesSource {
   answerQuest(idSesi: string, idQuest: string, requestId: string, labelOpsi: OptionLabel): Promise<AnswerResult>;
   closeCard(idSesi: string, idPoi: string): Promise<ClosedCard>;
   /** Progres dari server untuk melanjutkan sesi; null = tidak ada data server (mock). */
-  restore(idSesi: string): Promise<ProgressMap | null>;
+  restore(idSesi: string): Promise<RestoredVisit | null>;
 }
 
 const VERIFICATION_MINUTES = 15;
@@ -145,6 +144,7 @@ export class MockStoriesSource implements StoriesSource {
       completed: correct,
       hint: correct ? null : key.hint,
       failed,
+      pointsAwarded: quizPoints({ completed: correct, failed, attempts: attemptCount }),
     });
     state.responses[`${idSesi}:${requestId}`] = result;
     await this.save();
@@ -157,7 +157,7 @@ export class MockStoriesSource implements StoriesSource {
     return closedCardSchema.parse({ idPoi, statusKartu: "ditutup" });
   }
 
-  restore(): Promise<ProgressMap | null> {
+  restore(): Promise<RestoredVisit | null> {
     return Promise.resolve(null);
   }
 
@@ -221,37 +221,9 @@ export class ApiStoriesSource implements StoriesSource {
     return this.api.closeCard(idSesi, idPoi);
   }
 
-  /**
-   * GET /sessions/{id}/progress berisi kartu ditutup dan percobaan per quest. Quest dipetakan
-   * ke POI lewat detail POI. Poin dihitung dari jumlah percobaan sampai E12 menyediakan total.
-   */
-  async restore(idSesi: string): Promise<ProgressMap | null> {
-    const progress: VisitProgress = await this.api.progress(idSesi);
-    const result: Record<string, { closed: boolean; verifiedUntil: null; completed: boolean; failed: boolean; attempts: number }> = {};
-    for (const card of progress.cards) {
-      result[card.id_poi] = { closed: card.status_kartu === "ditutup", verifiedUntil: null, completed: false, failed: false, attempts: 0 };
-    }
-    if (progress.quests.length > 0) {
-      const summaries: readonly PoiSummary[] = await this.api.pois();
-      const details: readonly PoiDetail[] = await Promise.all(
-        summaries.map((poi: PoiSummary): Promise<PoiDetail> =>
-          this.api.poiDetail(poi.id_poi, progress.session.bahasa, progress.session.profil)
-        ),
-      );
-      for (const quest of progress.quests) {
-        const poi: PoiDetail | undefined = details.find((d: PoiDetail): boolean => d.quest.idQuest === quest.id_quest);
-        if (poi === undefined) continue;
-        const previous = result[poi.id_poi];
-        result[poi.id_poi] = {
-          closed: previous?.closed ?? true,
-          verifiedUntil: null,
-          completed: quest.answer_correct,
-          failed: !quest.answer_correct && isOutOfAttempts(quest.jumlah_percobaan),
-          attempts: quest.jumlah_percobaan,
-        };
-      }
-    }
-    return result;
+  /** Memulihkan poin, lencana, dan progres langsung dari satu respons resmi Supabase. */
+  async restore(idSesi: string): Promise<RestoredVisit> {
+    return restoreServerVisit(await this.api.progress(idSesi));
   }
 }
 
