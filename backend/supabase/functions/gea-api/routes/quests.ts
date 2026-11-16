@@ -1,6 +1,6 @@
 import { jsonBody, success } from "../http.ts";
 import type { SupabaseGateway } from "../supabase.ts";
-import { type JsonObject, optionLabel, uuid } from "../validation.ts";
+import { type JsonObject, uuid } from "../validation.ts";
 
 export async function routeQuests(
   request: Request,

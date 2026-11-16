@@ -269,6 +269,52 @@ Deno.test("integrasi SQL: migrasi, enam POI, hak akses, QR, jawaban, idempotensi
         await database.exec("rollback");
       }
     });
+    await test.step("seed B6: cerita anak terpisah, POI-03 dewasa selaras dengan batuan, dan seed idempoten", async (): Promise<void> => {
+      const seed: string = await Deno.readTextFile(
+        new URL("../data/b6_seed_content_poi.sql", import.meta.url),
+      );
+      const before = await database.query(
+        "select id_poi,path_foto,is_published from public.poi order by id_poi",
+      );
+      await database.exec("begin");
+      try {
+        await database.exec(seed);
+        await database.exec(seed);
+        const variants = await database.query(
+          "select profil,count(*)::int as count from public.konten group by profil order by profil",
+        );
+        deepStrictEqual(variants.rows, [{ profil: "anak", count: 11 }, {
+          profil: "dewasa",
+          count: 11,
+        }]);
+        equal((await database.query("select * from public.quest")).rows.length, 11);
+        const adult = await database.query(
+          "select teks_cerita,fakta_menarik,koleksi_sorotan from public.konten where id_poi='30000000-0000-4000-8000-000000000003' and profil='dewasa'",
+        );
+        const adultStory: JsonObject = object(adult.rows[0], "POI-03 dewasa");
+        ok(String(adultStory.teks_cerita).includes("obsidian"));
+        ok(String(adultStory.koleksi_sorotan).includes("batuapung"));
+        equal(
+          adultStory.fakta_menarik,
+          "Batuapung penuh rongga udara sehingga sangat ringan, bahkan bisa mengapung di air.",
+        );
+        const child = await database.query(
+          "select judul_cerita,teks_cerita from public.konten where id_poi='30000000-0000-4000-8000-000000000001' and profil='anak'",
+        );
+        equal(
+          object(child.rows[0], "POI-01 anak").judul_cerita,
+          "Yuk, Kenalan dengan Hewan Purba Indonesia!",
+        );
+        deepStrictEqual(
+          (await database.query(
+            "select id_poi,path_foto,is_published from public.poi order by id_poi",
+          )).rows,
+          before.rows,
+        );
+      } finally {
+        await database.exec("rollback");
+      }
+    });
     await database.exec("delete from public.poi; delete from public.zona;");
     await database.exec(
       await Deno.readTextFile(new URL("./fixtures/stories.sql", import.meta.url)),
