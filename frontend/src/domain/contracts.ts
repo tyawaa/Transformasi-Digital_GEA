@@ -99,7 +99,6 @@ export const questSchema = z.object({
   pertanyaan: z.string().min(1),
   options: z.array(questOptionSchema).default([]),
   target_foto: z.string().nullable().optional(),
-  kunci_isian: z.string().nullable().optional(),
   penjelasan: z.string().nullable().optional(),
   isDisabled: z.boolean().optional(),
 });

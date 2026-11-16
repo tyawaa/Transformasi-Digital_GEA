@@ -1,6 +1,19 @@
 import { equal, ok, rejects } from "node:assert/strict";
 import { PGlite } from "@electric-sql/pglite";
 
+type QuestAnswer = {
+  readonly answerCorrect: boolean;
+  readonly attemptCount: number;
+  readonly completed: boolean;
+  readonly pointsAwarded: number;
+};
+
+type SessionProgress = {
+  readonly totalPoints: number;
+  readonly poiProgress: readonly unknown[];
+  readonly badges: readonly unknown[];
+};
+
 Deno.test("Quest Types: pilgan, foto, isian_singkat, benar_salah, dan profil anak", async (test): Promise<void> => {
   const database = new PGlite();
   try {
@@ -99,7 +112,7 @@ Deno.test("Quest Types: pilgan, foto, isian_singkat, benar_salah, dan profil ana
 
     await test.step("isian singkat: validasi variasi jawaban dan penilaian case-insensitive", async (): Promise<void> => {
       // Jawaban salah
-      const resWrong = await database.query<{ result: any }>(
+      const resWrong = await database.query<{ result: QuestAnswer }>(
         "select public.jawab_quest($1, $2, $3, null, $4, 'magma', false) as result",
         [userIdAdult, visitIdAdult, questIsianId, crypto.randomUUID()],
       );
@@ -109,7 +122,7 @@ Deno.test("Quest Types: pilgan, foto, isian_singkat, benar_salah, dan profil ana
       equal(wrong.pointsAwarded, 0);
 
       // Jawaban benar (varian case-insensitive)
-      const resCorrect = await database.query<{ result: any }>(
+      const resCorrect = await database.query<{ result: QuestAnswer }>(
         "select public.jawab_quest($1, $2, $3, null, $4, 'LEMPENG TEKTONIK', false) as result",
         [userIdAdult, visitIdAdult, questIsianId, crypto.randomUUID()],
       );
@@ -121,7 +134,7 @@ Deno.test("Quest Types: pilgan, foto, isian_singkat, benar_salah, dan profil ana
     });
 
     await test.step("foto: menyelesaikan quest dan mendapatkan poin", async (): Promise<void> => {
-      const resFoto = await database.query<{ result: any }>(
+      const resFoto = await database.query<{ result: QuestAnswer }>(
         "select public.jawab_quest($1, $2, $3, null, $4, null, true) as result",
         [userIdAdult, visitIdAdult, questFotoId, crypto.randomUUID()],
       );
@@ -133,7 +146,7 @@ Deno.test("Quest Types: pilgan, foto, isian_singkat, benar_salah, dan profil ana
 
     await test.step("aturan profil anak: quest foto aktif dan dapat diselesaikan", async (): Promise<void> => {
       // Anak mengerjakan quest FOTO -> BERHASIL
-      const resChildFoto = await database.query<{ result: any }>(
+      const resChildFoto = await database.query<{ result: QuestAnswer }>(
         "select public.jawab_quest($1, $2, $3, null, $4, null, true) as result",
         [userIdChild, visitIdChild, questFotoId, crypto.randomUUID()],
       );
@@ -144,7 +157,7 @@ Deno.test("Quest Types: pilgan, foto, isian_singkat, benar_salah, dan profil ana
     });
 
     await test.step("progres_kunjungan menyertakan totalPoints, badges, dan poiProgress", async (): Promise<void> => {
-      const resProg = await database.query<{ result: any }>(
+      const resProg = await database.query<{ result: SessionProgress }>(
         "select public.progres_kunjungan($1, $2) as result",
         [userIdAdult, visitIdAdult],
       );
