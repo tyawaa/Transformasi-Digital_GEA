@@ -4,7 +4,7 @@ import type { ReactElement } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { colors, componentColors, radius, shadows, spacing } from "../../design/tokens";
 import { GeaText } from "../../design/typography";
-import { type BadgeDef, badges, type BadgeId, quizPoints } from "../../domain/points";
+import { type BadgeDef, badges, type BadgeId } from "../../domain/points";
 import type { MapPoi } from "../map/MapScreen";
 import { ScanBackground } from "../stories/hifi/backgrounds";
 import { FrameStage } from "../stories/hifi/parts";
@@ -85,12 +85,12 @@ export function ProgressScreen({ pois, progressOf, totalPoints, earned, availabl
             return (
               <View
                 key={poi.museum.code}
-                accessibilityLabel={`${poi.museum.code} ${poi.museum.name}: ${quizPoints(state)} poin`}
+                accessibilityLabel={`${poi.museum.code} ${poi.museum.name}: ${state.pointsAwarded} poin`}
                 style={[styles.chip, finished && styles.chipDone]}
               >
                 <GeaText variant="bold16" color={finished ? colors.white : colors.primary[900]}>{poi.museum.code}</GeaText>
                 <GeaText variant="caption12" color={finished ? colors.white : colors.primary[700]}>
-                  {finished ? `+${quizPoints(state)}` : state.closed ? "quest" : "–"}
+                  {finished ? `+${state.pointsAwarded}` : state.closed ? "quest" : "–"}
                 </GeaText>
               </View>
             );

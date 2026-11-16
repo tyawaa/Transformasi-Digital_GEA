@@ -156,7 +156,7 @@ export async function poiDetail(
         photoUrl: gateway.mediaUrl(text(poi.path_foto, "path_foto", 1024)),
         secondPhotoUrl: gateway.mediaUrl(text(secondPhoto.path_foto, "poi_media.path_foto", 1024)),
       },
-      {
+      content.path_audio === null ? null : {
         type: "audio",
         audioUrl: gateway.mediaUrl(text(content.path_audio, "path_audio", 1024)),
         durationSeconds: content.durasi_audio,

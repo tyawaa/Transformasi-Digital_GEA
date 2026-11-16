@@ -3,8 +3,8 @@ import { z } from "zod";
 import {
   type AccessDecision,
   accessDecisionSchema,
-  type AnswerResult,
-  answerResultSchema,
+  type ScoredAnswerResult,
+  scoredAnswerResultSchema,
   type BackendHealth,
   type ClosedCard,
   closedCardSchema,
@@ -215,8 +215,8 @@ export class GeaApi {
     idQuest: string,
     requestId: string,
     labelOpsi: OptionLabel,
-  ): Promise<AnswerResult> {
-    return answerResultSchema.parse(
+  ): Promise<ScoredAnswerResult> {
+    return scoredAnswerResultSchema.parse(
       await this.post(
         `/sessions/${encodeURIComponent(idSesi)}/quests/${
           encodeURIComponent(idQuest)
