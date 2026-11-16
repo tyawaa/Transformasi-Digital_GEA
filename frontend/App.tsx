@@ -270,6 +270,10 @@ function Home(): ReactElement {
         <StatusBar style="dark" />
         <OnboardingScreen
           checkingLocation={busy === "location"}
+          locationLabel={session.locationLabel}
+          locationNotice={session.notice}
+          locationError={operationError}
+          currentLocation={session.currentLocation}
           onCheckLocation={(): void => {
             void session.checkLocation();
           }}
