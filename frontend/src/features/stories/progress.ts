@@ -16,6 +16,8 @@ export type PoiProgress = {
   readonly challengeDone?: boolean;
   /** Poin tantangan: poin sheet bila berhasil, 0 bila kesempatan habis. */
   readonly challengePoints?: number;
+  /** Jumlah jawaban tantangan non-foto (1 = benar di percobaan pertama); 0 untuk quest foto. */
+  readonly challengeAttempts?: number;
 };
 
 export const emptyProgress: PoiProgress = {

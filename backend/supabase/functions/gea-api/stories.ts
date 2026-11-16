@@ -173,7 +173,8 @@ export async function poiDetail(
     quest: {
       idQuest: questId,
       type: questType,
-      isDisabled: profile === "anak" && questType !== "foto",
+      // Anak tidak mengerjakan quest foto; quest lain (pilgan, cocokkan, benar/salah, isian) tetap aktif.
+      isDisabled: profile === "anak" && questType === "foto",
       ...question,
       options,
     },

@@ -35,6 +35,7 @@ import { type DummyScan, ScanQrScreen, type ScanState } from "./ScanQrScreen";
 import { StoryAudio } from "./StoryAudio";
 import { ChallengeScreen } from "./ChallengeScreen";
 import { PhotoTaskScreen } from "./PhotoTaskScreen";
+import { type QuestPlan, questPlan } from "../questPlan";
 import { ChallengeDoneScreen, ExplorerResultScreen, StoryFinalScreen, StoryFinishedScreen } from "./StoryEndScreens";
 
 // Alur per koleksi (revisi 12 Nov 2026): Scan QR → Summary → Isi 1 → Isi 2 (kartu koleksi; ketuk = cari & foto)
@@ -84,25 +85,6 @@ type Props = {
 
 function isVerified(progress: PoiProgress): boolean {
   return progress.verifiedUntil !== null && progress.verifiedUntil > Date.now();
-}
-
-/** Quest yang dikerjakan di POI ini, sesuai sheet dan profil pengunjung. */
-type QuestPlan = {
-  /** Tantangan (foto / benar-salah / isian), atau undefined bila tidak ada untuk profil ini. */
-  readonly challenge: Tantangan | undefined;
-  /** Mini Quiz pilihan ganda (dinilai backend). */
-  readonly hasQuiz: boolean;
-};
-
-/**
- * Sprint 3: anak (7–12) hanya mengerjakan quest foto dari Quest_Anak; Mini Quiz dan quest lain nonaktif.
- * Pengunjung lain mengerjakan satu quest per POI dari sheet Quest: pilihan ganda/cocokkan = Mini Quiz,
- * foto/benar-salah/isian = tantangan. POI tanpa data lokal (mode API) tetap memakai Mini Quiz backend.
- */
-function questPlan(poiId: string, profile: Profile): QuestPlan {
-  const content: StoryContent | null = museumPoiById(poiId)?.content ?? null;
-  if (profile === "anak") return { challenge: content?.tantanganAnak, hasQuiz: false };
-  return { challenge: content?.tantangan, hasQuiz: content?.tanpaKuis !== true };
 }
 
 /** Langkah saat koleksi dibuka lagi, sesuai progres yang tersimpan. */
@@ -266,7 +248,10 @@ export function StoryFlow(props: Props): ReactElement {
   const judul: string | undefined = (kid ? local?.judulAnak : undefined) ?? description.title ?? local?.judul;
   const fakta: string | undefined = (kid ? local?.faktaAnak : undefined) ?? description.fact ?? local?.fakta;
   const pageTwoTitle: string = fakta !== undefined ? "Fakta Menarik" : "Cari di Ruangan Ini";
-  const pageTwoText: string = `${fakta !== undefined ? `${fakta}\n\n` : ""}Ketuk kartu koleksi di atas, cari koleksinya di ruangan ini, lalu foto.`;
+  // Anak tidak memotret: kartu koleksi hanya untuk dilihat dan dicari di ruangan.
+  const pageTwoText: string = `${fakta !== undefined ? `${fakta}\n\n` : ""}${kid
+    ? "Yuk, cari koleksi di atas di ruangan ini!"
+    : "Ketuk kartu koleksi di atas, cari koleksinya di ruangan ini, lalu foto."}`;
   const photos: readonly number[] = progress.photos ?? [];
   const plan: QuestPlan = questPlan(poiId, visit.profil);
   const challenge: Tantangan | undefined = plan.challenge;
@@ -340,8 +325,13 @@ export function StoryFlow(props: Props): ReactElement {
         challenge={challenge}
         references={poi.photoChallenges}
         onBack={(): void => setStep("storyDone")}
-        onDone={({ points }): void => {
-          onProgress(poiId, { challengeDone: true, challengePoints: points, ...(hasQuiz ? {} : { completed: true }) });
+        onDone={({ points, attempts }): void => {
+          onProgress(poiId, {
+            challengeDone: true,
+            challengePoints: points,
+            challengeAttempts: attempts,
+            ...(hasQuiz ? {} : { completed: true }),
+          });
           setStep(hasQuiz ? "challengeDone" : "result");
         }}
         testMode={storiesMockEnabled}
@@ -437,6 +427,7 @@ export function StoryFlow(props: Props): ReactElement {
               <HighlightCards
                 items={highlights}
                 done={photos}
+                photoEnabled={!kid}
                 onPick={(index: number): void => {
                   setPhotoIndex(index);
                   setStep("photo");
@@ -559,7 +550,8 @@ export function StoryFlow(props: Props): ReactElement {
             }
             setToast({ tone: "danger", title: "Jawaban belum terkirim", description: readableError(cause) });
           }}
-          onBack={(): void => setStep("challengeDone")}
+          // Kembali ke layar sebelum kuis: "Yeay" bila ada tantangan, selain itu "Kisah Selesai".
+          onBack={(): void => setStep(challenge !== undefined ? "challengeDone" : "storyDone")}
           onHeight={setQuizHeight}
         />
       )}
@@ -713,10 +705,12 @@ const CARD_SPOTS: readonly { left: number; top: number; rotate: number }[] = [
  * Kotak centang di tepi kanan kartu terisi setelah koleksinya difoto.
  */
 function HighlightCards(
-  { items, done, onPick }: {
+  { items, done, photoEnabled, onPick }: {
     readonly items: readonly string[];
     /** Indeks kartu yang sudah difoto. */
     readonly done: readonly number[];
+    /** false = anak: kartu hanya ditampilkan, tanpa kamera dan kotak centang. */
+    readonly photoEnabled: boolean;
     readonly onPick: (index: number) => void;
   },
 ): ReactElement {
@@ -728,8 +722,9 @@ function HighlightCards(
         return (
           <Pressable
             key={item}
-            accessibilityRole="button"
-            accessibilityLabel={`Cari dan foto ${item}${checked ? ", sudah difoto" : ""}`}
+            accessibilityRole={photoEnabled ? "button" : "text"}
+            accessibilityLabel={photoEnabled ? `Cari dan foto ${item}${checked ? ", sudah difoto" : ""}` : `Koleksi: ${item}`}
+            disabled={!photoEnabled}
             onPress={(): void => onPick(i)}
             style={({ pressed }) => [
               styles.highlightCard,
@@ -739,12 +734,14 @@ function HighlightCards(
           >
             <Image accessible={false} source={cameraIcon} style={styles.icon28} />
             <View style={styles.flex}>
-              <GeaText variant="heading20" color={colors.secondaryGreen[900]}>CARI &amp; FOTO</GeaText>
+              <GeaText variant="heading20" color={colors.secondaryGreen[900]}>{photoEnabled ? "CARI & FOTO" : "KOLEKSI"}</GeaText>
               <GeaText variant="body14" color={componentColors.bodyDark} numberOfLines={2}>{item}</GeaText>
             </View>
-            <View style={[styles.cardCheck, checked && styles.cardCheckDone]}>
-              {checked && <GeaText variant="bold16" color={colors.secondaryGreen[900]}>✓</GeaText>}
-            </View>
+            {photoEnabled && (
+              <View style={[styles.cardCheck, checked && styles.cardCheckDone]}>
+                {checked && <GeaText variant="bold16" color={colors.secondaryGreen[900]}>✓</GeaText>}
+              </View>
+            )}
           </Pressable>
         );
       })}

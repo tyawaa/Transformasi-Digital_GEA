@@ -62,19 +62,21 @@ Deno.test("A8: audit skema Supabase dan tabel Sprint 2", async (test): Promise<v
       ok(tableNames.has("checkpoint"), "view checkpoint harus ada");
     });
 
-    await test.step("master badge terisi 4 lencana aktif", async (): Promise<void> => {
+    await test.step("master badge mengikuti sheet Badge_Poin Sprint 3", async (): Promise<void> => {
       const badges = await database.query<{ kode_badge: string; bonus_poin: number; is_active: boolean }>(
         "select kode_badge, bonus_poin, is_active from public.badge order by kode_badge"
       );
-      equal(badges.rows.length, 5); // BD-01, BD-02, BD-03, BD-04, BD-05
+      equal(badges.rows.length, 15); // BD-01 s.d. BD-15
 
-      const activeBadges = badges.rows.filter((b) => b.is_active);
-      equal(activeBadges.length, 4, "4 lencana harus aktif untuk Sprint 2");
-      const activeCodes = activeBadges.map((b) => b.kode_badge);
+      const activeCodes = badges.rows.filter((b) => b.is_active).map((b) => b.kode_badge);
+      // Prioritas rendah (POI-12 s.d. POI-21) dan foto anak belum aktif.
+      for (const code of ["BD-05", "BD-08", "BD-09", "BD-14"]) {
+        ok(!activeCodes.includes(code), `${code} belum aktif`);
+      }
+      equal(activeCodes.length, 11, "11 lencana prioritas tinggi aktif");
       ok(activeCodes.includes("BD-01"), "BD-01 Penjelajah Sayap Kiri harus ada");
-      ok(activeCodes.includes("BD-02"), "BD-02 Penjelajah Sayap Kanan harus ada");
-      ok(activeCodes.includes("BD-04"), "BD-04 Otak Geologi harus ada");
-      ok(activeCodes.includes("BD-05"), "BD-05 Geolog Sejati harus ada");
+      ok(activeCodes.includes("BD-02"), "BD-02 Pemburu Foto harus ada");
+      ok(activeCodes.includes("BD-15"), "BD-15 Penjelajah Cilik harus ada");
     });
 
     await test.step("unique key anti-poin ganda (session, POI, komponen) bekerja", async (): Promise<void> => {
