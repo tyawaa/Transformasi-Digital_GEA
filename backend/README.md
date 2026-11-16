@@ -354,3 +354,132 @@ belum selesai sebelum konten asli dan media terunggah serta URL diperiksa.
 `poi-template.json`) dari konten frontend. Status `approved:false`, audio masih `null` (B5), dan foto
 harus diunggah ke `images/Pxx/NN.jpg`. `prepare-seed.ts` membutuhkan tepat 20 POI lengkap dan dua
 zona; draft 14 POI ini perlu dilengkapi sebelum dipakai sebagai seed publikasi.
+
+## A8: Skema tabel Sprint 2 — poin, lencana, dan progres
+
+Migrasi `20261112000600_sprint2_points_badges_progress.sql` menambah tabel berikut:
+
+| Tabel | Fungsi |
+| --- | --- |
+| `public.badge` | Master lencana (kode BD-01–BD-05, bonus poin, is_active) |
+| `public.user_badge` | Lencana yang diraih per sesi, unik per `(id_sesi, kode_badge)` |
+| `public.points` | Poin yang diperoleh per komponen per POI per sesi; unique key `(id_sesi, id_poi, komponen)` mencegah poin ganda |
+| `public.poi_progress` | Status progres POI per sesi: `belum`/`sebagian`/`selesai` |
+
+View kompatibilitas tersedia agar kode yang mereferensikan nama lama tetap berjalan:
+`session` → `sesi_kunjungan`, `quest_attempt` → `private.quest_attempts`, `checkpoint` → `poi`.
+
+Seed awal menyertakan 5 lencana: BD-01 (Penjelajah Sayap Kiri), BD-02 (Penjelajah Sayap Kanan),
+BD-03 (Pemburu Foto — `is_active=false`, menunggu Sprint 3), BD-04 (Otak Geologi), BD-05 (Geolog Sejati).
+RLS aktif; hanya `service_role` yang dapat mengakses semua tabel ini secara langsung.
+
+```powershell
+npm test -- --filter a8_schema
+```
+
+## E11: Poin engine dan evaluasi lencana
+
+Engine poin diimplementasikan dalam fungsi `private.evaluasi_lencana()` yang dipanggil otomatis
+di dalam RPC `jawab_quest` setelah setiap jawaban benar. Skema poin:
+
+| Percobaan | Poin |
+| --- | --- |
+| Ke-1 (jawaban langsung benar) | 20 |
+| Ke-2 | 10 |
+| Ke-3 | 5 |
+| Gagal (habis percobaan) | 0 |
+| Foto (Sprint 3) | 5 |
+
+Evaluasi lencana otomatis memeriksa kondisi setiap kali poin baru tercatat:
+
+| Kode | Kondisi |
+| --- | --- |
+| BD-01 | Semua POI aktif di zona Sayap Kiri (`ZL`) selesai |
+| BD-02 | Semua POI aktif di zona Sayap Kanan (`ZR`) selesai |
+| BD-04 | Semua quest dijawab benar di percobaan pertama |
+| BD-05 | Semua POI aktif dari seluruh zona selesai |
+
+Lencana yang sudah diraih tidak diberikan ulang (constraint `unique(id_sesi, kode_badge)`).
+BD-03 (`is_active=false`) tidak dievaluasi sampai modul foto aktif di Sprint 3.
+
+## E12: API quest dan poin — update Sprint 2
+
+### POST `/sessions/{id}/quests/{questId}/answers`
+
+Payload diperluas untuk mendukung semua tipe quest:
+
+```json
+{
+  "requestId": "uuid",
+  "labelOpsi": "B",
+  "jawabanTeks": "tektonik",
+  "photoTaken": true
+}
+```
+
+`labelOpsi` wajib untuk tipe `pilgan`, `benar_salah`, `cocokkan`. `jawabanTeks` wajib untuk
+`isian_singkat`. `photoTaken: true` menandai quest foto selesai. Semua field selain `requestId`
+bersifat opsional secara sintaks; validasi logika ada di fungsi SQL `jawab_quest`.
+
+Respons sekarang menyertakan informasi poin dan lencana:
+
+```json
+{
+  "data": {
+    "idQuest": "uuid",
+    "idPoi": "uuid",
+    "answerCorrect": true,
+    "attemptCount": 1,
+    "completed": true,
+    "pointsAwarded": 20,
+    "totalPoints": 60,
+    "newBadges": ["BD-04"]
+  }
+}
+```
+
+`pointsAwarded` adalah poin dari percobaan ini. `totalPoints` adalah akumulasi seluruh sesi.
+`newBadges` adalah array kode lencana yang baru diraih dari jawaban ini (kosong jika tidak ada).
+
+### GET `/sessions/{id}/progress`
+
+Respons diperluas dengan field:
+
+```json
+{
+  "data": {
+    "session": { ... },
+    "cards": [ ... ],
+    "quests": [ ... ],
+    "totalPoints": 80,
+    "badges": ["BD-01", "BD-04"],
+    "poiProgress": {
+      "uuid-poi": "selesai",
+      "uuid-poi-2": "sebagian"
+    }
+  }
+}
+```
+
+### Flag `isDisabled` pada quest (profil anak)
+
+Endpoint detail POI (`GET /pois/{id}`) menyertakan flag `isDisabled: true` pada quest
+untuk pengunjung dengan `profile=anak` jika tipe quest bukan `foto`. Frontend wajib
+menonaktifkan input jawaban saat `isDisabled=true`. Blokir ini hanya di level API —
+database tidak memblokir pengiriman jawaban secara langsung agar kompatibilitas test suite terjaga.
+
+### Tipe quest yang didukung
+
+Migrasi `20261112000700_quest_types_and_variations.sql` memperluas constraint `tipe_quest`:
+
+| Tipe | Kolom kunci | Keterangan |
+| --- | --- | --- |
+| `pilgan` | `label_opsi` A–D | Default Sprint 1; wajib 4 opsi + 1 kunci |
+| `foto` | `target_foto`, `photoTaken` | Aktif Sprint 2; hanya quest ini yang bisa dikerjakan profil anak |
+| `isian_singkat` | `kunci_isian`, `jawabanTeks` | Matching case-insensitive |
+| `benar_salah` | `label_opsi` A/B | Wajib tepat 2 opsi |
+| `cocokkan` | `label_opsi`, `variasi_jawaban` | Wajib 4 opsi |
+
+```powershell
+npm test -- --filter quest_types
+```
