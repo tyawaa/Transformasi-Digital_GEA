@@ -69,8 +69,18 @@ export type StoryContent = {
   /** Nomor foto survei (urutan nama file di folder POI/Pxx) untuk layar ringkasan dan isi cerita. */
   readonly fotoUtama?: number;
   readonly fotoKedua?: number;
-  /** Quest kedua di sheet (selain kuis pilihan ganda): dikerjakan setelah "Kisah Selesai". */
+  /** Quest non-pilihan-ganda dari sheet Quest: dikerjakan setelah "Kisah Selesai" (pengunjung umum). */
   readonly tantangan?: Tantangan;
+  // Sprint 3: satu quest per POI di sheet Quest; versi anak di Konten_Cerita_Anak dan Quest_Anak.
+  /** true = sheet Quest tidak punya kuis pilihan ganda untuk POI ini, jadi Mini Quiz dilewati. */
+  readonly tanpaKuis?: boolean;
+  /** Judul dan fakta versi anak (Konten_Cerita_Anak). */
+  readonly judulAnak?: string;
+  readonly faktaAnak?: string;
+  /** Quest anak (Quest_Anak): hanya tipe foto. Anak tidak mengerjakan Mini Quiz atau quest lain. */
+  readonly tantanganAnak?: Tantangan;
+  /** Estimasi lama kunjungan POI dalam menit (POI_Preference, kolom Estimated_Duration). */
+  readonly durasiMenit?: number;
 };
 
 /**
@@ -87,6 +97,9 @@ export type Tantangan = {
   readonly instruksi: string;
   readonly target?: string;
   readonly jawaban?: readonly string[];
+  /** Quest foto dengan pertanyaan pembuka (mis. P01): pilihan jawaban dan kunci "A"–"D". */
+  readonly opsi?: readonly string[];
+  readonly kunci?: string;
   readonly hint?: string;
   readonly penjelasan?: string;
   readonly poin: number;
@@ -147,18 +160,23 @@ const rows: readonly Row[] = [
 // P15–P21 belum disurvei/kosong, jadi tampil "segera hadir" di peta.
 const contents: { readonly [n: number]: StoryContent } = {
   1: {
-    // Sumber: sheet Konten_Cerita + Quest (Template_..._quest_badge_disesuaikan, 12 Nov 2026). Status: Draft.
+    // Sumber: workbook Template_..._Anak (15 Nov 2026): Konten_Cerita, Konten_Cerita_Anak, Quest, Quest_Anak,
+    // POI_Preference. Status: Draft.
     fotoUtama: 5,
     fotoKedua: 0,
+    durasiMenit: 7,
     judul: "Debaran Fauna Purba Indonesia",
     cerita:
       "Jutaan tahun lalu, Indonesia dihuni berbagai hewan purba berukuran unik! Ada Megalochelys sp., kura-kura raksasa, hingga Elephas celebensis, gajah purba mungil dari Sulawesi. Bersama Elephas maximus dan Sinomastodon bumiayuensis, fosil-fosil ini menjadi saksi beragamnya kehidupan fauna di masa lalu. Yuk, amati dan temukan perbedaannya!",
+    judulAnak: "Yuk, Kenalan dengan Hewan Purba Indonesia!",
     ceritaAnak:
-      "Dulu sekali, jutaan tahun lalu, di Indonesia hidup hewan-hewan purba yang unik! Ada kura-kura raksasa bernama Megalochelys. Ada juga gajah purba yang mungil dari Sulawesi, namanya Elephas celebensis. Fosilnya, yaitu sisa hewan yang sudah membatu, bisa kamu lihat di sini. Yuk, cari tahu apa bedanya!",
+      "Jutaan tahun lalu, Indonesia dihuni banyak hewan purba yang unik! Ada Megalochelys sp., si kura-kura raksasa. Ada juga Elephas celebensis, gajah purba mungil dari Sulawesi. Bersama Elephas maximus dan Sinomastodon bumiayuensis, fosil-fosil ini menjadi saksi beragamnya hewan di masa lalu. Ayo amati dan temukan perbedaannya!",
+    faktaAnak: "Tahukah kamu? Elephas celebensis adalah salah satu gajah purba berukuran kecil yang pernah hidup di Sulawesi.",
     ceritaRemaja:
       "Jutaan tahun lalu, Indonesia dihuni hewan purba dengan ukuran yang unik. Ada Megalochelys sp., kura-kura raksasa, dan Elephas celebensis, gajah purba mungil dari Sulawesi. Bersama Elephas maximus dan Sinomastodon bumiayuensis, fosil-fosil ini membuktikan bahwa fauna Indonesia di masa lalu sangat beragam. Coba amati dan temukan perbedaannya!",
     fakta: "Elephas celebensis dikenal sebagai salah satu gajah purba berukuran kecil yang pernah hidup di Sulawesi.",
     sorotan: "Megalochelys sp., Elephas celebensis, Elephas maximus, Sinomastodon bumiayuensis",
+    tanpaKuis: true,
     instruksi: "Gajah Mungil dari Sulawesi",
     pertanyaan: "Fosil gajah purba berukuran kecil dari Sulawesi yang dipamerkan di sini bernama...",
     opsi: ["Elephas maximus", "Sinomastodon bumiayuensis", "Elephas celebensis", "Megalochelys sp."],
@@ -167,57 +185,70 @@ const contents: { readonly [n: number]: StoryContent } = {
     penjelasan: "Elephas celebensis dikenal sebagai salah satu gajah purba berukuran kecil yang pernah hidup di Sulawesi.",
     tantangan: {
       tipe: "foto",
-      judul: "Serpihan Kura-kura Raksasa",
-      instruksi: "Ada bagian dari kura-kura raksasa (Megalochelys sp.) di sini. Cari, lalu foto bersama labelnya.",
-      target: "Fosil Megalochelys sp. dan label namanya terbaca",
-      hint: "Cari label bertuliskan 'Megalochelys'.",
-      penjelasan: "Megalochelys sp. adalah kura-kura raksasa purba, salah satu saksi beragamnya fauna Indonesia di masa lalu.",
-      poin: 20,
+      judul: "Serpihan kura-kura raksasa",
+      instruksi: "Sebutkan ada binatang apa saja yang terdapat fosilnya",
+      target: "Terdapat bagian dari kura-kura raksasa disini,cari dan foto",
+      opsi: ["Kura-kura raksasa (Megalochelys sp.)", "Gajah sumatera", "Kudanil", "hiu"],
+      kunci: "A",
+      hint: "Fosilnya merupakan cangkang",
+      penjelasan: "Cangkang kura-kura raksasa seperti Megalochelys sp. adalah salah satu bukti beragamnya fauna purba Indonesia yang dipamerkan di POI ini.",
+      poin: 10,
+      batasPercobaan: 2,
+    },
+    tantanganAnak: {
+      tipe: "foto",
+      judul: "Cari Cangkang Kura-Kura Raksasa!",
+      instruksi: "Hewan apa saja yang fosilnya ada di sini? Pilih jawabanmu, lalu cari dan foto fosil kura-kura raksasa!",
+      target: "Bagian fosil kura-kura raksasa (cangkang) terlihat jelas di dalam foto",
+      opsi: ["Kura-kura raksasa (Megalochelys sp.)", "Gajah sumatera", "Kudanil", "Hiu"],
+      kunci: "A",
+      hint: "Cari fosil berbentuk cangkang, ya!",
+      penjelasan: "Hebat! Cangkang kura-kura raksasa seperti Megalochelys sp. adalah bukti beragamnya hewan purba Indonesia yang dipamerkan di sini.",
+      poin: 10,
       batasPercobaan: 3,
     },
   },
   2: {
-    // Sumber: sheet Konten_Cerita + Quest (Template_..._quest_badge_disesuaikan, 12 Nov 2026). Status: Draft.
+    // Sumber: workbook Template_..._Anak (15 Nov 2026): Konten_Cerita, Konten_Cerita_Anak, Quest, Quest_Anak,
+    // POI_Preference. Status: Draft.
     fotoUtama: 9,
     fotoKedua: 13,
+    durasiMenit: 9,
     judul: "Rahasia Dunia Karst Indonesia",
     cerita:
       "Pernah melihat gua dengan hiasan batu yang menjuntai dari langit-langitnya? Itulah salah satu keunikan kawasan karst, seperti Gunung Sewu, yang terbentuk melalui proses pelarutan batuan kapur selama waktu yang sangat lama. Yuk, amati stalaktit, sinter kapur, batu jahe, hingga berbagai jenis batuan dan terumbu karang untuk mengenal keindahan proses pembentukan alam!",
+    judulAnak: "Rahasia Gua dan Karst",
     ceritaAnak:
-      "Pernah lihat gua yang langit-langitnya punya hiasan batu menjuntai? Itu ada di kawasan karst, misalnya Gunung Sewu. Karst terbentuk saat batu kapur pelan-pelan larut oleh air, dalam waktu yang sangat lama. Yuk, cari stalaktit, sinter kapur, batu jahe, dan terumbu karang di ruangan ini!",
+      "Pernah melihat gua dengan hiasan batu yang menjuntai dari langit-langitnya? Itu salah satu keunikan kawasan karst, seperti Gunung Sewu! Karst terbentuk saat batuan kapur larut perlahan selama waktu yang sangat lama. Ayo amati stalaktit, sinter kapur, batu jahe, berbagai jenis batuan, dan terumbu karang!",
+    faktaAnak: "Tahukah kamu? Stalaktit terbentuk dari endapan mineral kalsit yang menumpuk sedikit demi sedikit dari tetesan air di langit-langit gua.",
     ceritaRemaja:
       "Pernah melihat gua dengan hiasan batu yang menjuntai dari langit-langit? Itu salah satu keunikan kawasan karst, seperti Gunung Sewu. Karst terbentuk karena batuan kapur larut oleh air sedikit demi sedikit selama waktu yang sangat lama. Amati stalaktit, sinter kapur, batu jahe, serta berbagai batuan dan terumbu karang di sini untuk melihat hasil proses alam ini!",
     fakta: "Stalaktit terbentuk dari endapan mineral kalsit yang menumpuk perlahan dari tetesan air di langit-langit gua.",
     sorotan: "Karst Gunung Sewu, stalaktit kalsit, batugamping, batu jahe, sinter kapur, marmer, amfibolit, hasil karstifikasi, hard coral, plate coral, branching coral, head coral",
-    instruksi: "Asal-usul Stalaktit",
-    pertanyaan: "Stalaktit yang menjuntai dari langit-langit gua karst terbentuk dari...",
-    opsi: ["Lava yang membeku di langit-langit gua", "Endapan mineral kalsit dari tetesan air", "Pasir yang terbawa angin", "Terumbu karang yang menempel"],
+    instruksi: "Tetesan dari Langit-Langit Gua",
+    pertanyaan: "Di gua karst, tetesan air kaya kalsit perlahan membentuk hiasan batu yang menjuntai dari langit-langit gua. Perhatikan koleksi di POI ini, lalu pilih: apa nama hiasan batu tersebut?",
+    opsi: ["Stalagmit", "Stalaktit", "Rijang", "Geode"],
     kunci: "B",
-    hint: "Perhatikan tetesan air di langit-langit gua.",
+    hint: "Ia tumbuh ke bawah dari langit-langit gua, bukan naik dari lantai.",
     penjelasan: "Stalaktit terbentuk dari endapan mineral kalsit yang menumpuk perlahan dari tetesan air di langit-langit gua.",
-    tantangan: {
-      tipe: "foto",
-      judul: "Hiasan Batu Gua",
-      instruksi: "Temukan stalaktit kalsit, sinter kapur, atau batu jahe di etalase, lalu foto bersama labelnya.",
-      target: "Salah satu koleksi karst (stalaktit / sinter kapur / batu jahe) dan labelnya terbaca",
-      hint: "Cari etalase kawasan karst Gunung Sewu.",
-      penjelasan: "Kawasan karst seperti Gunung Sewu terbentuk lewat pelarutan batuan kapur selama waktu yang sangat lama.",
-      poin: 20,
-      batasPercobaan: 3,
-    },
   },
   3: {
-    // Sumber: sheet Konten_Cerita + Quest (Template_..._quest_badge_disesuaikan, 12 Nov 2026). Status: Draft.
+    // Sumber: workbook Template_..._Anak (15 Nov 2026): Konten_Cerita, Konten_Cerita_Anak, Quest, Quest_Anak,
+    // POI_Preference. Status: Draft.
     fotoUtama: 4,
     fotoKedua: 2,
+    durasiMenit: 7,
     judul: "Indonesia di Cincin Api",
     cerita:
       "Indonesia berada di jalur pertemuan lempeng yang disebut Cincin Api Pasifik. Pertemuan lempeng inilah yang membentuk deretan gunung api dari Sumatra sampai Maluku. Coba perhatikan peta di hadapanmu dan temukan gunung api yang paling dekat dengan Bandung!",
+    judulAnak: "Indonesia di Cincin Api",
     ceritaAnak:
-      "Indonesia berada di Cincin Api Pasifik, tempat potongan-potongan besar kulit Bumi, yang disebut lempeng, saling bertemu. Karena itu, banyak gunung api berjajar dari Sumatra sampai Maluku. Coba lihat peta di depanmu. Gunung api mana yang paling dekat dengan Bandung?",
+      "Tahukah kamu? Indonesia berada di jalur pertemuan lempeng yang disebut Cincin Api Pasifik. Pertemuan lempeng ini membentuk deretan gunung api dari Sumatra sampai Maluku. Ayo lihat peta di depanmu, lalu temukan gunung api yang paling dekat dengan Bandung!",
+    faktaAnak: "Deretan gunung api dari Sumatra sampai Maluku terbentuk karena pertemuan lempeng di jalur Cincin Api Pasifik.",
     ceritaRemaja:
       "Indonesia berada di Cincin Api Pasifik, jalur tempat lempeng-lempeng Bumi saling bertemu. Pertemuan lempeng inilah yang membentuk deretan gunung api dari Sumatra sampai Maluku. Perhatikan peta di hadapanmu, lalu temukan gunung api yang paling dekat dengan Bandung!",
     sorotan: "Peta sebaran gunung api",
+    tanpaKuis: true,
     instruksi: "Tebak Jalur Api",
     pertanyaan: "Deretan gunung api dari Sumatra sampai Maluku terbentuk karena Indonesia berada di...",
     opsi: ["Jalur pertemuan lempeng Cincin Api Pasifik", "Tengah satu lempeng yang tidak bergerak", "Bekas tempat jatuhnya meteor", "Dasar laut yang mengering"],
@@ -225,28 +256,44 @@ const contents: { readonly [n: number]: StoryContent } = {
     hint: "Judul ceritanya memberi petunjuk.",
     penjelasan: "Indonesia berada di Cincin Api Pasifik. Pertemuan lempeng di jalur ini membentuk deretan gunung api dari Sumatra sampai Maluku.",
     tantangan: {
-      tipe: "cariObjek",
-      judul: "Gunung Api Terdekat Denganmu",
-      instruksi: "Lihat titik posisimu di peta aplikasi. Cari gunung api yang paling dekat denganmu di peta museum, lalu foto gunung api itu bersama namanya.",
-      target: "Gunung api terdekat dengan posisimu di peta museum, namanya terbaca",
-      hint: "Lihat titik posisimu di peta aplikasi, lalu cari gunung api terdekat di peta museum.",
+      tipe: "foto",
+      judul: "Cari Gunung Api Terdekat Bandung",
+      instruksi: "Indonesia berada di Cincin Api Pasifik, jalur pertemuan lempeng yang melahirkan deretan gunung api dari Sumatra sampai Maluku. Temukan peta sebaran gunung api, lalu foto bagian peta yang menunjukkan gunung api paling dekat dengan Bandung!",
+      target: "Peta sebaran gunung api terlihat jelas, dengan area Pulau Jawa di dalam bingkai",
+      hint: "Fokuskan pandanganmu ke Pulau Jawa, lalu cari titik gunung api di sekitar Bandung.",
+      penjelasan: "Pertemuan lempeng di jalur Cincin Api Pasifik membentuk deretan gunung api dari Sumatra sampai Maluku.",
       poin: 20,
       batasPercobaan: 3,
     },
+    tantanganAnak: {
+      tipe: "foto",
+      judul: "Cari Gunung Api Terdekat dari Bandung!",
+      instruksi: "Ayo cari peta sebaran gunung api! Lalu foto bagian peta yang menunjukkan gunung api paling dekat dengan Bandung, ya!",
+      target: "Peta sebaran gunung api terlihat jelas, dengan area Pulau Jawa di dalam foto",
+      hint: "Lihat Pulau Jawa dulu, lalu cari titik gunung api di sekitar Bandung.",
+      penjelasan: "Keren! Pertemuan lempeng di jalur Cincin Api Pasifik membentuk deretan gunung api dari Sumatra sampai Maluku.",
+      poin: 15,
+      batasPercobaan: 4,
+    },
   },
   4: {
-    // Sumber: sheet Konten_Cerita + Quest (Template_..._quest_badge_disesuaikan, 12 Nov 2026). Status: Draft.
+    // Sumber: workbook Template_..._Anak (15 Nov 2026): Konten_Cerita, Konten_Cerita_Anak, Quest, Quest_Anak,
+    // POI_Preference. Status: Draft.
     fotoUtama: 3,
     fotoKedua: 2,
+    durasiMenit: 5,
     judul: "Kisah Terbentuknya Muka Bumi Indonesia",
     cerita:
       "Tahukah kamu bahwa bentuk muka bumi Indonesia terbentuk melalui proses geologi selama jutaan tahun? Pergerakan dan tekanan lempeng bumi menghasilkan berbagai struktur batuan, seperti lipatan dan sesar. Yuk, amati koleksi genes, sekis biotit, serta contoh struktur geologi untuk melihat bagaimana bumi terus berubah!",
+    judulAnak: "Bumi yang Terus Berubah",
     ceritaAnak:
-      "Tahukah kamu, bentuk daratan Indonesia terbentuk selama jutaan tahun? Lempeng Bumi terus bergerak dan saling menekan. Tekanan itu bisa membuat lapisan batu melengkung, disebut lipatan, atau patah lalu bergeser, disebut sesar. Yuk, lihat batu genes dan sekis biotit di sini!",
+      "Tahukah kamu? Bentuk muka bumi Indonesia terbentuk lewat proses geologi selama jutaan tahun! Pergerakan dan tekanan lempeng bumi menghasilkan struktur batuan, seperti lipatan dan sesar. Yuk, amati genes, sekis biotit, dan contoh struktur geologi untuk melihat bagaimana bumi terus berubah!",
+    faktaAnak: "Lipatan terbentuk saat lapisan batuan ditekan sampai melengkung, tanpa terpecah.",
     ceritaRemaja:
       "Bentuk muka bumi Indonesia terbentuk melalui proses geologi selama jutaan tahun. Pergerakan dan tekanan lempeng bumi menghasilkan struktur batuan seperti lipatan, saat lapisan batuan melengkung, dan sesar, saat batuan patah lalu bergeser. Amati koleksi genes, sekis biotit, dan contoh struktur geologi di sini untuk melihat bagaimana bumi terus berubah!",
     fakta: "Lipatan terbentuk ketika lapisan batuan mendapat tekanan hingga melengkung tanpa terpecah.",
     sorotan: "Genes, sekis biotit, lipatan, sesar",
+    tanpaKuis: true,
     instruksi: "Lapisan yang Melengkung",
     pertanyaan: "Struktur geologi yang terbentuk ketika lapisan batuan tertekan hingga melengkung tanpa terpecah disebut...",
     opsi: ["Sesar", "Lipatan", "Erosi", "Pengendapan"],
@@ -254,29 +301,34 @@ const contents: { readonly [n: number]: StoryContent } = {
     hint: "Batuannya tidak patah, hanya melengkung.",
     penjelasan: "Lipatan terbentuk ketika lapisan batuan mendapat tekanan hingga melengkung tanpa terpecah. Kalau batuannya patah dan bergeser, itu disebut sesar.",
     tantangan: {
-      tipe: "foto",
-      judul: "Jejak Tekanan Bumi",
-      instruksi: "Cari koleksi genes atau sekis biotit, lalu foto bersama labelnya.",
-      target: "Koleksi genes atau sekis biotit dan labelnya terbaca",
-      hint: "Batuan ini biasanya tampak bergaris atau berlapis tipis.",
-      penjelasan: "Genes dan sekis biotit menunjukkan bagaimana tekanan di dalam bumi mengubah batuan selama jutaan tahun.",
-      poin: 20,
-      batasPercobaan: 3,
+      tipe: "benarSalah",
+      judul: "Lipatan atau Sesar?",
+      instruksi: "Amati contoh struktur geologi di POI ini, lalu jawab: Benar atau Salah? \"Batuan yang melengkung tanpa terpecah akibat tekanan disebut sesar.\"",
+      jawaban: ["Salah"],
+      hint: "Sesar itu patahan. Struktur yang melengkung punya nama lain.",
+      penjelasan: "Salah. Batuan yang melengkung tanpa terpecah disebut lipatan, sedangkan sesar terbentuk ketika batuan patah dan bergeser.",
+      poin: 10,
+      batasPercobaan: 2,
     },
   },
   5: {
-    // Sumber: sheet Konten_Cerita + Quest (Template_..._quest_badge_disesuaikan, 12 Nov 2026). Status: Draft.
+    // Sumber: workbook Template_..._Anak (15 Nov 2026): Konten_Cerita, Konten_Cerita_Anak, Quest, Quest_Anak,
+    // POI_Preference. Status: Draft.
     fotoUtama: 1,
     fotoKedua: 2,
+    durasiMenit: 4,
     judul: "Perjalanan Lahirnya Kepulauan Indonesia",
     cerita:
       "Pernah penasaran bagaimana ribuan pulau di Indonesia terbentuk? Melalui animasi ini, kamu bisa mengikuti perjalanan terbentuknya Kepulauan Indonesia akibat pergerakan lempeng tektonik, aktivitas gunung api, dan proses geologi selama jutaan tahun. Yuk, saksikan bagaimana daratan yang awalnya terpisah akhirnya membentuk Indonesia seperti yang kita kenal sekarang!",
+    judulAnak: "Lahirnya Kepulauan Indonesia",
     ceritaAnak:
-      "Indonesia punya ribuan pulau. Bagaimana pulau-pulau itu muncul? Tonton animasinya di sini! Kamu akan melihat lempeng Bumi bergerak, gunung api meletus, dan daratan yang tadinya terpisah pelan-pelan membentuk Indonesia seperti sekarang. Semua itu terjadi selama jutaan tahun!",
+      "Pernah penasaran bagaimana ribuan pulau di Indonesia terbentuk? Lewat animasi ini, kamu bisa mengikuti perjalanannya! Pulau-pulau itu terbentuk karena pergerakan lempeng tektonik, aktivitas gunung api, dan proses geologi selama jutaan tahun. Yuk, saksikan bagaimana daratan yang awalnya terpisah akhirnya membentuk Indonesia seperti sekarang!",
+    faktaAnak: "Bentuk kepulauan Indonesia masih terus berubah sampai sekarang karena aktivitas tektonik.",
     ceritaRemaja:
       "Pernah penasaran bagaimana ribuan pulau di Indonesia terbentuk? Animasi ini memperlihatkan perjalanan terbentuknya Kepulauan Indonesia akibat pergerakan lempeng tektonik, aktivitas gunung api, dan proses geologi lain selama jutaan tahun. Saksikan bagaimana daratan yang awalnya terpisah akhirnya membentuk Indonesia seperti sekarang!",
     fakta: "Bentuk kepulauan Indonesia terus mengalami perubahan akibat aktivitas tektonik hingga saat ini.",
     sorotan: "Video animasi pembentukan Kepulauan Indonesia",
+    tanpaKuis: true,
     instruksi: "Lahirnya Kepulauan Indonesia",
     pertanyaan: "Menurut animasi, apa yang membentuk ribuan pulau di Indonesia?",
     opsi: ["Hujan dan angin saja", "Pergerakan lempeng tektonik, aktivitas gunung api, dan proses geologi", "Endapan sungai saja", "Kegiatan manusia"],
@@ -284,59 +336,58 @@ const contents: { readonly [n: number]: StoryContent } = {
     hint: "Tonton lagi bagian awal animasi.",
     penjelasan: "Kepulauan Indonesia terbentuk akibat pergerakan lempeng tektonik, aktivitas gunung api, dan proses geologi selama jutaan tahun.",
     tantangan: {
-      tipe: "benarSalah",
-      judul: "Pulau yang Terus Berubah",
-      instruksi: "Benar atau salah: bentuk kepulauan Indonesia sudah berhenti berubah sejak jutaan tahun lalu.",
-      jawaban: ["Salah"],
-      hint: "Ingat fakta menarik di akhir cerita.",
-      penjelasan: "Salah. Bentuk kepulauan Indonesia terus berubah akibat aktivitas tektonik hingga saat ini.",
+      tipe: "isian",
+      judul: "Menonton Kelahiran Nusantara",
+      instruksi: "Tonton animasi terbentuknya Kepulauan Indonesia sampai selesai. Lalu lengkapi kalimat ini dengan satu kata: \"Pergerakan lempeng ..... bersama aktivitas gunung api membentuk ribuan pulau di Indonesia.\"",
+      jawaban: ["tektonik", "lempeng tektonik"],
+      hint: "Dengarkan narasi tentang lempeng bumi yang terus bergerak.",
+      penjelasan: "Pergerakan lempeng tektonik, aktivitas gunung api, dan proses geologi selama jutaan tahun membentuk Kepulauan Indonesia, dan bentuknya masih terus berubah hingga kini.",
       poin: 10,
       batasPercobaan: 2,
     },
   },
   6: {
-    // Sumber: sheet Konten_Cerita + Quest (Template_..._quest_badge_disesuaikan, 12 Nov 2026). Status: Draft.
+    // Sumber: workbook Template_..._Anak (15 Nov 2026): Konten_Cerita, Konten_Cerita_Anak, Quest, Quest_Anak,
+    // POI_Preference. Status: Draft.
     fotoUtama: 2,
     fotoKedua: 0,
+    durasiMenit: 8,
     judul: "Bagaimana Wajah Bumi Terbentuk?",
     cerita:
       "Bentuk permukaan bumi yang kita lihat sekarang terbentuk melalui proses alam selama ribuan hingga jutaan tahun. Pelapukan menghancurkan batuan, erosi memindahkan material, sedangkan pengendapan menumpuknya di tempat baru. Yuk, amati contoh bentukan muka bumi dan cari tahu bagaimana ketiga proses ini mengubah lanskap Indonesia!",
+    judulAnak: "Tiga Pembentuk Wajah Bumi",
     ceritaAnak:
-      "Bentuk permukaan Bumi terus berubah, pelan-pelan sekali. Ada tiga prosesnya. Pelapukan membuat batu hancur. Erosi membawa pecahan batu ke tempat lain. Pengendapan menumpuk pecahan itu di tempat baru. Yuk, lihat contohnya di sini!",
+      "Bentuk permukaan bumi yang kita lihat sekarang terbentuk lewat proses alam selama ribuan hingga jutaan tahun. Ada tiga proses yang bekerja. Pelapukan menghancurkan batuan, erosi memindahkan material, dan pengendapan menumpuknya di tempat baru. Yuk, amati contoh bentukan muka bumi dan lihat bagaimana ketiganya mengubah lanskap Indonesia!",
+    faktaAnak: "Material hasil erosi bisa terbawa air, angin, atau es sebelum akhirnya mengendap di tempat lain.",
     ceritaRemaja:
       "Bentuk permukaan bumi yang kita lihat sekarang terbentuk lewat proses alam selama ribuan hingga jutaan tahun. Pelapukan menghancurkan batuan, erosi memindahkan materialnya, lalu pengendapan menumpuknya di tempat baru. Amati contoh bentukan muka bumi di sini dan cari tahu bagaimana ketiga proses ini mengubah lanskap Indonesia!",
     fakta: "Material hasil erosi dapat terbawa air, angin, maupun es sebelum akhirnya mengendap di tempat lain.",
     sorotan: "Sembulan bentukan morfologi muka bumi, pelapukan, erosi, dan pengendapan",
-    instruksi: "Si Pemindah Material",
-    pertanyaan: "Proses yang memindahkan material hasil pelapukan ke tempat lain disebut...",
-    opsi: ["Pelapukan", "Erosi", "Pengendapan", "Intrusi"],
-    kunci: "B",
-    hint: "Pelapukan menghancurkan, pengendapan menumpuk. Mana yang memindahkan?",
-    penjelasan: "Pelapukan menghancurkan batuan, erosi memindahkan material, lalu pengendapan menumpuknya di tempat baru.",
-    tantangan: {
-      tipe: "benarSalah",
-      judul: "Pengangkut Erosi",
-      instruksi: "Benar atau salah: material hasil erosi hanya bisa terbawa oleh air.",
-      jawaban: ["Salah"],
-      hint: "Selain air, ada dua pengangkut lain.",
-      penjelasan: "Salah. Material hasil erosi dapat terbawa air, angin, maupun es sebelum mengendap di tempat lain.",
-      poin: 10,
-      batasPercobaan: 2,
-    },
+    instruksi: "Trio Pembentuk Lanskap",
+    pertanyaan: "Tiga proses bekerja mengubah wajah bumi: 1) Pelapukan, 2) Erosi, 3) Pengendapan. Peran mereka: A) memindahkan material lewat air, angin, atau es; B) menumpuk material di tempat baru; C) menghancurkan batuan. Pilih pasangan yang tepat!",
+    opsi: ["1-C, 2-A, 3-B", "1-A, 2-B, 3-C", "1-B, 2-C, 3-A", "1-C, 2-B, 3-A"],
+    kunci: "A",
+    hint: "Urutan kerjanya: batuan hancur dulu, lalu berpindah, lalu menetap.",
+    penjelasan: "Pelapukan menghancurkan batuan, erosi memindahkan material hasil pelapukan lewat air, angin, atau es, dan pengendapan menumpuknya di tempat baru.",
   },
   7: {
-    // Sumber: sheet Konten_Cerita + Quest (Template_..._quest_badge_disesuaikan, 12 Nov 2026). Status: Draft.
+    // Sumber: workbook Template_..._Anak (15 Nov 2026): Konten_Cerita, Konten_Cerita_Anak, Quest, Quest_Anak,
+    // POI_Preference. Status: Draft.
     fotoUtama: 4,
     fotoKedua: 1,
+    durasiMenit: 13,
     judul: "Mengenal Harta Karun Bumi: Batuan dan Mineral",
     cerita:
       "Bumi menyimpan beragam mineral dan batuan dengan warna, bentuk, serta karakteristik yang berbeda! Ada lapis lazuli yang terkenal dengan warna biru pekatnya, hingga geodes yang menyimpan kristal di bagian dalamnya. Yuk, amati berbagai koleksi mineral dan kenali tiga kelompok utama batuan: beku, sedimen, dan metamorf!",
+    judulAnak: "Harta Karun Bumi: Batuan dan Mineral",
     ceritaAnak:
-      "Bumi menyimpan banyak harta karun berupa mineral dan batu, warnanya macam-macam! Ada lapis lazuli yang biru tua. Ada juga geodes, batu yang kelihatan biasa, tapi di dalamnya penuh kristal. Batu dibagi jadi tiga kelompok: beku, sedimen, dan metamorf. Yuk, cari di vitrin!",
+      "Bumi menyimpan banyak mineral dan batuan dengan warna dan bentuk yang berbeda-beda! Ada lapis lazuli yang terkenal dengan warna biru pekatnya. Ada juga geodes yang menyimpan kristal di bagian dalamnya. Yuk, amati koleksi mineralnya dan kenali tiga kelompok utama batuan: beku, sedimen, dan metamorf!",
+    faktaAnak: "Geodes bisa terlihat seperti batu biasa dari luar, tetapi bagian dalamnya bisa dipenuhi kristal yang indah.",
     ceritaRemaja:
       "Bumi menyimpan beragam mineral dan batuan dengan warna, bentuk, dan sifat yang berbeda. Ada lapis lazuli dengan warna biru pekatnya, dan geodes yang menyimpan kristal di bagian dalamnya. Amati koleksi mineral di sini dan kenali tiga kelompok utama batuan: beku, sedimen, dan metamorf!",
     fakta: "Geodes dapat terlihat seperti batu biasa dari luar, tetapi bagian dalamnya bisa dipenuhi kristal yang indah.",
     sorotan: "Lapis lazuli, mineral hidroksida, oksida, silikat, karbonat, borat dan nitrat, unsur asli (native elements), sulfida, fosfat, sulfat, batuan beku, batuan sedimen, batuan metamorf, geodes",
+    tanpaKuis: true,
     instruksi: "Kristal Tersembunyi",
     pertanyaan: "Batuan yang dari luar tampak seperti batu biasa, tetapi bagian dalamnya dipenuhi kristal, disebut...",
     opsi: ["Lapis lazuli", "Geodes", "Marmer", "Batubara"],
@@ -345,28 +396,43 @@ const contents: { readonly [n: number]: StoryContent } = {
     penjelasan: "Geodes dapat terlihat seperti batu biasa dari luar, tetapi bagian dalamnya bisa dipenuhi kristal yang indah.",
     tantangan: {
       tipe: "foto",
-      judul: "Cari Batuan Beku",
-      instruksi: "Temukan satu contoh batuan beku di etalase dan foto bersama labelnya.",
-      target: "Etalase batuan beku + label nama batuan terbaca",
-      hint: "Cari label dengan kata 'beku' / 'igneous'.",
-      penjelasan: "Batuan beku terbentuk dari pembekuan magma. Dua kelompok utama lainnya adalah batuan sedimen dan metamorf.",
+      judul: "Temukan Si Biru Pekat",
+      instruksi: "Di antara koleksi mineral, ada batu dengan warna biru pekat yang terkenal: lapis lazuli. Temukan dan foto koleksinya bersama label namanya!",
+      target: "Koleksi lapis lazuli (biru pekat) dengan label nama terbaca",
+      hint: "Cari batu berwarna biru tua yang mencolok di etalase mineral.",
+      penjelasan: "Lapis lazuli terkenal dengan warna biru pekatnya dan menjadi salah satu koleksi mineral di POI ini.",
       poin: 20,
       batasPercobaan: 3,
     },
+    tantanganAnak: {
+      tipe: "foto",
+      judul: "Temukan Si Biru Tua!",
+      instruksi: "Yuk, cari batu biru tua bernama lapis lazuli di antara koleksi mineral! Foto batunya bersama label namanya, ya!",
+      target: "Lapis lazuli (biru pekat) terlihat jelas bersama label nama yang bisa dibaca",
+      hint: "Cari batu berwarna biru tua yang mencolok di etalase mineral.",
+      penjelasan: "Hore, ketemu! Lapis lazuli terkenal dengan warna biru pekatnya dan menjadi salah satu koleksi mineral di sini.",
+      poin: 15,
+      batasPercobaan: 4,
+    },
   },
   8: {
-    // Sumber: sheet Konten_Cerita + Quest (Template_..._quest_badge_disesuaikan, 12 Nov 2026). Status: Draft.
+    // Sumber: workbook Template_..._Anak (15 Nov 2026): Konten_Cerita, Konten_Cerita_Anak, Quest, Quest_Anak,
+    // POI_Preference. Status: Draft.
     fotoUtama: 3,
     fotoKedua: 0,
+    durasiMenit: 7,
     judul: "Kekuatan Tersembunyi di Dalam Bumi",
     cerita:
       "Permukaan bumi yang kita pijak ternyata terus bergerak! Tenaga tektonik berasal dari pergerakan lempeng bumi yang dapat membentuk pegunungan, lipatan, hingga patahan. Yuk, amati koleksi sekis mika, peridotit, dan lava basal untuk mengenal lebih jauh proses yang membentuk bumi!",
+    judulAnak: "Bumi yang Tidak Pernah Diam",
     ceritaAnak:
-      "Tanah yang kamu injak ternyata terus bergerak, walau tidak terasa! Gerakan lempeng Bumi ini disebut tenaga tektonik. Tenaga ini bisa membuat gunung, lapisan batu yang melengkung, sampai batu yang patah. Yuk, lihat sekis mika, peridotit, dan lava basal di sini!",
+      "Tahukah kamu? Permukaan bumi yang kita pijak ternyata terus bergerak! Tenaga tektonik berasal dari pergerakan lempeng bumi, yang bisa membentuk pegunungan, lipatan, dan patahan. Yuk, amati sekis mika, peridotit, dan lava basal untuk mengenal proses yang membentuk bumi!",
+    faktaAnak: "Peridotit adalah batuan yang banyak menyusun bagian mantel atas bumi.",
     ceritaRemaja:
       "Permukaan bumi yang kita pijak ternyata terus bergerak. Tenaga tektonik berasal dari pergerakan lempeng bumi, dan tenaga ini dapat membentuk pegunungan, lipatan, hingga patahan. Amati koleksi sekis mika, peridotit, dan lava basal di sini untuk mengenal proses yang membentuk bumi!",
     fakta: "Peridotit merupakan batuan yang banyak menyusun bagian mantel atas bumi.",
     sorotan: "Proses terjadinya tenaga tektonik, sekis mika, peridotit, lava basal",
+    tanpaKuis: true,
     instruksi: "Batuan dari Mantel",
     pertanyaan: "Batuan yang banyak menyusun bagian mantel atas bumi adalah...",
     opsi: ["Lava basal", "Sekis mika", "Peridotit", "Granit"],
@@ -374,59 +440,58 @@ const contents: { readonly [n: number]: StoryContent } = {
     hint: "Lihat lagi tiga koleksi yang disebut di cerita.",
     penjelasan: "Peridotit merupakan batuan yang banyak menyusun bagian mantel atas bumi.",
     tantangan: {
-      tipe: "benarSalah",
-      judul: "Bumi yang Bergerak",
-      instruksi: "Benar atau salah: permukaan bumi yang kita pijak selalu diam dan tidak pernah bergerak.",
-      jawaban: ["Salah"],
-      hint: "Ingat kalimat pembuka cerita.",
-      penjelasan: "Salah. Lempeng bumi terus bergerak dan tenaganya dapat membentuk pegunungan, lipatan, hingga patahan.",
-      poin: 10,
-      batasPercobaan: 2,
+      tipe: "isian",
+      judul: "Penghuni Mantel Bumi",
+      instruksi: "Tenaga tektonik berasal dari pergerakan lempeng bumi. Di antara sekis mika, peridotit, dan lava basal, batuan manakah yang banyak menyusun bagian mantel atas bumi?",
+      jawaban: ["Peridotit", "batuan peridotit"],
+      hint: "Ia berasal dari lapisan di bawah kerak bumi. Cek label koleksinya!",
+      penjelasan: "Peridotit merupakan batuan yang banyak menyusun bagian mantel atas bumi.",
+      poin: 20,
+      batasPercobaan: 3,
     },
   },
   9: {
-    // Sumber: sheet Konten_Cerita + Quest (Template_..._quest_badge_disesuaikan, 12 Nov 2026). Status: Draft.
+    // Sumber: workbook Template_..._Anak (15 Nov 2026): Konten_Cerita, Konten_Cerita_Anak, Quest, Quest_Anak,
+    // POI_Preference. Status: Draft.
     fotoUtama: 1,
     fotoKedua: 0,
+    durasiMenit: 6,
     judul: "Dari Big Bang hingga Terbentuknya Bumi",
     cerita:
       "Pernah membayangkan bagaimana alam semesta dan planet Bumi terbentuk? Menurut teori Big Bang, alam semesta bermula dari kondisi yang sangat panas dan padat, lalu terus mengembang hingga sekarang. Seiring waktu, Bumi terbentuk dan mengalami perubahan struktur serta bentuk hingga menjadi planet yang kita kenal saat ini. Yuk, ikuti perjalanan panjang Bumi melalui koleksi dan ilustrasi di hadapanmu!",
+    judulAnak: "Dari Big Bang sampai Bumi Terbentuk",
     ceritaAnak:
-      "Bagaimana alam semesta dan Bumi terbentuk? Menurut teori Big Bang, awalnya alam semesta sangat panas dan padat, lalu terus membesar sampai sekarang. Lama-lama, Bumi terbentuk dan berubah-ubah hingga jadi planet tempat kita tinggal. Yuk, lihat ilustrasinya di sini!",
+      "Pernah membayangkan bagaimana alam semesta dan planet Bumi terbentuk? Menurut teori Big Bang, alam semesta bermula dari kondisi yang sangat panas dan padat, lalu terus mengembang sampai sekarang. Seiring waktu, Bumi terbentuk dan berubah hingga menjadi planet yang kita kenal. Yuk, ikuti perjalanan panjang Bumi lewat koleksi dan ilustrasi di depanmu!",
+    faktaAnak: "Bumi punya empat lapisan utama, yaitu kerak, mantel, inti luar, dan inti dalam.",
     ceritaRemaja:
       "Pernah membayangkan bagaimana alam semesta dan Bumi terbentuk? Menurut teori Big Bang, alam semesta bermula dari kondisi yang sangat panas dan padat, lalu terus mengembang hingga sekarang. Seiring waktu, Bumi terbentuk, lalu struktur dan bentuknya berubah hingga menjadi planet yang kita kenal. Ikuti perjalanan panjang itu lewat koleksi dan ilustrasi di hadapanmu!",
     fakta: "Bumi memiliki empat lapisan utama, yaitu kerak, mantel, inti luar, dan inti dalam.",
     sorotan: "Teori Big Bang, hamparan luas alam semesta, proses terbentuknya planet Bumi, penampang struktur Bumi, perkembangan bentuk Bumi",
-    instruksi: "Empat Lapisan Bumi",
-    pertanyaan: "Mana yang BUKAN termasuk empat lapisan utama Bumi?",
-    opsi: ["Kerak", "Mantel", "Inti dalam", "Atmosfer"],
-    kunci: "D",
-    hint: "Lihat penampang struktur Bumi di hadapanmu.",
-    penjelasan: "Empat lapisan utama Bumi adalah kerak, mantel, inti luar, dan inti dalam. Atmosfer adalah lapisan udara, bukan lapisan Bumi padat.",
-    tantangan: {
-      tipe: "isian",
-      judul: "Awal Mula Semesta",
-      instruksi: "Teori yang menyebut alam semesta bermula dari kondisi sangat panas dan padat, lalu terus mengembang, disebut teori...",
-      jawaban: ["Big Bang", "bigbang", "dentuman besar", "ledakan besar"],
-      hint: "Namanya dua kata dalam bahasa Inggris.",
-      penjelasan: "Menurut teori Big Bang, alam semesta bermula dari kondisi yang sangat panas dan padat, lalu terus mengembang hingga sekarang.",
-      poin: 15,
-      batasPercobaan: 3,
-    },
+    instruksi: "Menembus Lapisan Bumi",
+    pertanyaan: "Bumi punya empat lapisan utama. Perhatikan ilustrasi penampang struktur Bumi, lalu pilih urutan lapisan dari yang paling luar sampai paling dalam.",
+    opsi: ["Kerak - Mantel - Inti luar - Inti dalam", "Mantel - Kerak - Inti dalam - Inti luar", "Kerak - Inti luar - Mantel - Inti dalam", "Inti dalam - Inti luar - Mantel - Kerak"],
+    kunci: "A",
+    hint: "Kerak adalah \"kulit\" bumi tempat kita berpijak.",
+    penjelasan: "Bumi memiliki empat lapisan utama, yaitu kerak, mantel, inti luar, dan inti dalam.",
   },
   10: {
-    // Sumber: sheet Konten_Cerita + Quest (Template_..._quest_badge_disesuaikan, 12 Nov 2026). Status: Draft.
+    // Sumber: workbook Template_..._Anak (15 Nov 2026): Konten_Cerita, Konten_Cerita_Anak, Quest, Quest_Anak,
+    // POI_Preference. Status: Draft.
     fotoUtama: 3,
     fotoKedua: 5,
+    durasiMenit: 10,
     judul: "Ragam Batuan dari Nusantara",
     cerita:
       "Indonesia memiliki beragam jenis batuan yang terbentuk melalui proses geologi yang berbeda-beda. Mulai dari batugamping hitam, sekis biotit, rijang, peridotit, hingga granit, setiap batuan menyimpan cerita tentang proses pembentukan bumi. Yuk, amati warna dan tekstur koleksinya, lalu temukan perbedaannya!",
+    judulAnak: "Batuan dari Nusantara",
     ceritaAnak:
-      "Indonesia punya banyak jenis batu, dan cara terbentuknya berbeda-beda. Di sini ada batugamping hitam, sekis biotit, rijang, peridotit, dan granit. Setiap batu punya ceritanya sendiri! Yuk, lihat warna dan permukaannya, lalu cari bedanya!",
+      "Indonesia punya banyak jenis batuan yang terbentuk lewat proses geologi yang berbeda-beda. Ada batugamping hitam, sekis biotit, rijang, peridotit, dan granit. Setiap batuan menyimpan cerita tentang proses pembentukan bumi. Yuk, amati warna dan tekstur koleksinya, lalu temukan perbedaannya!",
+    faktaAnak: "Granit terbentuk dari magma yang mendingin perlahan di bawah permukaan bumi, sehingga kristalnya terlihat jelas.",
     ceritaRemaja:
       "Indonesia memiliki beragam jenis batuan yang terbentuk lewat proses geologi yang berbeda-beda. Batugamping hitam, sekis biotit, rijang, peridotit, hingga granit masing-masing menyimpan cerita tentang pembentukan bumi. Amati warna dan tekstur koleksinya, lalu temukan perbedaannya!",
     fakta: "Granit terbentuk dari magma yang mendingin secara perlahan di bawah permukaan bumi sehingga kristalnya dapat terlihat jelas.",
     sorotan: "Batugamping hitam, sekis biotit, rijang, peridotit, batuan granit",
+    tanpaKuis: true,
     instruksi: "Rahasia Kristal Granit",
     pertanyaan: "Mengapa kristal pada batuan granit dapat terlihat jelas?",
     opsi: ["Magmanya mendingin perlahan di bawah permukaan bumi", "Magmanya membeku cepat di udara terbuka", "Terbentuk dari tumpukan cangkang hewan laut", "Terbentuk dari endapan es"],
@@ -435,44 +500,48 @@ const contents: { readonly [n: number]: StoryContent } = {
     penjelasan: "Granit terbentuk dari magma yang mendingin perlahan di bawah permukaan bumi, sehingga kristalnya sempat tumbuh besar dan terlihat jelas.",
     tantangan: {
       tipe: "foto",
-      judul: "Beda Warna, Beda Cerita",
-      instruksi: "Pilih dua koleksi batuan dengan warna atau tekstur yang berbeda (mis. batugamping hitam dan granit), lalu foto keduanya bersama labelnya.",
-      target: "Dua koleksi batuan berbeda dalam satu foto, kedua label terbaca",
-      hint: "Koleksi yang dibandingkan ada di etalase yang sama.",
-      penjelasan: "Setiap batuan menyimpan cerita tentang proses pembentukannya, terlihat dari warna dan teksturnya.",
-      poin: 20,
+      judul: "Detektif Tekstur Batuan",
+      instruksi: "Setiap batuan punya warna dan tekstur sendiri. Temukan dua batuan berbeda di etalase (misalnya granit dan batugamping hitam), lalu foto keduanya dalam satu bingkai sehingga perbedaan warna dan teksturnya terlihat!",
+      target: "Dua koleksi batuan berbeda dalam satu foto, label nama terbaca",
+      hint: "Granit memiliki kristal yang terlihat jelas. Bandingkan dengan batuan berwarna gelap.",
+      penjelasan: "Granit terbentuk dari magma yang mendingin perlahan di bawah permukaan bumi sehingga kristalnya terlihat jelas. Tiap batuan menyimpan cerita pembentukan yang berbeda.",
+      poin: 30,
       batasPercobaan: 3,
+    },
+    tantanganAnak: {
+      tipe: "foto",
+      judul: "Detektif Cilik: Warna dan Tekstur Batuan",
+      instruksi: "Setiap batuan punya warna dan tekstur sendiri. Ayo cari dua batuan berbeda di etalase, misalnya granit dan batugamping hitam! Foto keduanya dalam satu foto, ya, supaya beda warna dan teksturnya kelihatan!",
+      target: "Dua batuan berbeda terlihat dalam satu foto, dengan label nama yang bisa dibaca",
+      hint: "Granit punya kristal yang terlihat jelas. Bandingkan dengan batuan yang warnanya gelap!",
+      penjelasan: "Mantap! Granit terbentuk dari magma yang mendingin perlahan di bawah permukaan bumi, jadi kristalnya terlihat jelas. Setiap batuan punya cerita pembentukan yang berbeda.",
+      poin: 25,
+      batasPercobaan: 4,
     },
   },
   11: {
-    // Sumber: sheet Konten_Cerita + Quest (Template_..._quest_badge_disesuaikan, 12 Nov 2026). Status: Draft.
+    // Sumber: workbook Template_..._Anak (15 Nov 2026): Konten_Cerita, Konten_Cerita_Anak, Quest, Quest_Anak,
+    // POI_Preference. Status: Draft.
     fotoUtama: 0,
     fotoKedua: 3,
+    durasiMenit: 7,
     judul: "Kekayaan Indonesia",
     cerita:
       "Indonesia menyimpan kekayaan geologi yang melimpah, mulai dari mineral logam, mineral non-logam, hingga batu mulia seperti ametis dari Solok, Sumatera Barat. Selain itu, ada batubara, minyak dan gas bumi, panas bumi, serta sumber daya air yang dimanfaatkan untuk kehidupan sehari-hari. Yuk, kenali berbagai potensi alam ini dan bagaimana manusia memanfaatkannya!",
+    judulAnak: "Harta Kekayaan Indonesia",
     ceritaAnak:
-      "Di bawah tanah Indonesia ada banyak harta! Ada logam, batu mulia ametis dari Solok, Sumatera Barat, juga batubara, minyak, gas, panas bumi, dan air tanah. Semua itu kita pakai sehari-hari. Yuk, kenali harta alam ini!",
+      "Indonesia menyimpan kekayaan geologi yang melimpah! Ada mineral logam, mineral non-logam, dan batu mulia seperti ametis dari Solok, Sumatera Barat. Ada juga batubara, minyak dan gas bumi, panas bumi, serta sumber daya air yang dimanfaatkan untuk kehidupan sehari-hari. Yuk, kenali kekayaan alam ini dan bagaimana manusia memanfaatkannya!",
+    faktaAnak: "Indonesia punya potensi panas bumi yang besar karena berada di kawasan dengan aktivitas vulkanik yang tinggi.",
     ceritaRemaja:
       "Indonesia menyimpan kekayaan geologi yang melimpah: mineral logam, mineral non-logam, hingga batu mulia seperti ametis dari Solok, Sumatera Barat. Ada juga batubara, minyak dan gas bumi, panas bumi, serta sumber daya air yang kita manfaatkan sehari-hari. Kenali berbagai potensi alam ini dan bagaimana manusia memanfaatkannya!",
     fakta: "Indonesia memiliki potensi panas bumi yang besar karena berada di kawasan dengan aktivitas vulkanik tinggi.",
     sorotan: "Batubara, mineral logam, mineral non-logam, batu mulia (ametis), minyak dan gas bumi, panas bumi (geothermal), sumber daya air dan cekungan air tanah",
-    instruksi: "Panas dari Perut Bumi",
-    pertanyaan: "Mengapa Indonesia memiliki potensi panas bumi (geothermal) yang besar?",
-    opsi: ["Karena banyak hutan hujan", "Karena berada di kawasan dengan aktivitas vulkanik tinggi", "Karena memiliki banyak sungai", "Karena letaknya dekat kutub"],
-    kunci: "B",
-    hint: "Hubungkan dengan cerita gunung api di POI-03.",
-    penjelasan: "Indonesia memiliki potensi panas bumi yang besar karena berada di kawasan dengan aktivitas vulkanik tinggi.",
-    tantangan: {
-      tipe: "foto",
-      judul: "Batu Mulia dari Solok",
-      instruksi: "Cari batu mulia ametis dari Solok, Sumatera Barat, lalu foto bersama labelnya.",
-      target: "Koleksi ametis berwarna ungu dan labelnya terbaca",
-      hint: "Ametis biasanya berwarna ungu.",
-      penjelasan: "Ametis dari Solok adalah salah satu batu mulia yang menunjukkan kekayaan geologi Indonesia.",
-      poin: 20,
-      batasPercobaan: 3,
-    },
+    instruksi: "Ametis dari Tanah Minang",
+    pertanyaan: "Indonesia kaya sumber daya geologi, termasuk batu mulia berwarna ungu. Berdasarkan cerita pameran, ametis berasal dari daerah mana?",
+    opsi: ["Solok, Sumatera Barat", "Martapura, Kalimantan Selatan", "Cilacap, Jawa Tengah", "Ternate, Maluku Utara"],
+    kunci: "A",
+    hint: "Daerah asalnya berada di Pulau Sumatra.",
+    penjelasan: "Ametis adalah batu mulia yang berasal dari Solok, Sumatera Barat, bagian dari kekayaan geologi Indonesia.",
   },
   12: {
     // Display di lokasi KOSONG saat survei 10 Nov 2026 (hanya dinding melengkung). Konten dibuat

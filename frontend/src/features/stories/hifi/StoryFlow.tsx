@@ -10,6 +10,7 @@ import type {
   OptionLabel,
   PoiDetail,
   PoiVerification,
+  Profile,
   QuestOption,
   Visit,
 } from "../../../domain/contracts";
@@ -24,7 +25,7 @@ import {
 } from "../../../domain/points";
 import { GeaServiceError, readableError } from "../../../services/api";
 import { type StoriesSource, storiesMockEnabled } from "../../../services/stories";
-import { museumPoiById, type StoryContent } from "../../../data/museum";
+import { museumPoiById, type StoryContent, type Tantangan } from "../../../data/museum";
 import { mockMediaUrl } from "../../../services/media";
 import { SceneLayer } from "../../onboarding/scene";
 import { type ParsedQr, qrErrorMessage } from "../../qr/qrPayload";
@@ -86,10 +87,29 @@ function isVerified(progress: PoiProgress): boolean {
   return progress.verifiedUntil !== null && progress.verifiedUntil > Date.now();
 }
 
+/** Quest yang dikerjakan di POI ini, sesuai sheet dan profil pengunjung. */
+type QuestPlan = {
+  /** Tantangan (foto / benar-salah / isian), atau undefined bila tidak ada untuk profil ini. */
+  readonly challenge: Tantangan | undefined;
+  /** Mini Quiz pilihan ganda (dinilai backend). */
+  readonly hasQuiz: boolean;
+};
+
+/**
+ * Sprint 3: anak (7–12) hanya mengerjakan quest foto dari Quest_Anak; Mini Quiz dan quest lain nonaktif.
+ * Pengunjung lain mengerjakan satu quest per POI dari sheet Quest: pilihan ganda/cocokkan = Mini Quiz,
+ * foto/benar-salah/isian = tantangan. POI tanpa data lokal (mode API) tetap memakai Mini Quiz backend.
+ */
+function questPlan(poiId: string, profile: Profile): QuestPlan {
+  const content: StoryContent | null = museumPoiById(poiId)?.content ?? null;
+  if (profile === "anak") return { challenge: content?.tantanganAnak, hasQuiz: false };
+  return { challenge: content?.tantangan, hasQuiz: content?.tanpaKuis !== true };
+}
+
 /** Langkah saat koleksi dibuka lagi, sesuai progres yang tersimpan. */
-function resumeStep(state: PoiProgress): Step {
+function resumeStep(state: PoiProgress, plan: QuestPlan): Step {
   if (state.completed || state.failed) return "result";
-  if (state.challengeDone === true) return "challengeDone";
+  if (state.challengeDone === true) return plan.hasQuiz ? "challengeDone" : "result";
   return state.closed ? "storyDone" : "summary";
 }
 
@@ -132,7 +152,7 @@ export function StoryFlow(props: Props): ReactElement {
         if (!active) return;
         setPoi(detail);
         const state: PoiProgress = progressOf(poiId);
-        setStep(resumeStep(state));
+        setStep(resumeStep(state, questPlan(poiId, visit.profil)));
       },
       (cause: unknown): void => {
         if (active) setError(readableError(cause));
@@ -181,7 +201,7 @@ export function StoryFlow(props: Props): ReactElement {
       setPoi(result.poi);
       setScanState("scanning");
       // Scan ulang setelah tantangan (verifikasi kedaluwarsa) → lanjut ke kuis.
-      setStep(quizPending.current ? "quiz" : resumeStep(state));
+      setStep(quizPending.current ? "quiz" : resumeStep(state, questPlan(result.idPoi, visit.profil)));
       quizPending.current = false;
     } catch (cause: unknown) {
       console.warn("gea_poi_qr_failed", { error: readableError(cause) });
@@ -243,10 +263,20 @@ export function StoryFlow(props: Props): ReactElement {
   // Halaman ke-2 isi cerita ("Story Isi 2"): kartu koleksi yang disorot + fakta menarik.
   const highlights: readonly string[] = splitHighlights(local?.sorotan).slice(0, 4);
   const pageCount: number = highlights.length > 0 ? 2 : 1;
-  const pageTwoTitle: string = local?.fakta !== undefined ? "Fakta Menarik" : "Cari di Ruangan Ini";
-  const pageTwoText: string = `${local?.fakta !== undefined ? `${local.fakta}\n\n` : ""}Ketuk kartu koleksi di atas, cari koleksinya di ruangan ini, lalu foto.`;
+  // Anak: judul dan fakta dari Konten_Cerita_Anak (teks cerita anak datang dari sumber data sesuai profil).
+  const kid: boolean = visit.profil === "anak";
+  const judul: string | undefined = (kid ? local?.judulAnak : undefined) ?? local?.judul;
+  const fakta: string | undefined = (kid ? local?.faktaAnak : undefined) ?? local?.fakta;
+  const pageTwoTitle: string = fakta !== undefined ? "Fakta Menarik" : "Cari di Ruangan Ini";
+  const pageTwoText: string = `${fakta !== undefined ? `${fakta}\n\n` : ""}Ketuk kartu koleksi di atas, cari koleksinya di ruangan ini, lalu foto.`;
   const photos: readonly number[] = progress.photos ?? [];
-  const challenge = local?.tantangan;
+  const { challenge, hasQuiz }: QuestPlan = questPlan(poiId, visit.profil);
+
+  /** POI tanpa Mini Quiz selesai setelah tantangan (atau setelah cerita bila tidak ada quest). */
+  function finish(): void {
+    onProgress(poiId, { completed: true });
+    setStep("result");
+  }
 
   /** Ke Mini Quiz; bila verifikasi QR koleksi sudah habis, scan ulang dulu. */
   function goQuiz(): void {
@@ -285,12 +315,19 @@ export function StoryFlow(props: Props): ReactElement {
     return (
       <StoryFinishedScreen
         poiName={poi.nama}
-        actionLabel={challenge !== undefined ? "Lakukan Tantangan" : "Lanjut ke Mini Quiz"}
+        hasActivity={challenge !== undefined || hasQuiz}
+        actionLabel={challenge !== undefined ? "Lakukan Tantangan" : hasQuiz ? "Lanjut ke Mini Quiz" : "Lihat Hasil"}
         onAction={(): void => {
-          if (challenge === undefined) goQuiz();
-          else setStep(progress.challengeDone === true ? "challengeDone" : "challenge");
+          if (challenge !== undefined && progress.challengeDone !== true) setStep("challenge");
+          else if (hasQuiz) {
+            if (challenge !== undefined) setStep("challengeDone");
+            else goQuiz();
+          } else finish();
         }}
-        onSkip={goQuiz}
+        onSkip={(): void => {
+          if (hasQuiz) goQuiz();
+          else finish();
+        }}
       />
     );
   }
@@ -301,8 +338,8 @@ export function StoryFlow(props: Props): ReactElement {
         challenge={challenge}
         onBack={(): void => setStep("storyDone")}
         onDone={({ points }): void => {
-          onProgress(poiId, { challengeDone: true, challengePoints: points });
-          setStep("challengeDone");
+          onProgress(poiId, { challengeDone: true, challengePoints: points, ...(hasQuiz ? {} : { completed: true }) });
+          setStep(hasQuiz ? "challengeDone" : "result");
         }}
         testMode={storiesMockEnabled}
       />
@@ -330,16 +367,22 @@ export function StoryFlow(props: Props): ReactElement {
   const score: number = quizPoints(progress) + (progress.challengePoints ?? 0);
 
   if (step === "result") {
-    // Bintang dari Mini Quiz: benar di percobaan 1/2/3 = 3/2/1 bintang.
-    const stars: number = progress.completed ? Math.max(1, 4 - progress.attempts) : 0;
+    // Bintang: Mini Quiz benar di percobaan 1/2/3 = 3/2/1. Tanpa kuis: tantangan berhasil = 3, kesempatan
+    // habis = 1. Tanpa quest sama sekali (mis. anak di POI tanpa quest foto): cerita selesai = 3.
+    const challengeWon: boolean = (progress.challengePoints ?? 0) > 0;
+    const stars: number = hasQuiz
+      ? progress.completed ? Math.max(1, 4 - progress.attempts) : 0
+      : challenge !== undefined
+      ? progress.challengeDone === true ? (challengeWon ? 3 : 1) : 0
+      : progress.completed ? 3 : 0;
     return (
       <ExplorerResultScreen
         poiName={poi.nama}
         stars={stars}
-        conquered={progress.completed}
+        conquered={hasQuiz ? progress.completed : challenge !== undefined ? challengeWon : progress.completed}
         score={score}
         reward={props.totalPoints}
-        explanation={progress.completed || progress.failed ? local?.penjelasan : undefined}
+        explanation={hasQuiz && (progress.completed || progress.failed) ? local?.penjelasan : undefined}
         extra={[
           ...(props.nextStop != null ? [`Berikutnya di rutemu: ${props.nextStop}`] : []),
           ...newBadges.map((badge: BadgeDef): string => `Lencana baru: ${badge.name} (+${badge.bonus} poin)`),
@@ -424,7 +467,7 @@ export function StoryFlow(props: Props): ReactElement {
           >
             <View style={styles.isiTexts}>
               <GeaText variant="heading28" color={colors.secondaryYellow[100]} numberOfLines={2}>
-                {step === "narration" ? "Dengarkan Narasi" : step === "story2" ? pageTwoTitle : local?.judul ?? poi.nama}
+                {step === "narration" ? "Dengarkan Narasi" : step === "story2" ? pageTwoTitle : judul ?? poi.nama}
               </GeaText>
               {step === "narration"
                 ? <StoryAudio key={audio.audioUrl} audioUrl={audio.audioUrl} durationSeconds={audio.durationSeconds} />
@@ -433,10 +476,10 @@ export function StoryFlow(props: Props): ReactElement {
                     <GeaText variant="body16Tight" color={colors.secondaryYellow[0]}>
                       {step === "story2" ? pageTwoText : description.text}
                     </GeaText>
-                    {step === "story" && pageCount === 1 && local?.fakta !== undefined && (
+                    {step === "story" && pageCount === 1 && fakta !== undefined && (
                       <View style={styles.fact}>
                         <GeaText variant="bold16" color={colors.primary[900]}>Fakta menarik</GeaText>
-                        <GeaText variant="body14" color={componentColors.bodyDark}>{local.fakta}</GeaText>
+                        <GeaText variant="body14" color={componentColors.bodyDark}>{fakta}</GeaText>
                       </View>
                     )}
                   </View>

@@ -10,7 +10,7 @@ import { GeaText } from "../../design/typography";
 import type { MuseumPoi, Wing, ZoneInfo } from "../../data/museum";
 import { distanceMeters, type Fix } from "../../domain/geofence";
 import type { PoiStatus } from "../../domain/points";
-import type { Route } from "../preferences/recommend";
+import { CLOSING_HOUR, type Route } from "../preferences/recommend";
 import { ScanBackground } from "../stories/hifi/backgrounds";
 import { FrameStage, StoryButton } from "../stories/hifi/parts";
 
@@ -307,7 +307,7 @@ function BottomCard(
         <GeaText variant="body14" color={componentColors.bodyDark} numberOfLines={2}>
           {allDone
             ? "Hebat! Masih ada waktu? Scan QR koleksi lain untuk terus menjelajah."
-            : `${stops.length} ruangan · ${route.duration}${route.topics.length > 0 ? ` · ${route.topics.join(", ")}` : ""}`}
+            : `${stops.length} ruangan · ±${route.totalMinutes} menit${route.closingLimited ? ` · sebelum tutup ${CLOSING_HOUR}.00` : ""}${route.topics.length > 0 ? ` · ${route.topics.join(", ")}` : ""}`}
         </GeaText>
         <View style={styles.stops}>
           {stops.map((poi: MapPoi, index: number): ReactElement => (

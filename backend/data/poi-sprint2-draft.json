@@ -38,7 +38,7 @@
       "estimatedMinutes": 5,
       "description": "Jutaan tahun lalu, Indonesia dihuni berbagai hewan purba berukuran unik! Ada Megalochelys sp., kura-kura raksasa, hingga Elephas celebensis, gajah purba mungil dari Sulawesi. Bersama Elephas maximus dan Sinomastodon bumiayuensis, fosil-fosil ini menjadi saksi beragamnya kehidupan fauna di masa lalu. Yuk, amati dan temukan perbedaannya!",
       "descriptionWords": 44,
-      "descriptionAnak": "Dulu sekali, jutaan tahun lalu, di Indonesia hidup hewan-hewan purba yang unik! Ada kura-kura raksasa bernama Megalochelys. Ada juga gajah purba yang mungil dari Sulawesi, namanya Elephas celebensis. Fosilnya, yaitu sisa hewan yang sudah membatu, bisa kamu lihat di sini. Yuk, cari tahu apa bedanya!",
+      "descriptionAnak": "Jutaan tahun lalu, Indonesia dihuni banyak hewan purba yang unik! Ada Megalochelys sp., si kura-kura raksasa. Ada juga Elephas celebensis, gajah purba mungil dari Sulawesi. Bersama Elephas maximus dan Sinomastodon bumiayuensis, fosil-fosil ini menjadi saksi beragamnya hewan di masa lalu. Ayo amati dan temukan perbedaannya!",
       "descriptionAnakWords": 45,
       "descriptionRemaja": "Jutaan tahun lalu, Indonesia dihuni hewan purba dengan ukuran yang unik. Ada Megalochelys sp., kura-kura raksasa, dan Elephas celebensis, gajah purba mungil dari Sulawesi. Bersama Elephas maximus dan Sinomastodon bumiayuensis, fosil-fosil ini membuktikan bahwa fauna Indonesia di masa lalu sangat beragam. Coba amati dan temukan perbedaannya!",
       "descriptionRemajaWords": 46,
@@ -88,35 +88,35 @@
       "estimatedMinutes": 5,
       "description": "Pernah melihat gua dengan hiasan batu yang menjuntai dari langit-langitnya? Itulah salah satu keunikan kawasan karst, seperti Gunung Sewu, yang terbentuk melalui proses pelarutan batuan kapur selama waktu yang sangat lama. Yuk, amati stalaktit, sinter kapur, batu jahe, hingga berbagai jenis batuan dan terumbu karang untuk mengenal keindahan proses pembentukan alam!",
       "descriptionWords": 51,
-      "descriptionAnak": "Pernah lihat gua yang langit-langitnya punya hiasan batu menjuntai? Itu ada di kawasan karst, misalnya Gunung Sewu. Karst terbentuk saat batu kapur pelan-pelan larut oleh air, dalam waktu yang sangat lama. Yuk, cari stalaktit, sinter kapur, batu jahe, dan terumbu karang di ruangan ini!",
+      "descriptionAnak": "Pernah melihat gua dengan hiasan batu yang menjuntai dari langit-langitnya? Itu salah satu keunikan kawasan karst, seperti Gunung Sewu! Karst terbentuk saat batuan kapur larut perlahan selama waktu yang sangat lama. Ayo amati stalaktit, sinter kapur, batu jahe, berbagai jenis batuan, dan terumbu karang!",
       "descriptionAnakWords": 44,
       "descriptionRemaja": "Pernah melihat gua dengan hiasan batu yang menjuntai dari langit-langit? Itu salah satu keunikan kawasan karst, seperti Gunung Sewu. Karst terbentuk karena batuan kapur larut oleh air sedikit demi sedikit selama waktu yang sangat lama. Amati stalaktit, sinter kapur, batu jahe, serta berbagai batuan dan terumbu karang di sini untuk melihat hasil proses alam ini!",
       "descriptionRemajaWords": 55,
       "audioPath": null,
       "audioDurationSeconds": null,
       "question": {
-        "instruction": "Asal-usul Stalaktit",
-        "prompt": "Stalaktit yang menjuntai dari langit-langit gua karst terbentuk dari...",
-        "hint": "Perhatikan tetesan air di langit-langit gua.",
+        "instruction": "Tetesan dari Langit-Langit Gua",
+        "prompt": "Di gua karst, tetesan air kaya kalsit perlahan membentuk hiasan batu yang menjuntai dari langit-langit gua. Perhatikan koleksi di POI ini, lalu pilih: apa nama hiasan batu tersebut?",
+        "hint": "Ia tumbuh ke bawah dari langit-langit gua, bukan naik dari lantai.",
         "options": [
           {
             "label": "A",
-            "text": "Lava yang membeku di langit-langit gua",
+            "text": "Stalagmit",
             "correct": false
           },
           {
             "label": "B",
-            "text": "Endapan mineral kalsit dari tetesan air",
+            "text": "Stalaktit",
             "correct": true
           },
           {
             "label": "C",
-            "text": "Pasir yang terbawa angin",
+            "text": "Rijang",
             "correct": false
           },
           {
             "label": "D",
-            "text": "Terumbu karang yang menempel",
+            "text": "Geode",
             "correct": false
           }
         ]
@@ -138,8 +138,8 @@
       "estimatedMinutes": 5,
       "description": "Indonesia berada di jalur pertemuan lempeng yang disebut Cincin Api Pasifik. Pertemuan lempeng inilah yang membentuk deretan gunung api dari Sumatra sampai Maluku. Coba perhatikan peta di hadapanmu dan temukan gunung api yang paling dekat dengan Bandung!",
       "descriptionWords": 37,
-      "descriptionAnak": "Indonesia berada di Cincin Api Pasifik, tempat potongan-potongan besar kulit Bumi, yang disebut lempeng, saling bertemu. Karena itu, banyak gunung api berjajar dari Sumatra sampai Maluku. Coba lihat peta di depanmu. Gunung api mana yang paling dekat dengan Bandung?",
-      "descriptionAnakWords": 39,
+      "descriptionAnak": "Tahukah kamu? Indonesia berada di jalur pertemuan lempeng yang disebut Cincin Api Pasifik. Pertemuan lempeng ini membentuk deretan gunung api dari Sumatra sampai Maluku. Ayo lihat peta di depanmu, lalu temukan gunung api yang paling dekat dengan Bandung!",
+      "descriptionAnakWords": 38,
       "descriptionRemaja": "Indonesia berada di Cincin Api Pasifik, jalur tempat lempeng-lempeng Bumi saling bertemu. Pertemuan lempeng inilah yang membentuk deretan gunung api dari Sumatra sampai Maluku. Perhatikan peta di hadapanmu, lalu temukan gunung api yang paling dekat dengan Bandung!",
       "descriptionRemajaWords": 37,
       "audioPath": null,
@@ -188,7 +188,7 @@
       "estimatedMinutes": 5,
       "description": "Tahukah kamu bahwa bentuk muka bumi Indonesia terbentuk melalui proses geologi selama jutaan tahun? Pergerakan dan tekanan lempeng bumi menghasilkan berbagai struktur batuan, seperti lipatan dan sesar. Yuk, amati koleksi genes, sekis biotit, serta contoh struktur geologi untuk melihat bagaimana bumi terus berubah!",
       "descriptionWords": 43,
-      "descriptionAnak": "Tahukah kamu, bentuk daratan Indonesia terbentuk selama jutaan tahun? Lempeng Bumi terus bergerak dan saling menekan. Tekanan itu bisa membuat lapisan batu melengkung, disebut lipatan, atau patah lalu bergeser, disebut sesar. Yuk, lihat batu genes dan sekis biotit di sini!",
+      "descriptionAnak": "Tahukah kamu? Bentuk muka bumi Indonesia terbentuk lewat proses geologi selama jutaan tahun! Pergerakan dan tekanan lempeng bumi menghasilkan struktur batuan, seperti lipatan dan sesar. Yuk, amati genes, sekis biotit, dan contoh struktur geologi untuk melihat bagaimana bumi terus berubah!",
       "descriptionAnakWords": 40,
       "descriptionRemaja": "Bentuk muka bumi Indonesia terbentuk melalui proses geologi selama jutaan tahun. Pergerakan dan tekanan lempeng bumi menghasilkan struktur batuan seperti lipatan, saat lapisan batuan melengkung, dan sesar, saat batuan patah lalu bergeser. Amati koleksi genes, sekis biotit, dan contoh struktur geologi di sini untuk melihat bagaimana bumi terus berubah!",
       "descriptionRemajaWords": 49,
@@ -238,8 +238,8 @@
       "estimatedMinutes": 5,
       "description": "Pernah penasaran bagaimana ribuan pulau di Indonesia terbentuk? Melalui animasi ini, kamu bisa mengikuti perjalanan terbentuknya Kepulauan Indonesia akibat pergerakan lempeng tektonik, aktivitas gunung api, dan proses geologi selama jutaan tahun. Yuk, saksikan bagaimana daratan yang awalnya terpisah akhirnya membentuk Indonesia seperti yang kita kenal sekarang!",
       "descriptionWords": 46,
-      "descriptionAnak": "Indonesia punya ribuan pulau. Bagaimana pulau-pulau itu muncul? Tonton animasinya di sini! Kamu akan melihat lempeng Bumi bergerak, gunung api meletus, dan daratan yang tadinya terpisah pelan-pelan membentuk Indonesia seperti sekarang. Semua itu terjadi selama jutaan tahun!",
-      "descriptionAnakWords": 37,
+      "descriptionAnak": "Pernah penasaran bagaimana ribuan pulau di Indonesia terbentuk? Lewat animasi ini, kamu bisa mengikuti perjalanannya! Pulau-pulau itu terbentuk karena pergerakan lempeng tektonik, aktivitas gunung api, dan proses geologi selama jutaan tahun. Yuk, saksikan bagaimana daratan yang awalnya terpisah akhirnya membentuk Indonesia seperti sekarang!",
+      "descriptionAnakWords": 43,
       "descriptionRemaja": "Pernah penasaran bagaimana ribuan pulau di Indonesia terbentuk? Animasi ini memperlihatkan perjalanan terbentuknya Kepulauan Indonesia akibat pergerakan lempeng tektonik, aktivitas gunung api, dan proses geologi lain selama jutaan tahun. Saksikan bagaimana daratan yang awalnya terpisah akhirnya membentuk Indonesia seperti sekarang!",
       "descriptionRemajaWords": 40,
       "audioPath": null,
@@ -288,35 +288,35 @@
       "estimatedMinutes": 5,
       "description": "Bentuk permukaan bumi yang kita lihat sekarang terbentuk melalui proses alam selama ribuan hingga jutaan tahun. Pelapukan menghancurkan batuan, erosi memindahkan material, sedangkan pengendapan menumpuknya di tempat baru. Yuk, amati contoh bentukan muka bumi dan cari tahu bagaimana ketiga proses ini mengubah lanskap Indonesia!",
       "descriptionWords": 44,
-      "descriptionAnak": "Bentuk permukaan Bumi terus berubah, pelan-pelan sekali. Ada tiga prosesnya. Pelapukan membuat batu hancur. Erosi membawa pecahan batu ke tempat lain. Pengendapan menumpuk pecahan itu di tempat baru. Yuk, lihat contohnya di sini!",
-      "descriptionAnakWords": 33,
+      "descriptionAnak": "Bentuk permukaan bumi yang kita lihat sekarang terbentuk lewat proses alam selama ribuan hingga jutaan tahun. Ada tiga proses yang bekerja. Pelapukan menghancurkan batuan, erosi memindahkan material, dan pengendapan menumpuknya di tempat baru. Yuk, amati contoh bentukan muka bumi dan lihat bagaimana ketiganya mengubah lanskap Indonesia!",
+      "descriptionAnakWords": 46,
       "descriptionRemaja": "Bentuk permukaan bumi yang kita lihat sekarang terbentuk lewat proses alam selama ribuan hingga jutaan tahun. Pelapukan menghancurkan batuan, erosi memindahkan materialnya, lalu pengendapan menumpuknya di tempat baru. Amati contoh bentukan muka bumi di sini dan cari tahu bagaimana ketiga proses ini mengubah lanskap Indonesia!",
       "descriptionRemajaWords": 45,
       "audioPath": null,
       "audioDurationSeconds": null,
       "question": {
-        "instruction": "Si Pemindah Material",
-        "prompt": "Proses yang memindahkan material hasil pelapukan ke tempat lain disebut...",
-        "hint": "Pelapukan menghancurkan, pengendapan menumpuk. Mana yang memindahkan?",
+        "instruction": "Trio Pembentuk Lanskap",
+        "prompt": "Tiga proses bekerja mengubah wajah bumi: 1) Pelapukan, 2) Erosi, 3) Pengendapan. Peran mereka: A) memindahkan material lewat air, angin, atau es; B) menumpuk material di tempat baru; C) menghancurkan batuan. Pilih pasangan yang tepat!",
+        "hint": "Urutan kerjanya: batuan hancur dulu, lalu berpindah, lalu menetap.",
         "options": [
           {
             "label": "A",
-            "text": "Pelapukan",
-            "correct": false
-          },
-          {
-            "label": "B",
-            "text": "Erosi",
+            "text": "1-C, 2-A, 3-B",
             "correct": true
           },
           {
+            "label": "B",
+            "text": "1-A, 2-B, 3-C",
+            "correct": false
+          },
+          {
             "label": "C",
-            "text": "Pengendapan",
+            "text": "1-B, 2-C, 3-A",
             "correct": false
           },
           {
             "label": "D",
-            "text": "Intrusi",
+            "text": "1-C, 2-B, 3-A",
             "correct": false
           }
         ]
@@ -338,8 +338,8 @@
       "estimatedMinutes": 5,
       "description": "Bumi menyimpan beragam mineral dan batuan dengan warna, bentuk, serta karakteristik yang berbeda! Ada lapis lazuli yang terkenal dengan warna biru pekatnya, hingga geodes yang menyimpan kristal di bagian dalamnya. Yuk, amati berbagai koleksi mineral dan kenali tiga kelompok utama batuan: beku, sedimen, dan metamorf!",
       "descriptionWords": 45,
-      "descriptionAnak": "Bumi menyimpan banyak harta karun berupa mineral dan batu, warnanya macam-macam! Ada lapis lazuli yang biru tua. Ada juga geodes, batu yang kelihatan biasa, tapi di dalamnya penuh kristal. Batu dibagi jadi tiga kelompok: beku, sedimen, dan metamorf. Yuk, cari di vitrin!",
-      "descriptionAnakWords": 42,
+      "descriptionAnak": "Bumi menyimpan banyak mineral dan batuan dengan warna dan bentuk yang berbeda-beda! Ada lapis lazuli yang terkenal dengan warna biru pekatnya. Ada juga geodes yang menyimpan kristal di bagian dalamnya. Yuk, amati koleksi mineralnya dan kenali tiga kelompok utama batuan: beku, sedimen, dan metamorf!",
+      "descriptionAnakWords": 44,
       "descriptionRemaja": "Bumi menyimpan beragam mineral dan batuan dengan warna, bentuk, dan sifat yang berbeda. Ada lapis lazuli dengan warna biru pekatnya, dan geodes yang menyimpan kristal di bagian dalamnya. Amati koleksi mineral di sini dan kenali tiga kelompok utama batuan: beku, sedimen, dan metamorf!",
       "descriptionRemajaWords": 43,
       "audioPath": null,
@@ -388,8 +388,8 @@
       "estimatedMinutes": 5,
       "description": "Permukaan bumi yang kita pijak ternyata terus bergerak! Tenaga tektonik berasal dari pergerakan lempeng bumi yang dapat membentuk pegunungan, lipatan, hingga patahan. Yuk, amati koleksi sekis mika, peridotit, dan lava basal untuk mengenal lebih jauh proses yang membentuk bumi!",
       "descriptionWords": 39,
-      "descriptionAnak": "Tanah yang kamu injak ternyata terus bergerak, walau tidak terasa! Gerakan lempeng Bumi ini disebut tenaga tektonik. Tenaga ini bisa membuat gunung, lapisan batu yang melengkung, sampai batu yang patah. Yuk, lihat sekis mika, peridotit, dan lava basal di sini!",
-      "descriptionAnakWords": 40,
+      "descriptionAnak": "Tahukah kamu? Permukaan bumi yang kita pijak ternyata terus bergerak! Tenaga tektonik berasal dari pergerakan lempeng bumi, yang bisa membentuk pegunungan, lipatan, dan patahan. Yuk, amati sekis mika, peridotit, dan lava basal untuk mengenal proses yang membentuk bumi!",
+      "descriptionAnakWords": 38,
       "descriptionRemaja": "Permukaan bumi yang kita pijak ternyata terus bergerak. Tenaga tektonik berasal dari pergerakan lempeng bumi, dan tenaga ini dapat membentuk pegunungan, lipatan, hingga patahan. Amati koleksi sekis mika, peridotit, dan lava basal di sini untuk mengenal proses yang membentuk bumi!",
       "descriptionRemajaWords": 40,
       "audioPath": null,
@@ -438,36 +438,36 @@
       "estimatedMinutes": 5,
       "description": "Pernah membayangkan bagaimana alam semesta dan planet Bumi terbentuk? Menurut teori Big Bang, alam semesta bermula dari kondisi yang sangat panas dan padat, lalu terus mengembang hingga sekarang. Seiring waktu, Bumi terbentuk dan mengalami perubahan struktur serta bentuk hingga menjadi planet yang kita kenal saat ini. Yuk, ikuti perjalanan panjang Bumi melalui koleksi dan ilustrasi di hadapanmu!",
       "descriptionWords": 57,
-      "descriptionAnak": "Bagaimana alam semesta dan Bumi terbentuk? Menurut teori Big Bang, awalnya alam semesta sangat panas dan padat, lalu terus membesar sampai sekarang. Lama-lama, Bumi terbentuk dan berubah-ubah hingga jadi planet tempat kita tinggal. Yuk, lihat ilustrasinya di sini!",
-      "descriptionAnakWords": 38,
+      "descriptionAnak": "Pernah membayangkan bagaimana alam semesta dan planet Bumi terbentuk? Menurut teori Big Bang, alam semesta bermula dari kondisi yang sangat panas dan padat, lalu terus mengembang sampai sekarang. Seiring waktu, Bumi terbentuk dan berubah hingga menjadi planet yang kita kenal. Yuk, ikuti perjalanan panjang Bumi lewat koleksi dan ilustrasi di depanmu!",
+      "descriptionAnakWords": 51,
       "descriptionRemaja": "Pernah membayangkan bagaimana alam semesta dan Bumi terbentuk? Menurut teori Big Bang, alam semesta bermula dari kondisi yang sangat panas dan padat, lalu terus mengembang hingga sekarang. Seiring waktu, Bumi terbentuk, lalu struktur dan bentuknya berubah hingga menjadi planet yang kita kenal. Ikuti perjalanan panjang itu lewat koleksi dan ilustrasi di hadapanmu!",
       "descriptionRemajaWords": 52,
       "audioPath": null,
       "audioDurationSeconds": null,
       "question": {
-        "instruction": "Empat Lapisan Bumi",
-        "prompt": "Mana yang BUKAN termasuk empat lapisan utama Bumi?",
-        "hint": "Lihat penampang struktur Bumi di hadapanmu.",
+        "instruction": "Menembus Lapisan Bumi",
+        "prompt": "Bumi punya empat lapisan utama. Perhatikan ilustrasi penampang struktur Bumi, lalu pilih urutan lapisan dari yang paling luar sampai paling dalam.",
+        "hint": "Kerak adalah \"kulit\" bumi tempat kita berpijak.",
         "options": [
           {
             "label": "A",
-            "text": "Kerak",
-            "correct": false
+            "text": "Kerak - Mantel - Inti luar - Inti dalam",
+            "correct": true
           },
           {
             "label": "B",
-            "text": "Mantel",
+            "text": "Mantel - Kerak - Inti dalam - Inti luar",
             "correct": false
           },
           {
             "label": "C",
-            "text": "Inti dalam",
+            "text": "Kerak - Inti luar - Mantel - Inti dalam",
             "correct": false
           },
           {
             "label": "D",
-            "text": "Atmosfer",
-            "correct": true
+            "text": "Inti dalam - Inti luar - Mantel - Kerak",
+            "correct": false
           }
         ]
       }
@@ -488,8 +488,8 @@
       "estimatedMinutes": 5,
       "description": "Indonesia memiliki beragam jenis batuan yang terbentuk melalui proses geologi yang berbeda-beda. Mulai dari batugamping hitam, sekis biotit, rijang, peridotit, hingga granit, setiap batuan menyimpan cerita tentang proses pembentukan bumi. Yuk, amati warna dan tekstur koleksinya, lalu temukan perbedaannya!",
       "descriptionWords": 39,
-      "descriptionAnak": "Indonesia punya banyak jenis batu, dan cara terbentuknya berbeda-beda. Di sini ada batugamping hitam, sekis biotit, rijang, peridotit, dan granit. Setiap batu punya ceritanya sendiri! Yuk, lihat warna dan permukaannya, lalu cari bedanya!",
-      "descriptionAnakWords": 33,
+      "descriptionAnak": "Indonesia punya banyak jenis batuan yang terbentuk lewat proses geologi yang berbeda-beda. Ada batugamping hitam, sekis biotit, rijang, peridotit, dan granit. Setiap batuan menyimpan cerita tentang proses pembentukan bumi. Yuk, amati warna dan tekstur koleksinya, lalu temukan perbedaannya!",
+      "descriptionAnakWords": 38,
       "descriptionRemaja": "Indonesia memiliki beragam jenis batuan yang terbentuk lewat proses geologi yang berbeda-beda. Batugamping hitam, sekis biotit, rijang, peridotit, hingga granit masing-masing menyimpan cerita tentang pembentukan bumi. Amati warna dan tekstur koleksinya, lalu temukan perbedaannya!",
       "descriptionRemajaWords": 34,
       "audioPath": null,
@@ -538,35 +538,35 @@
       "estimatedMinutes": 5,
       "description": "Indonesia menyimpan kekayaan geologi yang melimpah, mulai dari mineral logam, mineral non-logam, hingga batu mulia seperti ametis dari Solok, Sumatera Barat. Selain itu, ada batubara, minyak dan gas bumi, panas bumi, serta sumber daya air yang dimanfaatkan untuk kehidupan sehari-hari. Yuk, kenali berbagai potensi alam ini dan bagaimana manusia memanfaatkannya!",
       "descriptionWords": 50,
-      "descriptionAnak": "Di bawah tanah Indonesia ada banyak harta! Ada logam, batu mulia ametis dari Solok, Sumatera Barat, juga batubara, minyak, gas, panas bumi, dan air tanah. Semua itu kita pakai sehari-hari. Yuk, kenali harta alam ini!",
-      "descriptionAnakWords": 35,
+      "descriptionAnak": "Indonesia menyimpan kekayaan geologi yang melimpah! Ada mineral logam, mineral non-logam, dan batu mulia seperti ametis dari Solok, Sumatera Barat. Ada juga batubara, minyak dan gas bumi, panas bumi, serta sumber daya air yang dimanfaatkan untuk kehidupan sehari-hari. Yuk, kenali kekayaan alam ini dan bagaimana manusia memanfaatkannya!",
+      "descriptionAnakWords": 47,
       "descriptionRemaja": "Indonesia menyimpan kekayaan geologi yang melimpah: mineral logam, mineral non-logam, hingga batu mulia seperti ametis dari Solok, Sumatera Barat. Ada juga batubara, minyak dan gas bumi, panas bumi, serta sumber daya air yang kita manfaatkan sehari-hari. Kenali berbagai potensi alam ini dan bagaimana manusia memanfaatkannya!",
       "descriptionRemajaWords": 45,
       "audioPath": null,
       "audioDurationSeconds": null,
       "question": {
-        "instruction": "Panas dari Perut Bumi",
-        "prompt": "Mengapa Indonesia memiliki potensi panas bumi (geothermal) yang besar?",
-        "hint": "Hubungkan dengan cerita gunung api di POI-03.",
+        "instruction": "Ametis dari Tanah Minang",
+        "prompt": "Indonesia kaya sumber daya geologi, termasuk batu mulia berwarna ungu. Berdasarkan cerita pameran, ametis berasal dari daerah mana?",
+        "hint": "Daerah asalnya berada di Pulau Sumatra.",
         "options": [
           {
             "label": "A",
-            "text": "Karena banyak hutan hujan",
-            "correct": false
-          },
-          {
-            "label": "B",
-            "text": "Karena berada di kawasan dengan aktivitas vulkanik tinggi",
+            "text": "Solok, Sumatera Barat",
             "correct": true
           },
           {
+            "label": "B",
+            "text": "Martapura, Kalimantan Selatan",
+            "correct": false
+          },
+          {
             "label": "C",
-            "text": "Karena memiliki banyak sungai",
+            "text": "Cilacap, Jawa Tengah",
             "correct": false
           },
           {
             "label": "D",
-            "text": "Karena letaknya dekat kutub",
+            "text": "Ternate, Maluku Utara",
             "correct": false
           }
         ]
