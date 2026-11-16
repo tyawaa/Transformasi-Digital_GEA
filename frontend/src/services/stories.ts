@@ -3,6 +3,8 @@ import {
   type AnswerResult,
   answerResultSchema,
   type ClosedCard,
+  type DeviceLocation,
+  locationSchema,
   closedCardSchema,
   type Language,
   type OptionLabel,
@@ -16,6 +18,8 @@ import {
   type Visit,
 } from "../domain/contracts";
 import { isOutOfAttempts, quizPoints } from "../domain/points";
+import { stepGeofence } from "../domain/geofence";
+import { museumPoiById } from "../data/museum";
 import { type RestoredVisit, restoreServerVisit } from "../features/stories/progress";
 import {
   MOCK_ENTRANCE_TOKEN,
@@ -39,6 +43,7 @@ export interface StoriesSource {
   pois(): Promise<readonly PoiSummary[]>;
   poiDetail(idPoi: string, language: Language, profile: Profile): Promise<PoiDetail>;
   verifyPoiQr(idSesi: string, token: string, language: Language, profile: Profile): Promise<PoiVerification>;
+  verifyPoiGps(idSesi: string, idPoi: string, location: DeviceLocation, language: Language, profile: Profile): Promise<PoiVerification>;
   answerQuest(idSesi: string, idQuest: string, requestId: string, labelOpsi: OptionLabel): Promise<AnswerResult>;
   closeCard(idSesi: string, idPoi: string): Promise<ClosedCard>;
   /** Progres dari server untuk melanjutkan sesi; null = tidak ada data server (mock). */
@@ -63,7 +68,7 @@ type MockState = {
 };
 
 /**
- * Meniru aturan backend + Sprint 2: QR koleksi wajib sebelum quest, maksimal 3 percobaan,
+ * Meniru aturan backend: GPS atau QR memverifikasi koleksi sebelum quest, maksimal 3 percobaan,
  * retry idempoten, quest selesai = 409. Status "server" disimpan di perangkat agar uji
  * force-close tetap konsisten.
  */
@@ -95,16 +100,26 @@ export class MockStoriesSource implements StoriesSource {
     if (idPoi === undefined) {
       throw new GeaServiceError(403, "POI_QR_INVALID", "QR koleksi tidak valid.");
     }
+    return this.storeVerification(idSesi, idPoi, profile);
+  }
+
+  async verifyPoiGps(idSesi: string, idPoi: string, location: DeviceLocation, _language: Language, profile: Profile): Promise<PoiVerification> {
+    await delay();
+    this.findPoi(idPoi);
+    const checkpoint = museumPoiById(idPoi);
+    if (checkpoint === undefined) throw new GeaServiceError(404, "POI_NOT_FOUND", "Titik koleksi tidak ditemukan.");
+    const decision = stepGeofence([], locationSchema.parse(location), [{ ...checkpoint, id: idPoi }]);
+    if (decision.weak) throw new GeaServiceError(403, "GPS_ACCURACY_EXCEEDS_20_METERS", "Lokasi belum cukup akurat.");
+    if (!decision.inside.includes(idPoi)) throw new GeaServiceError(403, "OUTSIDE_POI_AREA", "Kamu belum berada di dekat koleksi ini.");
+    return this.storeVerification(idSesi, idPoi, profile);
+  }
+
+  private async storeVerification(idSesi: string, idPoi: string, profile: Profile): Promise<PoiVerification> {
     const state: MockState = await this.load();
     const expiresAt: number = Date.now() + VERIFICATION_MINUTES * 60_000;
     state.verifiedUntil[`${idSesi}:${idPoi}`] = expiresAt;
     await this.save();
-    return poiVerificationSchema.parse({
-      idPoi,
-      verified: true,
-      expiresAt: new Date(expiresAt).toISOString(),
-      poi: mockPoiForProfile(this.findPoi(idPoi), profile),
-    });
+    return poiVerificationSchema.parse({ idPoi, verified: true, expiresAt: new Date(expiresAt).toISOString(), poi: mockPoiForProfile(this.findPoi(idPoi), profile) });
   }
 
   async answerQuest(idSesi: string, idQuest: string, requestId: string, labelOpsi: OptionLabel): Promise<AnswerResult> {
@@ -121,7 +136,7 @@ export class MockStoriesSource implements StoriesSource {
     }
     const until: number | undefined = state.verifiedUntil[`${idSesi}:${poi.id_poi}`];
     if (until === undefined || until < Date.now()) {
-      throw new GeaServiceError(403, "CHECKPOINT_VERIFICATION_REQUIRED", "Scan QR koleksi sebelum menjawab.");
+      throw new GeaServiceError(403, "CHECKPOINT_VERIFICATION_REQUIRED", "Periksa GPS atau scan QR koleksi sebelum menjawab.");
     }
     const questKey: string = `${idSesi}:${idQuest}`;
     if (state.completed[questKey] === true) {
@@ -211,6 +226,10 @@ export class ApiStoriesSource implements StoriesSource {
 
   verifyPoiQr(idSesi: string, token: string, language: Language, profile: Profile): Promise<PoiVerification> {
     return this.api.verifyPoiQr(idSesi, token, language, profile);
+  }
+
+  verifyPoiGps(idSesi: string, idPoi: string, location: DeviceLocation, language: Language, profile: Profile): Promise<PoiVerification> {
+    return this.api.verifyPoiGps(idSesi, idPoi, location, language, profile);
   }
 
   answerQuest(idSesi: string, idQuest: string, requestId: string, labelOpsi: OptionLabel): Promise<AnswerResult> {

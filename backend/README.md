@@ -112,6 +112,7 @@ Publishable key bukan pengganti access token pengunjung.
 | POST   | `/sessions`                               | `idSesi`, `language`, `profile`, `location`; GPS wajib inside                     |
 | POST   | `/sessions/qr`                            | `idSesi`, `language`, `profile`, `token` QR pintu masuk                           |
 | POST   | `/sessions/{id}/verify-qr`                | `token` QR koleksi, `language`, `profile`; mengembalikan POI dan bukti verifikasi |
+| POST   | `/sessions/{id}/pois/{poiId}/verify-gps`   | `location`, `language`, `profile`; memeriksa radius POI dan akurasi maksimum 20 m |
 | POST   | `/sessions/{id}/quests/{questId}/answers` | `requestId` UUID dan `labelOpsi` A-D                                              |
 | POST   | `/sessions/{id}/pois/{poiId}/close`       | Menyimpan kartu ditutup pada sesi ini                                             |
 | GET    | `/sessions/{id}/progress`                 | Sesi, kartu, dan hasil quest milik pengunjung                                     |
@@ -339,10 +340,9 @@ hanya metadata JSON.
 - PM: koordinat/radius museum, aturan manual, expiry QR, batas percobaan, varian konten wajib.
 - PM/PD2: lengkapi foto, teks, audio, soal dan kunci untuk 20 koleksi pada template B6.
 
-Percobaan salah saat ini boleh diulang tanpa batas; poin, lencana, quest foto, pergantian preferensi
-sesi, dan GPS spesifik koleksi belum termasuk API sprint ini. Geofence museum bukan bukti
-checkpoint. QR koleksi adalah jalur verifikasi quest yang tersedia; GPS koleksi memerlukan koordinat
-koleksi yang diverifikasi, sedangkan ERD saat ini hanya punya posisi denah.
+Geofence museum mengaktifkan sesi kunjungan. Verifikasi GPS setiap koleksi memakai koordinat dan
+radius POI di database, dengan akurasi maksimum 20 m; QR koleksi menjadi jalur alternatif.
+Kedua jalur memberi bukti checkpoint selama 15 menit untuk membuka cerita dan quest.
 
 Pembacaan GPS dan gating landing awal tersedia di aplikasi Expo. E3 masih memerlukan uji mock
 location/perangkat dan integrasi cloud yang berhasil. E7/E8 memerlukan frontend Stories lengkap. B3

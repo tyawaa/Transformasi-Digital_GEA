@@ -100,6 +100,39 @@ export async function routeSessions(
       headers,
     );
   }
+  const gpsVerification: RegExpMatchArray | null = path.match(
+    /^\/sessions\/([^/]+)\/pois\/([^/]+)\/verify-gps$/,
+  );
+  if (request.method === "POST" && gpsVerification !== null) {
+    const body: JsonObject = await jsonBody(request);
+    const location = parseLocation(body.location);
+    if (location === null) {
+      throw new ApiError(
+        400,
+        "LOCATION_REQUIRED",
+        "Kirim koordinat dan akurasi untuk memeriksa POI.",
+      );
+    }
+    const poiId: string = uuid(gpsVerification[2], "idPoi");
+    const selectedLanguage: Language = language(body.language);
+    const selectedProfile: Profile = profile(body.profile);
+    const result: JsonObject = object(
+      await gateway.rpc("verifikasi_gps_poi", {
+        p_user_id: userId,
+        p_id_sesi: uuid(gpsVerification[1], "idSesi"),
+        p_id_poi: poiId,
+        p_latitude: location.latitude,
+        p_longitude: location.longitude,
+        p_accuracy_meters: location.accuracyMeters,
+      }),
+      "GPS verification",
+    );
+    return success(
+      { ...result, poi: await poiDetail(gateway, poiId, selectedLanguage, selectedProfile) },
+      200,
+      headers,
+    );
+  }
   const close: RegExpMatchArray | null = path.match(/^\/sessions\/([^/]+)\/pois\/([^/]+)\/close$/);
   if (request.method === "POST" && close !== null) {
     return success(

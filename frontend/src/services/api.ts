@@ -210,6 +210,20 @@ export class GeaApi {
     );
   }
 
+  async verifyPoiGps(
+    idSesi: string,
+    idPoi: string,
+    location: DeviceLocation,
+    language: Language,
+    profile: Profile,
+  ): Promise<PoiVerification> {
+    return poiVerificationSchema.parse(
+      await this.post(`/sessions/${encodeURIComponent(idSesi)}/pois/${encodeURIComponent(idPoi)}/verify-gps`, {
+        location, language, profile,
+      }),
+    );
+  }
+
   async answerQuest(
     idSesi: string,
     idQuest: string,
@@ -314,7 +328,16 @@ export function readableError(error: unknown): string {
       return "QR ini bukan QR koleksi yang aktif. Scan QR di dekat koleksi.";
     }
     if (error.code === "CHECKPOINT_VERIFICATION_REQUIRED") {
-      return "Scan QR koleksi dulu sebelum menjawab. Verifikasi berlaku 15 menit.";
+      return "Periksa lokasi di dekat koleksi atau gunakan QR sebelum menjawab. Verifikasi berlaku 15 menit.";
+    }
+    if (error.code === "OUTSIDE_POI_AREA") {
+      return "Kamu belum berada di dekat koleksi ini. Dekati koleksi lalu periksa lagi, atau gunakan QR koleksi.";
+    }
+    if (error.code === "GPS_ACCURACY_EXCEEDS_20_METERS") {
+      return "Lokasi belum cukup akurat. Periksa lagi atau gunakan QR di dekat koleksi.";
+    }
+    if (error.code === "POI_LOCATION_NOT_CONFIGURED") {
+      return "Titik lokasi koleksi belum tersedia. Gunakan QR koleksi.";
     }
     if (error.code === "QUEST_ALREADY_COMPLETED") {
       return "Quest ini sudah selesai dijawab dengan benar.";

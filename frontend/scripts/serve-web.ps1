@@ -1,8 +1,8 @@
-# Build versi web lalu sajikan di http://localhost:8082 (alternatif saat `expo start` macet).
+# Build versi web di origin yang diizinkan backend: http://localhost:8081.
 # Pakai:  .\scripts\serve-web.ps1            (build ulang lalu jalankan)
 #         .\scripts\serve-web.ps1 -NoBuild   (pakai build terakhir di dist/web)
 # Hentikan dengan Ctrl+C.
-param([switch]$NoBuild, [int]$Port = 8082)
+param([switch]$NoBuild, [int]$Port = 8081)
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot

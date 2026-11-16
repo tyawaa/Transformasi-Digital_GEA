@@ -165,15 +165,17 @@ function Home(): ReactElement {
   }
   const allDone: boolean = refs.length > 0 && mapPois.every((poi: MapPoi): boolean => poi.id === null || poi.status === "selesai");
 
-  // E10: geofence POI + zona selama kunjungan aktif. id checkpoint = kode (P03, ZL).
+  // Zona dipantau selama kunjungan; POI hanya diperiksa setelah Buka cerita ditekan.
   const checkpoints: readonly Checkpoint[] = useMemo((): readonly Checkpoint[] => [
     ...zones.filter((z: ZoneInfo): boolean => wingEnabled(z.wing)).map((z: ZoneInfo): Checkpoint => ({
       id: z.code, latitude: z.latitude, longitude: z.longitude, radiusMeters: z.radiusMeters,
     })),
-    ...mapPois.filter((poi: MapPoi): boolean => poi.id !== null).map((poi: MapPoi): Checkpoint => ({
+    ...mapPois.filter((poi: MapPoi): boolean =>
+      screen.name === "story" && poi.id !== null && poi.id === screen.poiId
+    ).map((poi: MapPoi): Checkpoint => ({
       id: poi.museum.code, latitude: poi.museum.latitude, longitude: poi.museum.longitude, radiusMeters: poi.museum.radiusMeters,
     })),
-  ], [mapPois]);
+  ], [mapPois, screen]);
   const geofence = useGeofence({ visitId: visit?.id_sesi ?? null, checkpoints });
   const gpsWing: Wing | null = geofence.active === null
     ? null
@@ -218,7 +220,7 @@ function Home(): ReactElement {
       // QR pintu masuk / zona: kunjungan dimulai, tetap di layar scan untuk QR koleksi berikutnya.
       if (result.kind === "entrance" || (result.kind === null && visit === null)) {
         await beginVisit(result.token);
-        setScanNotice("Kunjungan dimulai! Sekarang scan QR di dekat koleksi untuk membuka ceritanya.");
+        setScanNotice("Kunjungan dimulai! Kembali ke peta, pilih koleksi dan tekan Buka cerita untuk memeriksa GPS, atau scan QR koleksi di sini.");
         return;
       }
       if (result.kind === "zone") {
@@ -226,7 +228,7 @@ function Home(): ReactElement {
         const info: ZoneInfo | undefined = zones.find((z: ZoneInfo): boolean => z.code === result.code);
         setZone(info ?? null);
         setQrZoneIntro(info ?? null);
-        setScanNotice(`Kamu di ${info?.name ?? "zona ini"}. Scan QR di dekat koleksi untuk membuka ceritanya.`);
+        setScanNotice(`Kamu di ${info?.name ?? "zona ini"}. Pilih koleksi di peta dan tekan Buka cerita untuk memeriksa GPS, atau scan QR koleksi di sini.`);
         return;
       }
       // QR koleksi: langsung buka template cerita POI tersebut.
@@ -302,6 +304,7 @@ function Home(): ReactElement {
           visit={visit}
           poiId={screen.poiId}
           initialToken={screen.token}
+          gpsFix={geofence.currentFix}
           progressOf={progressOf}
           onProgress={visitState.update}
           onAnswer={visitState.recordAnswer}
@@ -310,7 +313,11 @@ function Home(): ReactElement {
           allCompleted={allDone}
           dummyScans={storyDummies(screen.poiId)}
           nextStop={nextStop(screen.poiId)}
-          onExit={(): void => setScreen({ name: "map" })}
+          onExit={(): void => {
+            const checkpoint = museumPoiById(screen.poiId);
+            if (checkpoint !== undefined) geofence.dismiss(checkpoint.code);
+            setScreen({ name: "map" });
+          }}
         />
       </>
     );
