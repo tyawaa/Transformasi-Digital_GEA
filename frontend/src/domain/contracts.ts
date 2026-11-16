@@ -83,12 +83,25 @@ export const questOptionSchema = z.object({
   label_opsi: optionLabelSchema,
   teks_opsi: z.string().min(1),
 });
+export const questTypeSchema = z.enum([
+  "pilgan",
+  "foto",
+  "isian_singkat",
+  "benar_salah",
+  "cocokkan",
+]);
+export type QuestType = z.infer<typeof questTypeSchema>;
+
 export const questSchema = z.object({
   idQuest: z.uuid(),
-  type: z.literal("pilgan"),
+  type: questTypeSchema.default("pilgan"),
   instruksi: z.string().min(1),
   pertanyaan: z.string().min(1),
-  options: z.array(questOptionSchema).length(4),
+  options: z.array(questOptionSchema).default([]),
+  target_foto: z.string().nullable().optional(),
+  kunci_isian: z.string().nullable().optional(),
+  penjelasan: z.string().nullable().optional(),
+  isDisabled: z.boolean().optional(),
 });
 export const poiDetailSchema = z.object({
   id_poi: z.uuid(),
