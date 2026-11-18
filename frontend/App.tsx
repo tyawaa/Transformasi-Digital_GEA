@@ -107,6 +107,7 @@ function Home(): ReactElement {
   const [screen, setScreen] = useState<Screen>({ name: "map" });
   // Splash lokasi: ok = di area museum, fail = selain itu.
   const [locationSplash, setLocationSplash] = useState<"ok" | "fail" | null>(null);
+  const [onboardingStep, setOnboardingStep] = useState<0 | 3>(0);
   const wasCheckingLocation = useRef<boolean>(false);
   useEffect((): void => {
     const checking: boolean = busy === "location";
@@ -334,6 +335,12 @@ function Home(): ReactElement {
           onRecheck={(): void => {
             void session.checkLocation();
           }}
+          onBack={(): void => {
+            // Kembali ke onboarding, langkah cek lokasi.
+            setLocationSplash(null);
+            setOnboardingStep(3);
+            if (onboarding.state !== "show") onboarding.reopen();
+          }}
         />
       </>
     );
@@ -346,6 +353,8 @@ function Home(): ReactElement {
           checkingLocation={busy === "location"}
           locationLabel={session.locationLabel}
           locationNotice={session.notice}
+          locationOk={session.decision?.status === "inside" && session.decision.accessAllowed}
+          initialStep={onboardingStep}
           locationError={operationError}
           currentLocation={session.currentLocation}
           onCheckLocation={(): void => {
