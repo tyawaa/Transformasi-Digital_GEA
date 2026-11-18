@@ -1,5 +1,6 @@
-import { type ReactElement, useState } from "react";
+import { type ReactElement, useEffect, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
+import { Toast } from "../../design/Toast";
 import { colors, componentColors, shadows, spacing } from "../../design/tokens";
 import { GeaText } from "../../design/typography";
 import { StoryBackground } from "../stories/hifi/backgrounds";
@@ -45,11 +46,18 @@ export function PreferencesScreen(
   const [answers, setAnswers] = useState<readonly [readonly string[], readonly string[], readonly string[]]>([[], [], []]);
   const question: Question = questions[step];
   const selected: readonly string[] = answers[step];
+  const [warning, setWarning] = useState<boolean>(false);
+  useEffect((): (() => void) | undefined => {
+    if (!warning) return undefined;
+    const timer = setTimeout((): void => setWarning(false), 5000);
+    return (): void => clearTimeout(timer);
+  }, [warning]);
 
   function toggle(option: string): void {
     const next: readonly string[] = question.multiple
       ? selected.includes(option) ? selected.filter((item: string): boolean => item !== option) : [...selected, option]
       : [option];
+    setWarning(false);
     setAnswers((current) => {
       const copy = [...current] as [readonly string[], readonly string[], readonly string[]];
       copy[step] = next;
@@ -58,6 +66,11 @@ export function PreferencesScreen(
   }
 
   function next(): void {
+    if (selected.length === 0) {
+      setWarning(true);
+      return;
+    }
+    setWarning(false);
     if (step < 2) {
       setStep((step + 1) as 1 | 2);
       return;
@@ -100,7 +113,17 @@ export function PreferencesScreen(
           );
         })}
       </View>
-      <StoryButton label="Lanjut" onPress={next} disabled={selected.length === 0} style={styles.button} />
+      <StoryButton label="Lanjut" onPress={next} style={styles.button} />
+      {warning && (
+        <View style={styles.toast}>
+          <Toast
+            tone="danger"
+            title="Belum ada pilihan"
+            description={question.multiple ? "Pilih minimal satu topik dulu untuk melanjutkan." : "Pilih salah satu jawaban dulu untuk melanjutkan."}
+            onClose={(): void => setWarning(false)}
+          />
+        </View>
+      )}
     </FrameStage>
   );
 }
@@ -148,4 +171,5 @@ const styles = StyleSheet.create({
   },
   boxChecked: { backgroundColor: colors.secondaryGreen[100] },
   button: { position: "absolute", left: 16, top: 729, width: 358, boxShadow: shadows.drop },
+  toast: { position: "absolute", left: 15, top: 47, width: 360 },
 });

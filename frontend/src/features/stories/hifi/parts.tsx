@@ -115,7 +115,12 @@ export function StoryButton(
 
 /** Tombol kembali desain terbaru: lingkaran krem berisi panah + tulisan "Keluar". */
 export function BackButton(
-  { onPress, label = "Keluar" }: { readonly onPress: () => void; readonly label?: string | null },
+  { onPress, label = "Keluar", labelColor = colors.primary[700] }: {
+    readonly onPress: () => void;
+    readonly label?: string | null;
+    /** Warna teks label di latar gelap. */
+    readonly labelColor?: string;
+  },
 ): ReactElement {
   return (
     <Pressable
@@ -128,7 +133,7 @@ export function BackButton(
       <View style={styles.backCircle}>
         <Image accessible={false} source={backArrow} style={styles.backIcon} />
       </View>
-      {label !== null && <GeaText variant="body16" color={colors.primary[700]}>{label}</GeaText>}
+      {label !== null && <GeaText variant="body16" color={labelColor}>{label}</GeaText>}
     </Pressable>
   );
 }
