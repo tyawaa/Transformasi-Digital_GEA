@@ -1,7 +1,8 @@
 // Aturan poin, progres, dan lencana (Sprint 2 E11/A7; lencana Sprint 3 dari sheet Badge_Poin).
-// Sumber hitungan resmi nantinya ada di Supabase (E11/E12 milik C-2). Sampai endpoint itu ada,
-// aplikasi menghitung dengan aturan yang sama dari data percobaan agar tampilan bisa diuji.
-// Modul ini sengaja tanpa import supaya bisa diuji langsung dengan Node.
+// Perhitungan lokal hanya untuk mode mock; mode API memakai hasil resmi Supabase.
+import type { BadgeId } from "./contracts.ts";
+
+export type { BadgeId } from "./contracts.ts";
 
 export const MAX_ATTEMPTS = 3;
 
@@ -49,10 +50,6 @@ export function poiStatus(state: StoryState | undefined, verified: boolean): Poi
 // Kuning = prioritas tinggi (POI-01 s.d. POI-11). Oranye/merah = prioritas rendah (POI-12 s.d. POI-21):
 // BD-05, BD-08, BD-09 hanya tampil bila sayap kanan dibuka. BD-14 (foto anak) nonaktif karena anak tidak
 // mengerjakan quest foto.
-export type BadgeId =
-  | "BD-01" | "BD-02" | "BD-03" | "BD-04" | "BD-05" | "BD-06" | "BD-07" | "BD-08"
-  | "BD-09" | "BD-10" | "BD-11" | "BD-12" | "BD-13" | "BD-14" | "BD-15";
-
 export type BadgeDef = {
   readonly id: BadgeId;
   readonly name: string;
@@ -204,10 +201,14 @@ export function totalPoints(
     const state: StoryState | undefined = states[poi.id];
     return sum + (state === undefined ? 0 : quizPoints(state) + (state.challengePoints ?? 0));
   }, 0);
-  const bonus: number = earnedBadges(pois, states, ctx).reduce(
+  return quests + badgeBonus(earnedBadges(pois, states, ctx));
+}
+
+/** Jumlah bonus poin dari daftar lencana. */
+export function badgeBonus(ids: readonly BadgeId[]): number {
+  return ids.reduce(
     (sum: number, id: BadgeId): number =>
       sum + (badges.find((badge: BadgeDef): boolean => badge.id === id)?.bonus ?? 0),
     0,
   );
-  return quests + bonus;
 }

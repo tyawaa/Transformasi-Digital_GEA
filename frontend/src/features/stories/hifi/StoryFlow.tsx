@@ -19,11 +19,11 @@ import {
   type BadgeDef,
   badges,
   type BadgeId,
-  isOutOfAttempts,
   MAX_ATTEMPTS,
-  quizPoints,
 } from "../../../domain/points";
 import { GeaServiceError, readableError } from "../../../services/api";
+import { readVisitorLocation, type LocationReading } from "../../../services/location";
+import { type Fix, stepGeofence } from "../../../domain/geofence";
 import { type StoriesSource, storiesMockEnabled } from "../../../services/stories";
 import { museumPoiById, type StoryContent, type Tantangan } from "../../../data/museum";
 import { SceneLayer } from "../../onboarding/scene";
@@ -33,14 +33,16 @@ import { isiPanelLayer, StoryBackground } from "./backgrounds";
 import { BackButton, FRAME_H, FrameStage, PhotoFrame, StoryButton } from "./parts";
 import { type DummyScan, ScanQrScreen, type ScanState } from "./ScanQrScreen";
 import { StoryAudio } from "./StoryAudio";
-import { ChallengeScreen } from "./ChallengeScreen";
+import { type ChallengeAnswer, ChallengeScreen, type ServerGrade } from "./ChallengeScreen";
 import { PhotoTaskScreen } from "./PhotoTaskScreen";
 import { type QuestPlan, questPlan } from "../questPlan";
-import { ChallengeDoneScreen, ExplorerResultScreen, StoryFinalScreen, StoryFinishedScreen } from "./StoryEndScreens";
+import { ChallengeDoneScreen, ExplorerResultScreen, StoryFinishedScreen } from "./StoryEndScreens";
+import { type AdventureSummary, ShareResultScreen, WellDoneScreen } from "./AdventureDoneScreens";
 
-// Alur per koleksi (revisi 12 Nov 2026): Scan QR → Summary → Isi 1 → Isi 2 (kartu koleksi; ketuk = cari & foto)
+// Alur per koleksi (revisi 12 Nov 2026): Scan QR / GPS koleksi → Summary → Isi 1 → Isi 2 (kartu koleksi; ketuk = cari & foto)
 // → Kisah Selesai → Tantangan (sheet Quest) → Yeay! → Mini Quiz → Selamat Penjelajah!
 type Step =
+  | "gps"
   | "scan"
   | "loading"
   | "summary"
@@ -53,7 +55,8 @@ type Step =
   | "challengeDone"
   | "quiz"
   | "result"
-  | "final";
+  | "final"
+  | "share";
 
 // Story Isi: teks mulai y=592, tombol berjarak 52 dari bawah. Panel cokelat (gambar) cukup sampai
 // ±y=860; di bawahnya diisi warna yang sama saat cerita panjang.
@@ -72,11 +75,15 @@ type Props = {
   readonly poiId: string;
   /** Token QR koleksi yang sudah dipindai dari peta; langsung diverifikasi. */
   readonly initialToken?: string | null;
+  readonly gpsFix: Fix | null;
   readonly progressOf: (poiId: string) => PoiProgress;
   readonly onProgress: (poiId: string, patch: Partial<PoiProgress>) => void;
+  readonly onAnswer: (answer: AnswerResult) => void;
   readonly totalPoints: number;
   readonly earnedBadges: readonly BadgeId[];
   readonly allCompleted: boolean;
+  /** Ringkasan petualangan untuk layar "Well Done!" (dipakai saat semua koleksi tuntas). */
+  readonly adventure: AdventureSummary;
   readonly dummyScans: readonly DummyScan[];
   /** Ruangan berikutnya di rute rekomendasi, mis. "P08 · Terjadinya Tenaga Tektonik". */
   readonly nextStop?: string | null;
@@ -95,9 +102,9 @@ function resumeStep(state: PoiProgress, plan: QuestPlan): Step {
 }
 
 /**
- * Alur Story: Scan QR → Summary → Isi 1 → Isi 2 (cari & foto koleksi) → Kisah Selesai → Tantangan
- * → Yeay! → Mini Quiz → Selamat Penjelajah. Mini Quiz hanya aktif setelah QR koleksi terverifikasi
- * (maks. 3 percobaan, poin 20/10/5/0). Tantangan dan foto koleksi dinilai di aplikasi.
+ * Alur Story: Scan QR / GPS koleksi → Summary → Isi 1 → Isi 2 (cari & foto koleksi) → Kisah Selesai
+ * → Tantangan → Yeay! → Mini Quiz → Selamat Penjelajah. GPS memverifikasi radius koleksi (QR sebagai
+ * alternatif); verifikasi berlaku 15 menit. Mini Quiz dinilai backend (maks. 3 percobaan, 20/10/5/0).
  */
 export function StoryFlow(props: Props): ReactElement {
   const { source, visit, progressOf, onProgress } = props;
@@ -106,12 +113,17 @@ export function StoryFlow(props: Props): ReactElement {
   const progress: PoiProgress = progressOf(poiId);
   const verified: boolean = isVerified(progress);
   const [step, setStep] = useState<Step>(
-    props.initialToken != null ? "scan" : progress.completed || progress.failed || verified ? "loading" : "scan",
+    props.initialToken != null ? "scan" : progress.completed || progress.failed || verified ? "loading" : "gps",
   );
   const [scanState, setScanState] = useState<ScanState>(props.initialToken != null ? "detected" : "scanning");
   const [scanMessage, setScanMessage] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [gpsAttempt, setGpsAttempt] = useState<number>(0);
+  const [gpsLabel, setGpsLabel] = useState<string>("Memeriksa lokasi koleksi...");
+  const checkpoint = museumPoiById(poiId);
+  const gpsInsidePoi: boolean = checkpoint !== undefined && props.gpsFix !== null &&
+    stepGeofence([], props.gpsFix, [{ ...checkpoint, id: poiId }]).inside.includes(poiId);
   const badgesAtStart = useRef<readonly BadgeId[]>(props.earnedBadges);
   // true = pengguna menuju Mini Quiz tetapi verifikasi QR sudah habis; setelah scan langsung ke kuis.
   const quizPending = useRef<boolean>(false);
@@ -124,7 +136,7 @@ export function StoryFlow(props: Props): ReactElement {
   // Kartu koleksi (Story Isi 2) yang sedang dicari & difoto.
   const [photoIndex, setPhotoIndex] = useState<number | null>(null);
 
-  // Masuk tanpa scan (sudah selesai / masih terverifikasi / "Mulai tanpa scan").
+  // Muat ulang cerita yang sudah selesai atau masih terverifikasi.
   useEffect((): (() => void) | undefined => {
     if (step !== "loading") return undefined;
     let active = true;
@@ -151,6 +163,39 @@ export function StoryFlow(props: Props): ReactElement {
   }, []);
 
   useEffect((): (() => void) | undefined => {
+    if (step !== "gps") return undefined;
+    let active: boolean = true;
+    setError(null);
+    setGpsLabel("Memeriksa lokasi koleksi...");
+    async function verifyGps(): Promise<void> {
+      const reading: LocationReading = props.gpsFix === null || !Number.isFinite(props.gpsFix.accuracyMeters)
+        ? await readVisitorLocation((message: string): void => { if (active) setGpsLabel(message); })
+        : { status: "available", location: props.gpsFix };
+      if (!active) return;
+      if (reading.status !== "available") {
+        throw new GeaServiceError(0, "LOCATION_UNAVAILABLE", "Posisi belum dapat dibaca. Periksa izin lokasi dan coba lagi, atau gunakan QR koleksi.");
+      }
+      const result: PoiVerification = await source.verifyPoiGps(visit.id_sesi, poiId, reading.location, visit.bahasa, visit.profil);
+      if (active) acceptVerification(result);
+    }
+    void verifyGps().catch((cause: unknown): void => {
+      console.warn("gea_poi_gps_failed", { poiId, error: readableError(cause) });
+      if (active) setError(readableError(cause));
+    });
+    return (): void => { active = false; };
+    // Pembaruan GPS tidak membatalkan verifikasi yang sedang berjalan.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, poiId, gpsAttempt]);
+
+  useEffect((): void => {
+    if (step === "gps" && error !== null && gpsInsidePoi) {
+      setGpsAttempt((attempt: number): number => attempt + 1);
+    }
+    // Coba lagi otomatis hanya saat posisi baru masuk radius, bukan berulang saat layanan gagal.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gpsInsidePoi]);
+
+  useEffect((): (() => void) | undefined => {
     if (toast === null) return undefined;
     const timer = setTimeout((): void => setToast(null), 5000);
     return (): void => clearTimeout(timer);
@@ -175,15 +220,8 @@ export function StoryFlow(props: Props): ReactElement {
     setScanMessage(null);
     try {
       const result: PoiVerification = await source.verifyPoiQr(visit.id_sesi, token, visit.bahasa, visit.profil);
-      const until: number = Date.parse(result.expiresAt);
-      onProgress(result.idPoi, { verifiedUntil: Number.isNaN(until) ? null : until });
-      const state: PoiProgress = progressOf(result.idPoi);
-      setPoiId(result.idPoi);
-      setPoi(result.poi);
       setScanState("scanning");
-      // Scan ulang setelah tantangan (verifikasi kedaluwarsa) → lanjut ke kuis.
-      setStep(quizPending.current ? "quiz" : resumeStep(state, questPlan(result.idPoi, visit.profil)));
-      quizPending.current = false;
+      acceptVerification(result);
     } catch (cause: unknown) {
       console.warn("gea_poi_qr_failed", { error: readableError(cause) });
       setScanMessage(
@@ -193,6 +231,19 @@ export function StoryFlow(props: Props): ReactElement {
       );
       setScanState("failed");
     }
+  }
+
+  function acceptVerification(result: PoiVerification): void {
+    const until: number = Date.parse(result.expiresAt);
+    if (!Number.isFinite(until)) throw new Error("Masa berlaku verifikasi koleksi tidak valid.");
+    onProgress(result.idPoi, { verifiedUntil: until });
+    const state: PoiProgress = progressOf(result.idPoi);
+    setPoiId(result.idPoi);
+    setPoi(result.poi);
+    setError(null);
+    // Verifikasi ulang sebelum Mini Quiz (masa berlaku habis) → langsung ke kuis.
+    setStep(quizPending.current ? "quiz" : resumeStep(state, questPlan(result.idPoi, visit.profil)));
+    quizPending.current = false;
   }
 
   async function finishStory(): Promise<void> {
@@ -206,6 +257,22 @@ export function StoryFlow(props: Props): ReactElement {
     }
   }
 
+  if (step === "gps") {
+    return (
+      <FrameStage background={colors.primary[300]}>
+        <StoryBackground />
+        <BackButton onPress={props.onExit} />
+        <View style={[styles.centerBox, { top: 220, gap: spacing[16] }]}>
+          <GeaText variant="heading28" color={colors.primary[900]} style={styles.center}>Memeriksa lokasi koleksi</GeaText>
+          {error === null && <ActivityIndicator color={colors.primary[900]} />}
+          <GeaText variant="body16" color={colors.primary[900]} accessibilityLiveRegion="polite" style={styles.center}>{error ?? gpsLabel}</GeaText>
+          {error !== null && <StoryButton label="Periksa lokasi lagi" onPress={(): void => setGpsAttempt((attempt: number): number => attempt + 1)} />}
+          <StoryButton label="Gunakan QR koleksi" onPress={(): void => { setError(null); setStep("scan"); }} />
+        </View>
+      </FrameStage>
+    );
+  }
+
   if (step === "scan") {
     return (
       <ScanQrScreen
@@ -214,7 +281,10 @@ export function StoryFlow(props: Props): ReactElement {
         onResult={onScan}
         onRetry={(): void => setScanState("scanning")}
         onBack={props.onExit}
-        onSkip={(): void => setStep("loading")}
+        {...(props.initialToken == null && {
+          title: "Scan QR sebagai alternatif GPS",
+          helper: "Scan QR di dekat koleksi untuk membuka cerita dan tantangannya.",
+        })}
         dummies={props.dummyScans}
       />
     );
@@ -259,6 +329,41 @@ export function StoryFlow(props: Props): ReactElement {
     (poi.quest.type === "pilgan" || poi.quest.type === "cocokkan") &&
     poi.quest.isDisabled !== true;
 
+  /**
+   * Tantangan dinilai backend (jawab_quest) bila quest POI di server bertipe sama dan tidak ada Mini Quiz
+   * yang memakai quest itu. Mode mock / tipe berbeda → null (dinilai lokal).
+   */
+  const serverQuest = poi.quest;
+  const gradeOnServer = source.kind === "api" && !hasQuiz && challenge !== undefined && serverQuest.isDisabled !== true &&
+      serverTypeMatches(challenge, serverQuest.type)
+    ? (answer: ChallengeAnswer): Promise<ServerGrade> | null => {
+      let label: OptionLabel | null = null;
+      if (answer.kind === "choice") {
+        const option: QuestOption | undefined = serverQuest.options.find((item: QuestOption): boolean =>
+          item.teks_opsi.trim().toLowerCase() === answer.choice.trim().toLowerCase()
+        );
+        if (option === undefined) return null;
+        label = option.label_opsi;
+      }
+      return source.answerQuest(
+        visit.id_sesi,
+        serverQuest.idQuest,
+        randomUUID(),
+        label,
+        answer.kind === "photo" ? { photoTaken: true } : answer.kind === "text" ? { jawabanTeks: answer.text } : {},
+      ).then((result: AnswerResult): ServerGrade => {
+        props.onAnswer(result);
+        return {
+          correct: result.completed,
+          failed: result.failed,
+          attempts: result.attemptCount,
+          points: result.pointsAwarded,
+          hint: result.hint ?? null,
+        };
+      });
+    }
+    : undefined;
+
   /** POI tanpa Mini Quiz selesai setelah tantangan (atau setelah cerita bila tidak ada quest). */
   function finish(): void {
     onProgress(poiId, { completed: true });
@@ -272,9 +377,8 @@ export function StoryFlow(props: Props): ReactElement {
       return;
     }
     quizPending.current = true;
-    setScanMessage(null);
-    setScanState("scanning");
-    setStep("scan");
+    setError(null);
+    setStep("gps");
   }
   function openNarration(from: "story" | "story2"): void {
     setNarrationFrom(from);
@@ -324,6 +428,7 @@ export function StoryFlow(props: Props): ReactElement {
       <ChallengeScreen
         challenge={challenge}
         references={poi.photoChallenges}
+        grade={gradeOnServer}
         onBack={(): void => setStep("storyDone")}
         onDone={({ points, attempts }): void => {
           onProgress(poiId, {
@@ -350,14 +455,18 @@ export function StoryFlow(props: Props): ReactElement {
     );
   }
 
+  // Semua koleksi tuntas: "Well Done!" (reward poin) → kartu hasil untuk dibagikan.
   if (step === "final") {
-    return <StoryFinalScreen poiName={poi.nama} nextStop={props.nextStop ?? null} onHome={props.onExit} />;
+    return <WellDoneScreen summary={props.adventure} onShare={(): void => setStep("share")} onHome={props.onExit} />;
+  }
+  if (step === "share") {
+    return <ShareResultScreen summary={props.adventure} onBack={(): void => setStep("final")} />;
   }
 
   const newBadges: readonly BadgeDef[] = badges.filter((badge: BadgeDef): boolean =>
     props.earnedBadges.includes(badge.id) && !badgesAtStart.current.includes(badge.id)
   );
-  const score: number = quizPoints(progress) + (progress.challengePoints ?? 0);
+  const score: number = progress.pointsAwarded + (progress.challengePoints ?? 0);
 
   if (step === "result") {
     // Bintang: Mini Quiz benar di percobaan 1/2/3 = 3/2/1. Tanpa kuis: tantangan berhasil = 3, kesempatan
@@ -412,10 +521,10 @@ export function StoryFlow(props: Props): ReactElement {
             <GeaText variant="body16Tight" color={componentColors.cardBody} numberOfLines={3}>{description.text}</GeaText>
             <StoryButton label="Mulai Cerita" onPress={(): void => setStep("story")} style={styles.summaryButton} />
           </View>
-          <Pressable accessibilityRole="button" hitSlop={8} style={styles.audioMode} onPress={(): void => openNarration("story")}>
+          {audio !== null && <Pressable accessibilityRole="button" hitSlop={8} style={styles.audioMode} onPress={(): void => openNarration("story")}>
             <GeaText variant="body16" color={colors.primary[800]}>Aktifkan Mode Audio</GeaText>
             <AudioCircle />
-          </Pressable>
+          </Pressable>}
         </>
       )}
 
@@ -443,7 +552,7 @@ export function StoryFlow(props: Props): ReactElement {
           <SceneLayer layer={isiPanelLayer} />
           {/* Panel cokelat diperpanjang ke bawah saat cerita panjang dan halaman digulir. */}
           <View style={[styles.isiFill, { height: Math.max(0, ISI_TOP + isiHeight + ISI_BOTTOM - ISI_FILL_TOP) }]} />
-          <Pressable
+          {audio !== null && <Pressable
             accessibilityRole="button"
             accessibilityLabel={step === "narration" ? "Tutup narasi" : "Dengarkan narasi"}
             hitSlop={8}
@@ -454,7 +563,7 @@ export function StoryFlow(props: Props): ReactElement {
             }}
           >
             <AudioCircle active={step === "narration"} />
-          </Pressable>
+          </Pressable>}
           <View
             style={styles.isiContent}
             onLayout={(event): void => setIsiHeight(event.nativeEvent.layout.height)}
@@ -463,7 +572,7 @@ export function StoryFlow(props: Props): ReactElement {
               <GeaText variant="heading28" color={colors.secondaryYellow[100]} numberOfLines={2}>
                 {step === "narration" ? "Dengarkan Narasi" : step === "story2" ? pageTwoTitle : judul ?? poi.nama}
               </GeaText>
-              {step === "narration"
+              {step === "narration" && audio !== null
                 ? <StoryAudio key={audio.audioUrl} audioUrl={audio.audioUrl} durationSeconds={audio.durationSeconds} />
                 : (
                   <View>
@@ -510,12 +619,13 @@ export function StoryFlow(props: Props): ReactElement {
         <Quiz
           poi={poi}
           attemptsUsed={progress.attempts}
-          submit={(requestId: string, label: OptionLabel): Promise<AnswerResult> =>
-            source.answerQuest(visit.id_sesi, poi.quest.idQuest, requestId, label)}
+          submit={async (requestId: string, label: OptionLabel): Promise<AnswerResult> => {
+            const answer: AnswerResult = await source.answerQuest(visit.id_sesi, poi.quest.idQuest, requestId, label);
+            props.onAnswer(answer);
+            return answer;
+          }}
           onWrong={(answer: AnswerResult): void => {
-            const failed: boolean = answer.failed ?? isOutOfAttempts(answer.attemptCount);
-            onProgress(poiId, { attempts: answer.attemptCount, failed });
-            if (failed) {
+            if (answer.failed) {
               setToast(null);
               setStep("result");
               return;
@@ -526,16 +636,15 @@ export function StoryFlow(props: Props): ReactElement {
               description: answer.hint ?? "Coba amati koleksinya lagi.",
             });
           }}
-          onCorrect={(answer: AnswerResult): void => {
-            onProgress(poiId, { completed: true, attempts: answer.attemptCount });
+          onCorrect={(): void => {
             setToast(null);
             setStep("result");
           }}
           onError={(cause: unknown): void => {
             if (cause instanceof GeaServiceError && cause.code === "CHECKPOINT_VERIFICATION_REQUIRED") {
               onProgress(poiId, { verifiedUntil: null });
-              setScanState("scanning");
-              setStep("scan");
+              setError(null);
+              setStep("gps");
               return;
             }
             if (cause instanceof GeaServiceError && cause.code === "QUEST_ALREADY_COMPLETED") {
@@ -860,3 +969,10 @@ const styles = StyleSheet.create({
   hint: { gap: spacing[4], padding: spacing[12], borderRadius: radius.control, backgroundColor: colors.warning[0] },
   toast: { position: "absolute", left: 15, top: 47, width: 360 },
 });
+
+/** Tipe tantangan sheet ↔ tipe quest backend (tabel quest.tipe_quest). */
+function serverTypeMatches(challenge: Tantangan, type: string): boolean {
+  if (challenge.tipe === "foto" || challenge.tipe === "cariObjek") return type === "foto";
+  if (challenge.tipe === "isian") return type === "isian_singkat";
+  return type === "benar_salah";
+}

@@ -5,6 +5,7 @@ import {
   type AccessDecision,
   type BackendHealth,
   type DecisionMessage,
+  type DeviceLocation,
   decisionMessage,
   type Profile,
   type Visit,
@@ -38,6 +39,10 @@ const locationMessages: Readonly<Record<LocationIssue, DecisionMessage>> = {
       ? "Aktifkan Layanan Lokasi melalui Pengaturan → Privasi & Keamanan → Layanan Lokasi. Setelah kembali, tekan Periksa lokasi saya lagi, atau gunakan QR pintu masuk."
       : "Aktifkan lokasi HP melalui pengaturan, lalu kembali dan tekan Periksa lokasi saya lagi. Kamu juga bisa memakai QR pintu masuk.",
   },
+  unavailable: {
+    title: "Lokasi belum tersedia",
+    description: "Browser atau perangkat belum bisa membaca posisi. Buka lewat localhost atau HTTPS, periksa izin lokasi, lalu coba lagi.",
+  },
   accuracy_unavailable: {
     title: "Akurasi lokasi belum tersedia",
     description: "GPS belum memberikan informasi akurasi. Coba lagi di tempat dengan sinyal GPS lebih baik, atau gunakan QR pintu masuk.",
@@ -55,6 +60,7 @@ type VisitSessionState = {
   readonly scannerOpen: boolean;
   readonly connection: string;
   readonly locationLabel: string;
+  readonly currentLocation: DeviceLocation | null;
   readonly locationSettingsAction: LocationSettingsAction | null;
   readonly openScanner: () => void;
   readonly closeScanner: () => void;
@@ -76,6 +82,7 @@ export function useVisitSession(
   const [connection, setConnection] = useState<string>("Belum diperiksa");
   const [locationLabel, setLocationLabel] = useState<string>("Memeriksa lokasi...");
   const [locationIssue, setLocationIssue] = useState<LocationIssue | null>(null);
+  const [currentLocation, setCurrentLocation] = useState<DeviceLocation | null>(null);
 
   async function openAppSettings(): Promise<void> {
     await runOperation("location", async (): Promise<void> => {
@@ -122,6 +129,7 @@ export function useVisitSession(
     setNotice(null);
     setDecision(null);
     setLocationIssue(null);
+    setCurrentLocation(null);
     await runOperation("location", async (): Promise<void> => {
       const reading: LocationReading = await readVisitorLocation(setLocationLabel);
       if (reading.status !== "available") {
@@ -129,6 +137,7 @@ export function useVisitSession(
         setNotice(locationMessages[reading.status]);
         return;
       }
+      setCurrentLocation(reading.location);
       setLocationLabel("Memeriksa area museum...");
       const result: AccessDecision = await api.evaluateLocation(
         reading.location,
@@ -136,6 +145,7 @@ export function useVisitSession(
       setDecision(result);
       setNotice(decisionMessage(result));
       if (result.status === "inside" && result.accessAllowed) {
+        setLocationLabel("Lokasi cocok. Memulai kunjungan...");
         const created: Visit = await api.startGpsVisit(
           randomUUID(),
           reading.location,
@@ -174,6 +184,7 @@ export function useVisitSession(
     scannerOpen,
     connection,
     locationLabel,
+    currentLocation,
     locationSettingsAction,
     openScanner,
     closeScanner,

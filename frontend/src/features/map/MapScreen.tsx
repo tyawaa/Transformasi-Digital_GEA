@@ -13,6 +13,7 @@ import type { PoiStatus } from "../../domain/points";
 import { CLOSING_HOUR, type Route } from "../preferences/recommend";
 import { ScanBackground } from "../stories/hifi/backgrounds";
 import { FrameStage, StoryButton } from "../stories/hifi/parts";
+import { StartMap } from "./StartMap";
 
 export type MapPoi = {
   readonly museum: MuseumPoi;
@@ -77,6 +78,22 @@ const roomFill: Record<PoiStatus, string> = {
 };
 
 export function MapScreen(props: Props): ReactElement {
+  // Belum ada kunjungan: peta awal sesuai Figma (pintu masuk + Pindai QR).
+  if (!props.hasVisit && !props.loading && props.error === null) {
+    return (
+      <StartMap
+        notice={props.notice}
+        checkingLocation={props.checkingLocation}
+        onScan={props.onScan}
+        onCheckLocation={props.onCheckLocation}
+      />
+    );
+  }
+  return <NavigationMap {...props} />;
+}
+
+/** Peta navigasi lengkap selama kunjungan: status ruangan, rute rekomendasi, dan titik posisi. */
+function NavigationMap(props: Props): ReactElement {
   const spot: PlanSpot | null = locateOnPlan(props.userFix, props.pois);
   const active: number = props.pois.filter((poi: MapPoi): boolean => poi.id !== null).length;
   const leftOnly: boolean = props.wingsMode === "left";
@@ -242,17 +259,17 @@ function BottomCard(
       <>
         <GeaText variant="heading20" color={colors.primary[900]}>Mulai kunjunganmu</GeaText>
         <GeaText variant="body14" color={componentColors.bodyDark}>
-          {props.notice?.description ?? "Scan QR di pintu masuk museum. Setelah itu, scan QR di dekat koleksi untuk membuka ceritanya."}
+          {props.notice?.description ?? "Periksa lokasi untuk memulai kunjungan. Pilih koleksi dan tekan Buka cerita untuk memeriksa GPS. QR tersedia sebagai alternatif."}
         </GeaText>
         {props.route !== null && props.route.codes.length > 0 && (
           <GeaText variant="caption12" color={colors.secondaryGreen[900]}>
             Rute untukmu sudah siap: {props.route.codes.length} ruangan (lihat nomor di peta).
           </GeaText>
         )}
-        <StoryButton label="Scan QR pintu masuk" onPress={props.onScan} style={styles.full} />
+        <StoryButton label={props.checkingLocation ? "Memeriksa lokasi..." : "Periksa lokasi dengan GPS"} onPress={props.onCheckLocation} disabled={props.checkingLocation} style={styles.full} />
         <TextLink
-          label={props.checkingLocation ? "Memeriksa lokasi..." : "Atau periksa lokasi dengan GPS"}
-          onPress={props.onCheckLocation}
+          label="Atau gunakan QR pintu masuk"
+          onPress={props.onScan}
           center
         />
       </>

@@ -4,7 +4,7 @@ import { type ReactElement, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { colors, componentColors, radius, shadows, spacing } from "../../design/tokens";
 import { GeaText } from "../../design/typography";
-import { type BadgeDef, badges, type BadgeId, quizPoints } from "../../domain/points";
+import { type BadgeDef, badges, type BadgeId } from "../../domain/points";
 import type { MapPoi } from "../map/MapScreen";
 import { ScanBackground } from "../stories/hifi/backgrounds";
 import { FrameStage } from "../stories/hifi/parts";
@@ -114,9 +114,9 @@ export function ProgressScreen({ pois, progressOf, totalPoints, earned, availabl
   );
 }
 
-/** Poin satu POI: Mini Quiz + tantangan. */
+/** Poin satu POI: Mini Quiz (dari server/mode mock) + tantangan. */
 function poiPoints(state: PoiProgress): number {
-  return quizPoints(state) + (state.challengePoints ?? 0);
+  return state.pointsAwarded + (state.challengePoints ?? 0);
 }
 
 // Bagian lencana, koleksi, dan tautan akhir mengalir mulai y=290.
