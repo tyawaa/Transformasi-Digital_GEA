@@ -1,6 +1,4 @@
-// Peta awal sebelum kunjungan dimulai (Figma Hifi Sprint 3 "Peta" 437:3498): denah diperbesar di pintu
-// masuk (S), garis rute putus-putus, titik posisi, dan kartu "Selamat Memulai Perjalanan Anda" + Pindai QR.
-// Setelah QR pintu masuk / GPS berhasil, MapScreen menampilkan peta navigasi lengkap.
+// Peta awal sebelum kunjungan (Hifi Sprint 3 "Peta"). Setelah kunjungan mulai, pakai peta navigasi.
 import { Image } from "expo-image";
 import type { ReactElement } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
@@ -15,7 +13,7 @@ const pin = require("../../../assets/design/map-pin.svg") as number;
 const pinShadow = require("../../../assets/design/map-pin-shadow.svg") as number;
 const you = require("../../../assets/design/map-you.svg") as number;
 
-// Posisi pin pada denah Figma (1917.741 × 532.568), sudut kiri atas grup pin.
+// Posisi pin di denah Figma (1917.741 × 532.568).
 const PINS: readonly { readonly code: string; readonly x: number; readonly y: number }[] = [
   { code: "P01", x: 748, y: 65 },
   { code: "P02", x: 544, y: 60 },
@@ -31,13 +29,12 @@ const PINS: readonly { readonly code: string; readonly x: number; readonly y: nu
   { code: "S", x: 990, y: 361 },
 ];
 
-// Denah digeser agar pintu masuk (S) berada di tengah layar.
+// Pintu masuk (S) di tengah layar.
 const PLAN_LEFT = -819;
 const PLAN_TOP = 58;
 
 export function StartMap(
-  { notice, checkingLocation, onScan, onCheckLocation }: {
-    readonly notice: { readonly title: string; readonly description: string } | null;
+  { checkingLocation, onScan, onCheckLocation }: {
     readonly checkingLocation: boolean;
     readonly onScan: () => void;
     readonly onCheckLocation: () => void;
@@ -65,10 +62,10 @@ export function StartMap(
 
       <View style={styles.card}>
         <GeaText variant="heading20" color={colors.tertiary[300]} style={styles.title} accessibilityRole="header">
-          {notice?.title ?? "Selamat Memulai\nPerjalanan Anda"}
+          {"Selamat Memulai\nPerjalanan Anda"}
         </GeaText>
         <GeaText variant="body14" color={colors.primary[800]} style={styles.body}>
-          {notice?.description ?? "Pindai QR pada pintu masuk untuk memulai perjalanan Anda."}
+          Pindai QR pada pintu masuk untuk memulai perjalanan Anda.
         </GeaText>
         <View style={styles.actions}>
           <Pressable
