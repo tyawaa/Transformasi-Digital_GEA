@@ -56,7 +56,7 @@ Jika `expo start` macet, buat build web lalu sajikan secara statis di PowerShell
 
 ```powershell
 cd frontend
-.\scripts\serve-web.ps1          # build ulang lalu buka http://localhost:8082
+.\scripts\serve-web.ps1          # build ulang lalu buka http://localhost:8081
 .\scripts\serve-web.ps1 -NoBuild # pakai build terakhir
 ```
 
@@ -69,15 +69,15 @@ lalu memuat ulang aplikasi dari awal. Konten cerita dan database Supabase tetap 
 
 ## Alur aplikasi (Sprint 2, C-3)
 
-Onboarding → **peta lantai 1** → scan QR → cerita POI → Kisah Selesai → Side Quest → kuis →
+Onboarding → **peta lantai 1** → pilih POI → **Buka cerita** → verifikasi GPS POI (QR alternatif) → cerita POI → Kisah Selesai → Side Quest → kuis →
 hasil poin. Progres (poin, lencana) bisa dilihat dari tombol poin di peta.
 
 - **Peta** (`src/features/map`): denah P01–P20 dengan identitas dan koordinat dari dataset A9. Warna ruangan = status POI
   (belum/sebagian/selesai), abu-abu = belum ada konten. Sayap aktif diambil dari QR zona atau QR
   koleksi terakhir. Hi-fi peta (D3) belum ada, jadi tampilan masih memakai token design system.
 - **QR scanner bersama (E13)** (`src/features/qr`, `ScanQrScreen`): dipakai untuk QR pintu masuk,
-  zona, dan koleksi; ada tombol "Mulai tanpa scan" (cerita boleh dibaca, quest tetap terkunci).
-- **Quest (E14)**: terkunci sampai QR koleksi terverifikasi, maksimal 3 percobaan, hint setelah
+  zona, dan koleksi sebagai alternatif verifikasi GPS.
+- **Quest (E14)**: terkunci sampai GPS atau QR koleksi terverifikasi, maksimal 3 percobaan, hint setelah
   salah, poin 20/10/5/0. Aturan ada di `src/domain/points.ts` dan diuji dengan `npm test`.
 - **Progres tersimpan (E20)**: sesi kunjungan dan progres disimpan di AsyncStorage, lalu
   dicocokkan dengan `GET /sessions/{id}/progress` saat app dibuka lagi.
@@ -105,7 +105,7 @@ bisa di-build dan memakai ilustrasi sementara. Foto ditentukan dengan nomor urut
   Kanan ditandai "segera hadir". Lencana Penjelajah Sayap Kanan disembunyikan, dan QR koleksi
   sayap kanan ditolak dengan pesan yang jelas.
 - `EXPO_PUBLIC_MAP_WINGS=both` (bawaan): Sayap Kiri + Sayap Kanan.
-- Versi web bisa diganti tanpa build ulang: `http://localhost:8082/?wings=both` atau `?wings=left`.
+- Versi web bisa diganti tanpa build ulang: `http://localhost:8081/?wings=both` atau `?wings=left`.
 
 ### Data POI
 
@@ -177,8 +177,8 @@ berasal dari tooling Expo. Saran `npm audit fix
 Selama kunjungan aktif, aplikasi memantau GPS (±1 detik) bila izin lokasi sudah diberikan
 (`src/hooks/useGeofence.ts`, logika di `src/domain/geofence.ts`, uji di `tests/geofence.test.mjs`).
 
-- Masuk radius koleksi: kartu "Kamu di dekat" muncul ≤3 detik; tidak berulang selama tetap di dalam.
-- Keluar lalu masuk lagi: kartu muncul lagi. Kartu yang ditutup (✕) tidak muncul lagi di kunjungan itu.
+- Geofence POI diperiksa setelah pengunjung memilih koleksi dan menekan **Buka cerita**; hanya POI pilihan itu yang diperiksa.
+- Perubahan GPS saat berada di peta tidak memeriksa atau membuka cerita POI secara otomatis; zona tetap dipantau.
 - Akurasi > 20 m: banner merah "GPS lemah" (ketuk untuk scan QR); posisi tidak dipakai.
 - "Saya di sini" di judul sayap: pilih ruang manual bila GPS tidak membantu.
 - Mode mock: tombol "Uji GPS ▾" di peta untuk simulasi posisi (luar museum, GPS lemah, zona, P01–P14).

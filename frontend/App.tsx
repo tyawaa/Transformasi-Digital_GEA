@@ -4,9 +4,10 @@ import { type ReactElement, useEffect, useMemo, useState } from "react";
 import { Platform, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { colors } from "./src/design/tokens";
-import { GeaFontsProvider } from "./src/design/typography";
+import { GeaFontsProvider, GeaText } from "./src/design/typography";
 import type { PoiSummary, Visit } from "./src/domain/contracts";
-import { availableBadges, type BadgeContext, type BadgeId, earnedBadges, poiStatus, type PoiRef, totalPoints } from "./src/domain/points";
+import { availableBadges, type BadgeContext, type BadgeDef, badgeBonus, type BadgeId, badges as badgeDefs, earnedBadges, poiStatus, type PoiRef, totalPoints } from "./src/domain/points";
+import { localChallengePoints } from "./src/features/stories/progress";
 import { useQuestDays } from "./src/features/progress/useQuestDays";
 import { questKind } from "./src/features/stories/questPlan";
 import {
@@ -29,6 +30,9 @@ import { useVisitProgress } from "./src/features/progress/useVisitProgress";
 import { type ParsedQr, qrErrorMessage, wrapQr } from "./src/features/qr/qrPayload";
 import { type DummyScan, ScanQrScreen, type ScanState } from "./src/features/stories/hifi/ScanQrScreen";
 import { StoryFlow } from "./src/features/stories/hifi/StoryFlow";
+import { LocationFailedSplash, LocationSuccessSplash } from "./src/features/location/LocationSplash";
+import type { AdventureSummary } from "./src/features/stories/hifi/AdventureDoneScreens";
+import { StoryButton } from "./src/features/stories/hifi/parts";
 import { useOperation } from "./src/hooks/useOperation";
 import { useAuthRefresh } from "./src/hooks/useAuthRefresh";
 import { useVisitSession } from "./src/hooks/useVisitSession";
@@ -101,6 +105,14 @@ function Home(): ReactElement {
   const { visit, progress, progressOf } = visitState;
 
   const [screen, setScreen] = useState<Screen>({ name: "map" });
+  // Hasil cek GPS area museum (Figma Sprint 3): hijau = di dalam area, merah = di luar area.
+  const [locationSplash, setLocationSplash] = useState<"ok" | "fail" | null>(null);
+  useEffect((): void => {
+    const decision = session.decision;
+    if (decision === null) return;
+    if (decision.status === "inside" && decision.accessAllowed) setLocationSplash("ok");
+    else if (decision.status === "outside") setLocationSplash("fail");
+  }, [session.decision]);
   const [summaries, setSummaries] = useState<readonly PoiSummary[] | null>(null);
   const [poisError, setPoisError] = useState<string | null>(null);
   const [scanState, setScanState] = useState<ScanState>("scanning");
@@ -157,8 +169,17 @@ function Home(): ReactElement {
   // Lencana prioritas rendah (BD-05, BD-08, BD-09; POI-12 s.d. POI-21) ditunda sesuai sheet Badge_Poin:
   // konten POI-15 s.d. POI-20 belum ada. Ganti ke wingEnabled("right") setelah kontennya lengkap.
   const badgeContext: BadgeContext = { kid: profile === "anak", questDays, rightWing: false };
-  const badges: readonly BadgeId[] = earnedBadges(refs, progress, badgeContext);
-  const points: number = totalPoints(refs, progress, badgeContext);
+  const localBadges: readonly BadgeId[] = earnedBadges(refs, progress, badgeContext);
+  // Mode API: poin kuis dan lencana resmi dari Supabase. Tantangan (benar-salah/isian/foto) dan lencana yang
+  // butuh data perangkat belum dinilai server, jadi ditambahkan di atas total resmi tanpa dihitung dua kali.
+  const badges: readonly BadgeId[] = storiesSource.kind === "api"
+    ? [...new Set([...visitState.rewards.badges, ...localBadges])]
+    : localBadges;
+  const points: number = storiesSource.kind === "api"
+    ? visitState.rewards.totalPoints + localChallengePoints(progress) + badgeBonus(
+      localBadges.filter((id: BadgeId): boolean => !visitState.rewards.badges.includes(id)),
+    )
+    : totalPoints(refs, progress, badgeContext);
   // Rute rekomendasi dari preferensi, hanya dari ruangan yang ceritanya sudah tersedia.
   const route: Route | null = useMemo((): Route | null =>
     recommendRoute(
@@ -175,16 +196,30 @@ function Home(): ReactElement {
     return next === undefined ? null : `${next.museum.code} · ${next.museum.name}`;
   }
   const allDone: boolean = refs.length > 0 && mapPois.every((poi: MapPoi): boolean => poi.id === null || poi.status === "selesai");
+  // Ringkasan untuk layar "Well Done!" / kartu bagikan. Lencana: yang bonusnya paling besar.
+  const bestBadge: BadgeDef | undefined = badgeDefs
+    .filter((badge: BadgeDef): boolean => badges.includes(badge.id))
+    .sort((a: BadgeDef, b: BadgeDef): number => b.bonus - a.bonus)[0];
+  const adventure: AdventureSummary = {
+    poisDone: mapPois.filter((poi: MapPoi): boolean => poi.id !== null && poi.status === "selesai").length,
+    poisTotal: refs.length,
+    questsDone,
+    questsTotal: refs.filter((ref: PoiRef): boolean => ref.quest !== null).length,
+    totalPoints: points,
+    badgeName: bestBadge?.name ?? null,
+  };
 
-  // E10: geofence POI + zona selama kunjungan aktif. id checkpoint = kode (P03, ZL).
+  // Zona dipantau selama kunjungan; POI hanya diperiksa setelah Buka cerita ditekan.
   const checkpoints: readonly Checkpoint[] = useMemo((): readonly Checkpoint[] => [
     ...zones.filter((z: ZoneInfo): boolean => wingEnabled(z.wing)).map((z: ZoneInfo): Checkpoint => ({
       id: z.code, latitude: z.latitude, longitude: z.longitude, radiusMeters: z.radiusMeters,
     })),
-    ...mapPois.filter((poi: MapPoi): boolean => poi.id !== null).map((poi: MapPoi): Checkpoint => ({
+    ...mapPois.filter((poi: MapPoi): boolean =>
+      screen.name === "story" && poi.id !== null && poi.id === screen.poiId
+    ).map((poi: MapPoi): Checkpoint => ({
       id: poi.museum.code, latitude: poi.museum.latitude, longitude: poi.museum.longitude, radiusMeters: poi.museum.radiusMeters,
     })),
-  ], [mapPois]);
+  ], [mapPois, screen]);
   const geofence = useGeofence({ visitId: visit?.id_sesi ?? null, checkpoints });
   const gpsWing: Wing | null = geofence.active === null
     ? null
@@ -229,7 +264,7 @@ function Home(): ReactElement {
       // QR pintu masuk / zona: kunjungan dimulai, tetap di layar scan untuk QR koleksi berikutnya.
       if (result.kind === "entrance" || (result.kind === null && visit === null)) {
         await beginVisit(result.token);
-        setScanNotice("Kunjungan dimulai! Sekarang scan QR di dekat koleksi untuk membuka ceritanya.");
+        setScanNotice("Kunjungan dimulai! Kembali ke peta, pilih koleksi dan tekan Buka cerita untuk memeriksa GPS, atau scan QR koleksi di sini.");
         return;
       }
       if (result.kind === "zone") {
@@ -237,7 +272,7 @@ function Home(): ReactElement {
         const info: ZoneInfo | undefined = zones.find((z: ZoneInfo): boolean => z.code === result.code);
         setZone(info ?? null);
         setQrZoneIntro(info ?? null);
-        setScanNotice(`Kamu di ${info?.name ?? "zona ini"}. Scan QR di dekat koleksi untuk membuka ceritanya.`);
+        setScanNotice(`Kamu di ${info?.name ?? "zona ini"}. Pilih koleksi di peta dan tekan Buka cerita untuk memeriksa GPS, atau scan QR koleksi di sini.`);
         return;
       }
       // QR koleksi: langsung buka template cerita POI tersebut.
@@ -265,12 +300,52 @@ function Home(): ReactElement {
   if (onboarding.state === "loading" || preferences.state === "loading" || !visitState.ready) {
     return <View style={{ flex: 1, backgroundColor: colors.primary[300] }} />;
   }
+  if (visitState.error !== null) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", padding: 24, gap: 16, backgroundColor: colors.primary[300] }}>
+        <GeaText variant="heading24" color={colors.primary[900]}>Progres kunjungan belum dapat dimuat</GeaText>
+        <GeaText variant="body16" color={colors.primary[900]} accessibilityRole="alert">{visitState.error}</GeaText>
+        <StoryButton label="Coba lagi" onPress={visitState.retry} />
+        <StoryButton label="Akhiri kunjungan ini" onPress={visitState.endVisit} />
+      </View>
+    );
+  }
+  function closeLocationSplash(): void {
+    setLocationSplash(null);
+    if (onboarding.state === "show") onboarding.complete();
+  }
+  if (locationSplash === "ok") {
+    return (
+      <>
+        <StatusBar style="light" />
+        <LocationSuccessSplash onContinue={closeLocationSplash} />
+      </>
+    );
+  }
+  if (locationSplash === "fail") {
+    return (
+      <>
+        <StatusBar style="light" />
+        <LocationFailedSplash
+          checking={busy === "location"}
+          onRecheck={(): void => {
+            void session.checkLocation();
+          }}
+          onUseQr={closeLocationSplash}
+        />
+      </>
+    );
+  }
   if (onboarding.state === "show") {
     return (
       <>
         <StatusBar style="dark" />
         <OnboardingScreen
           checkingLocation={busy === "location"}
+          locationLabel={session.locationLabel}
+          locationNotice={session.notice}
+          locationError={operationError}
+          currentLocation={session.currentLocation}
           onCheckLocation={(): void => {
             void session.checkLocation();
           }}
@@ -299,14 +374,21 @@ function Home(): ReactElement {
           visit={visit}
           poiId={screen.poiId}
           initialToken={screen.token}
+          gpsFix={geofence.currentFix}
           progressOf={progressOf}
           onProgress={visitState.update}
+          onAnswer={visitState.recordAnswer}
           totalPoints={points}
           earnedBadges={badges}
           allCompleted={allDone}
+          adventure={adventure}
           dummyScans={storyDummies(screen.poiId)}
           nextStop={nextStop(screen.poiId)}
-          onExit={(): void => setScreen({ name: "map" })}
+          onExit={(): void => {
+            const checkpoint = museumPoiById(screen.poiId);
+            if (checkpoint !== undefined) geofence.dismiss(checkpoint.code);
+            setScreen({ name: "map" });
+          }}
         />
       </>
     );

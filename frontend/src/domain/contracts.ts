@@ -113,7 +113,7 @@ export const poiDetailSchema = z.object({
   estimasi_durasi: z.number().int().positive(),
   language: languageSchema,
   profile: storedProfileSchema,
-  cards: z.tuple([descriptionCardSchema, audioCardSchema]),
+  cards: z.tuple([descriptionCardSchema, audioCardSchema.nullable()]),
   photoChallenges: z.array(z.object({
     sequence: z.number().int().min(3),
     photoUrl: z.url(),
@@ -137,6 +137,13 @@ export const poiVerificationSchema = z.object({
 export type PoiVerification = z.infer<typeof poiVerificationSchema>;
 
 // POST /sessions/{id}/quests/{questId}/answers
+// Sprint 3: 15 lencana dari sheet Badge_Poin (BD-01 s.d. BD-15).
+export const badgeIdSchema = z.enum([
+  "BD-01", "BD-02", "BD-03", "BD-04", "BD-05", "BD-06", "BD-07", "BD-08",
+  "BD-09", "BD-10", "BD-11", "BD-12", "BD-13", "BD-14", "BD-15",
+]);
+export type BadgeId = z.infer<typeof badgeIdSchema>;
+
 export const answerResultSchema = z.object({
   idQuest: z.uuid(),
   idPoi: z.uuid(),
@@ -144,11 +151,17 @@ export const answerResultSchema = z.object({
   attemptCount: z.number().int().positive(),
   completed: z.boolean(),
   hint: z.string().nullable(),
-  // Sprint 2 (E12, C-2). Opsional agar backend Sprint 1 tetap terbaca.
-  failed: z.boolean().optional(),
-  pointsAwarded: z.number().int().nonnegative().optional(),
+  failed: z.boolean(),
+  pointsAwarded: z.number().int().nonnegative(),
 });
 export type AnswerResult = z.infer<typeof answerResultSchema>;
+
+/** Nilai resmi Sprint 2 wajib tersedia pada jawaban API. */
+export const scoredAnswerResultSchema = answerResultSchema.extend({
+  totalPoints: z.number().int().nonnegative(),
+  newBadges: z.array(badgeIdSchema),
+});
+export type ScoredAnswerResult = z.infer<typeof scoredAnswerResultSchema>;
 
 // POST /sessions/{id}/pois/{poiId}/close
 export const closedCardSchema = z.object({
@@ -157,9 +170,24 @@ export const closedCardSchema = z.object({
 });
 export type ClosedCard = z.infer<typeof closedCardSchema>;
 
-// GET /sessions/{id}/progress: baris tabel menampilkan_kartu dan mengerjakan milik sesi.
+// GET /sessions/{id}/progress: poin, lencana, dan progres resmi milik sesi.
 export const visitProgressSchema = z.object({
   session: visitSchema,
+  totalPoints: z.number().int().nonnegative(),
+  badges: z.array(z.object({
+    kodeBadge: badgeIdSchema,
+    nama: z.string().min(1),
+    bonusPoin: z.number().int().nonnegative(),
+    earnedAt: z.string(),
+  })),
+  poiProgress: z.array(z.object({
+    id_poi: z.uuid(),
+    kartu_ditutup: z.boolean(),
+    kuis_selesai: z.boolean(),
+    kuis_gagal: z.boolean(),
+    jumlah_percobaan: z.number().int().nonnegative(),
+    poin_kuis: z.number().int().nonnegative(),
+  })),
   cards: z.array(z.object({
     id_poi: z.uuid(),
     status_kartu: z.enum(["sedang_tampil", "ditutup"]),

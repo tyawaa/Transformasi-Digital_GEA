@@ -1,0 +1,6 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Posisi Anda saat ini">
+<circle id="Area akurasi lokasi" opacity="0.18" cx="28" cy="28" r="28" fill="#7A7600"/>
+<circle id="Lokasi pengguna" cx="28" cy="28" r="12.5" fill="#E2DE85" stroke-width="3" stroke="#FFFCF5"/>
+</g>
+</svg>

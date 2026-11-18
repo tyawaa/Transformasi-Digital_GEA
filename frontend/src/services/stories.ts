@@ -3,6 +3,8 @@ import {
   type AnswerResult,
   answerResultSchema,
   type ClosedCard,
+  type DeviceLocation,
+  locationSchema,
   closedCardSchema,
   type Language,
   type OptionLabel,
@@ -14,10 +16,11 @@ import {
   poiVerificationSchema,
   type Profile,
   type Visit,
-  type VisitProgress,
 } from "../domain/contracts";
-import { isOutOfAttempts } from "../domain/points";
-import type { ProgressMap } from "../features/stories/progress";
+import { isOutOfAttempts, quizPoints } from "../domain/points";
+import { stepGeofence } from "../domain/geofence";
+import { museumPoiById } from "../data/museum";
+import { type RestoredVisit, restoreServerVisit } from "../features/stories/progress";
 import {
   MOCK_ENTRANCE_TOKEN,
   mockAnswerKeys,
@@ -27,7 +30,7 @@ import {
   mockTokenToPoi,
   mockZoneToken,
 } from "../mocks/stories";
-import { type GeaApi, GeaServiceError } from "./api";
+import { type GeaApi, GeaServiceError, type QuestAnswerExtra } from "./api";
 
 /**
  * Sumber data Stories/quest. Mock (E4/E14) dan API (E7/E20) punya method yang sama,
@@ -40,10 +43,17 @@ export interface StoriesSource {
   pois(): Promise<readonly PoiSummary[]>;
   poiDetail(idPoi: string, language: Language, profile: Profile): Promise<PoiDetail>;
   verifyPoiQr(idSesi: string, token: string, language: Language, profile: Profile): Promise<PoiVerification>;
-  answerQuest(idSesi: string, idQuest: string, requestId: string, labelOpsi: OptionLabel): Promise<AnswerResult>;
+  verifyPoiGps(idSesi: string, idPoi: string, location: DeviceLocation, language: Language, profile: Profile): Promise<PoiVerification>;
+  answerQuest(
+    idSesi: string,
+    idQuest: string,
+    requestId: string,
+    labelOpsi: OptionLabel | null,
+    extra?: QuestAnswerExtra,
+  ): Promise<AnswerResult>;
   closeCard(idSesi: string, idPoi: string): Promise<ClosedCard>;
   /** Progres dari server untuk melanjutkan sesi; null = tidak ada data server (mock). */
-  restore(idSesi: string): Promise<ProgressMap | null>;
+  restore(idSesi: string): Promise<RestoredVisit | null>;
 }
 
 const VERIFICATION_MINUTES = 15;
@@ -64,7 +74,7 @@ type MockState = {
 };
 
 /**
- * Meniru aturan backend + Sprint 2: QR koleksi wajib sebelum quest, maksimal 3 percobaan,
+ * Meniru aturan backend: GPS atau QR memverifikasi koleksi sebelum quest, maksimal 3 percobaan,
  * retry idempoten, quest selesai = 409. Status "server" disimpan di perangkat agar uji
  * force-close tetap konsisten.
  */
@@ -96,19 +106,30 @@ export class MockStoriesSource implements StoriesSource {
     if (idPoi === undefined) {
       throw new GeaServiceError(403, "POI_QR_INVALID", "QR koleksi tidak valid.");
     }
+    return this.storeVerification(idSesi, idPoi, profile);
+  }
+
+  async verifyPoiGps(idSesi: string, idPoi: string, location: DeviceLocation, _language: Language, profile: Profile): Promise<PoiVerification> {
+    await delay();
+    this.findPoi(idPoi);
+    const checkpoint = museumPoiById(idPoi);
+    if (checkpoint === undefined) throw new GeaServiceError(404, "POI_NOT_FOUND", "Titik koleksi tidak ditemukan.");
+    const decision = stepGeofence([], locationSchema.parse(location), [{ ...checkpoint, id: idPoi }]);
+    if (decision.weak) throw new GeaServiceError(403, "GPS_ACCURACY_EXCEEDS_20_METERS", "Lokasi belum cukup akurat.");
+    if (!decision.inside.includes(idPoi)) throw new GeaServiceError(403, "OUTSIDE_POI_AREA", "Kamu belum berada di dekat koleksi ini.");
+    return this.storeVerification(idSesi, idPoi, profile);
+  }
+
+  private async storeVerification(idSesi: string, idPoi: string, profile: Profile): Promise<PoiVerification> {
     const state: MockState = await this.load();
     const expiresAt: number = Date.now() + VERIFICATION_MINUTES * 60_000;
     state.verifiedUntil[`${idSesi}:${idPoi}`] = expiresAt;
     await this.save();
-    return poiVerificationSchema.parse({
-      idPoi,
-      verified: true,
-      expiresAt: new Date(expiresAt).toISOString(),
-      poi: mockPoiForProfile(this.findPoi(idPoi), profile),
-    });
+    return poiVerificationSchema.parse({ idPoi, verified: true, expiresAt: new Date(expiresAt).toISOString(), poi: mockPoiForProfile(this.findPoi(idPoi), profile) });
   }
 
-  async answerQuest(idSesi: string, idQuest: string, requestId: string, labelOpsi: OptionLabel): Promise<AnswerResult> {
+  // Mock hanya menilai pilihan (A–D); tantangan foto/isian dinilai lokal di mode mock.
+  async answerQuest(idSesi: string, idQuest: string, requestId: string, labelOpsi: OptionLabel | null): Promise<AnswerResult> {
     await delay();
     const state: MockState = await this.load();
     const repeated: AnswerResult | undefined = state.responses[`${idSesi}:${requestId}`];
@@ -122,7 +143,7 @@ export class MockStoriesSource implements StoriesSource {
     }
     const until: number | undefined = state.verifiedUntil[`${idSesi}:${poi.id_poi}`];
     if (until === undefined || until < Date.now()) {
-      throw new GeaServiceError(403, "CHECKPOINT_VERIFICATION_REQUIRED", "Scan QR koleksi sebelum menjawab.");
+      throw new GeaServiceError(403, "CHECKPOINT_VERIFICATION_REQUIRED", "Periksa GPS atau scan QR koleksi sebelum menjawab.");
     }
     const questKey: string = `${idSesi}:${idQuest}`;
     if (state.completed[questKey] === true) {
@@ -145,6 +166,7 @@ export class MockStoriesSource implements StoriesSource {
       completed: correct,
       hint: correct ? null : key.hint,
       failed,
+      pointsAwarded: quizPoints({ completed: correct, failed, attempts: attemptCount }),
     });
     state.responses[`${idSesi}:${requestId}`] = result;
     await this.save();
@@ -157,7 +179,7 @@ export class MockStoriesSource implements StoriesSource {
     return closedCardSchema.parse({ idPoi, statusKartu: "ditutup" });
   }
 
-  restore(): Promise<ProgressMap | null> {
+  restore(): Promise<RestoredVisit | null> {
     return Promise.resolve(null);
   }
 
@@ -213,45 +235,27 @@ export class ApiStoriesSource implements StoriesSource {
     return this.api.verifyPoiQr(idSesi, token, language, profile);
   }
 
-  answerQuest(idSesi: string, idQuest: string, requestId: string, labelOpsi: OptionLabel): Promise<AnswerResult> {
-    return this.api.answerQuest(idSesi, idQuest, requestId, labelOpsi);
+  verifyPoiGps(idSesi: string, idPoi: string, location: DeviceLocation, language: Language, profile: Profile): Promise<PoiVerification> {
+    return this.api.verifyPoiGps(idSesi, idPoi, location, language, profile);
+  }
+
+  answerQuest(
+    idSesi: string,
+    idQuest: string,
+    requestId: string,
+    labelOpsi: OptionLabel | null,
+    extra?: QuestAnswerExtra,
+  ): Promise<AnswerResult> {
+    return this.api.answerQuest(idSesi, idQuest, requestId, labelOpsi, extra);
   }
 
   closeCard(idSesi: string, idPoi: string): Promise<ClosedCard> {
     return this.api.closeCard(idSesi, idPoi);
   }
 
-  /**
-   * GET /sessions/{id}/progress berisi kartu ditutup dan percobaan per quest. Quest dipetakan
-   * ke POI lewat detail POI. Poin dihitung dari jumlah percobaan sampai E12 menyediakan total.
-   */
-  async restore(idSesi: string): Promise<ProgressMap | null> {
-    const progress: VisitProgress = await this.api.progress(idSesi);
-    const result: Record<string, { closed: boolean; verifiedUntil: null; completed: boolean; failed: boolean; attempts: number }> = {};
-    for (const card of progress.cards) {
-      result[card.id_poi] = { closed: card.status_kartu === "ditutup", verifiedUntil: null, completed: false, failed: false, attempts: 0 };
-    }
-    if (progress.quests.length > 0) {
-      const summaries: readonly PoiSummary[] = await this.api.pois();
-      const details: readonly PoiDetail[] = await Promise.all(
-        summaries.map((poi: PoiSummary): Promise<PoiDetail> =>
-          this.api.poiDetail(poi.id_poi, progress.session.bahasa, progress.session.profil)
-        ),
-      );
-      for (const quest of progress.quests) {
-        const poi: PoiDetail | undefined = details.find((d: PoiDetail): boolean => d.quest.idQuest === quest.id_quest);
-        if (poi === undefined) continue;
-        const previous = result[poi.id_poi];
-        result[poi.id_poi] = {
-          closed: previous?.closed ?? true,
-          verifiedUntil: null,
-          completed: quest.answer_correct,
-          failed: !quest.answer_correct && isOutOfAttempts(quest.jumlah_percobaan),
-          attempts: quest.jumlah_percobaan,
-        };
-      }
-    }
-    return result;
+  /** Memulihkan poin, lencana, dan progres langsung dari satu respons resmi Supabase. */
+  async restore(idSesi: string): Promise<RestoredVisit> {
+    return restoreServerVisit(await this.api.progress(idSesi));
   }
 }
 

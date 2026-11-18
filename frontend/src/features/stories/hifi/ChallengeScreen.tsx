@@ -1,5 +1,6 @@
 // SEMENTARA: belum ada desain hi-fi untuk layar tantangan. Kartu mengikuti gaya Mini Quiz.
-// Tantangan dinilai di aplikasi (sheet Quest, kolom selain "Kuis Pilihan Ganda"); backend belum punya datanya.
+// Penilaian: bila `grade` diberikan (mode API, quest backend bertipe sama), jawaban dinilai server
+// (jawab_quest milik backend: poin, percobaan, lencana). Tanpa `grade` (mode mock) dinilai di aplikasi.
 import { type ReactElement, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { TextField } from "../../../design/TextField";
@@ -20,6 +21,22 @@ type Props = {
   readonly testMode?: boolean;
   /** Foto referensi POI dari backend, ditampilkan di layar foto. */
   readonly references?: PoiDetail["photoChallenges"] | undefined;
+  /** Penilaian server; null = jawaban tidak bisa dipetakan ke quest backend (dinilai lokal). */
+  readonly grade?: ((answer: ChallengeAnswer) => Promise<ServerGrade> | null) | undefined;
+};
+
+export type ChallengeAnswer =
+  | { readonly kind: "photo" }
+  | { readonly kind: "text"; readonly text: string }
+  | { readonly kind: "choice"; readonly choice: string };
+
+/** Hasil jawab_quest yang dipakai layar ini. */
+export type ServerGrade = {
+  readonly correct: boolean;
+  readonly failed: boolean;
+  readonly attempts: number;
+  readonly points: number;
+  readonly hint: string | null;
 };
 
 /** Huruf kecil, tanpa spasi berlebih dan tanda baca, agar "Big Bang!" = "big bang". */
@@ -27,8 +44,13 @@ function normalize(text: string): string {
   return text.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, "").replace(/\s+/g, " ").trim();
 }
 
-export function ChallengeScreen({ challenge, onBack, onDone, testMode = false, references }: Props): ReactElement {
+export function ChallengeScreen({ challenge, onBack, onDone, testMode = false, references, grade }: Props): ReactElement {
   const [outcome, setOutcome] = useState<boolean | null>(null);
+  // Poin dari server (bila dinilai server); null = pakai poin sheet.
+  const [serverPoints, setServerPoints] = useState<number | null>(null);
+  const [serverHint, setServerHint] = useState<string | null>(null);
+  const [sending, setSending] = useState<boolean>(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const [attempts, setAttempts] = useState<number>(0);
   const [answer, setAnswer] = useState<string>("");
   const [wrong, setWrong] = useState<boolean>(false);
@@ -49,7 +71,14 @@ export function ChallengeScreen({ challenge, onBack, onDone, testMode = false, r
         target={challenge.target}
         hint={challenge.hint}
         onBack={onBack}
-        onDone={(): void => setOutcome(true)}
+        onDone={(): void => {
+          const graded: Promise<ServerGrade> | null = grade?.({ kind: "photo" }) ?? null;
+          if (graded === null) {
+            setOutcome(true);
+            return;
+          }
+          void apply(graded);
+        }}
         testMode={testMode}
         references={references}
       />
@@ -65,7 +94,38 @@ export function ChallengeScreen({ challenge, onBack, onDone, testMode = false, r
     } else setWrong(true);
   }
 
+  /** Terapkan hasil penilaian server. */
+  async function apply(graded: Promise<ServerGrade>): Promise<void> {
+    setSending(true);
+    setSendError(null);
+    try {
+      const result: ServerGrade = await graded;
+      setAttempts(result.attempts);
+      setServerHint(result.hint);
+      if (result.correct) {
+        setServerPoints(result.points);
+        setOutcome(true);
+      } else if (result.failed) {
+        setServerPoints(0);
+        setOutcome(false);
+      } else setWrong(true);
+    } catch (cause: unknown) {
+      setSendError(cause instanceof Error ? cause.message : "Jawaban belum terkirim. Coba lagi.");
+    } finally {
+      setSending(false);
+    }
+  }
+
   function check(value: string): void {
+    if (sending) return;
+    const graded: Promise<ServerGrade> | null = grade?.(
+      challenge.tipe === "benarSalah" ? { kind: "choice", choice: value } : { kind: "text", text: value },
+    ) ?? null;
+    if (graded !== null) {
+      setWrong(false);
+      void apply(graded);
+      return;
+    }
     const accepted: readonly string[] = challenge.jawaban ?? [];
     const correct: boolean = accepted.some((item: string): boolean => normalize(item) === normalize(value));
     const used: number = attempts + 1;
@@ -136,10 +196,13 @@ export function ChallengeScreen({ challenge, onBack, onDone, testMode = false, r
               {wrong && (
                 <View accessibilityLiveRegion="polite" style={styles.hint}>
                   <GeaText variant="bold16" color={colors.warning[500]}>Belum tepat · sisa {left} kesempatan</GeaText>
-                  {challenge.hint !== undefined && (
-                    <GeaText variant="body14" color={componentColors.bodyDark}>{challenge.hint}</GeaText>
+                  {(serverHint ?? challenge.hint) != null && (
+                    <GeaText variant="body14" color={componentColors.bodyDark}>{serverHint ?? challenge.hint}</GeaText>
                   )}
                 </View>
+              )}
+              {sendError !== null && (
+                <GeaText variant="body14" color={colors.danger[500]} accessibilityRole="alert">{sendError}</GeaText>
               )}
             </>
           )
@@ -150,17 +213,22 @@ export function ChallengeScreen({ challenge, onBack, onDone, testMode = false, r
                   {photoType
                     ? "Foto berhasil diambil!"
                     : outcome
-                    ? `Benar! +${challenge.poin} poin`
+                    ? `Benar! +${serverPoints ?? challenge.poin} poin`
                     : "Kesempatan habis"}
                 </GeaText>
-                {photoType && <GeaText variant="body14" color={componentColors.bodyDark}>+{challenge.poin} poin</GeaText>}
+                {photoType && <GeaText variant="body14" color={componentColors.bodyDark}>+{serverPoints ?? challenge.poin} poin</GeaText>}
               </View>
               {challenge.penjelasan !== undefined && (
                 <GeaText variant="body16" color={componentColors.bodyDark}>{challenge.penjelasan}</GeaText>
               )}
               <StoryButton
                 label="Lanjut"
-                onPress={(): void => onDone({ success: outcome, points: outcome ? challenge.poin : 0, attempts: photoType ? 0 : attempts })}
+                onPress={(): void => onDone({
+                  success: outcome,
+                  // Dinilai server: poinnya sudah tercatat di backend (pointsAwarded), jangan dihitung lagi.
+                  points: serverPoints !== null ? 0 : outcome ? challenge.poin : 0,
+                  attempts: photoType ? 0 : attempts,
+                })}
               />
             </>
           )}

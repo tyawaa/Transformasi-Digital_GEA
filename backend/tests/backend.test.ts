@@ -311,6 +311,27 @@ Deno.test("integrasi SQL: migrasi, enam POI, hak akses, QR, jawaban, idempotensi
           )).rows,
           before.rows,
         );
+        await database.exec(
+          "update public.poi set path_foto='images/story.jpg',denah_x=0,denah_y=0,prioritas=1,estimasi_durasi=5 where id_poi in (select id_poi from public.quest)",
+        );
+        await database.exec(
+          "update public.poi set is_published=true where id_poi in (select id_poi from public.quest)",
+        );
+        equal(
+          (await database.query("select * from public.poi where is_published")).rows.length,
+          11,
+        );
+        await database.exec("savepoint missing_photo_quest");
+        await database.exec(
+          "delete from public.quest_teks where id_quest='40000000-0000-4000-8000-000000000001' and profil='anak'",
+        );
+        await rejects(
+          database.exec(
+            "update public.poi set is_published=true where id_poi='30000000-0000-4000-8000-000000000001'",
+          ),
+          /POI_VARIANT_INCOMPLETE/,
+        );
+        await database.exec("rollback to savepoint missing_photo_quest");
       } finally {
         await database.exec("rollback");
       }
@@ -491,18 +512,19 @@ Deno.test("integrasi SQL: migrasi, enam POI, hak akses, QR, jawaban, idempotensi
         database.exec("update public.poi set path_foto=null where is_published"),
         /POI_DETAILS_INCOMPLETE/,
       );
-      await rejects(
-        database.exec("update public.konten set path_audio=null,durasi_audio=null"),
-        /POI_AUDIO_INCOMPLETE/,
-      );
       await database.exec("begin");
       try {
         await database.exec("update public.poi set is_published=false;");
         await database.exec("update public.konten set path_audio=null,durasi_audio=null;");
+        await database.exec("update public.poi set is_published=true;");
+        equal((await database.query("select * from public.poi where is_published")).rows.length, 6);
+        await database.exec("update public.konten set path_audio=null,durasi_audio=null;");
+        await database.exec("savepoint incomplete_audio");
         await rejects(
-          database.exec("update public.poi set is_published=true;"),
-          /POI_AUDIO_INCOMPLETE/,
+          database.exec("update public.konten set path_audio='audio/incomplete.mp3'"),
+          /check constraint/,
         );
+        await database.exec("rollback to savepoint incomplete_audio");
       } finally {
         await database.exec("rollback");
       }
@@ -519,8 +541,17 @@ Deno.test("integrasi SQL: migrasi, enam POI, hak akses, QR, jawaban, idempotensi
       );
     });
     await test.step("client tidak dapat membaca kunci atau memanggil RPC internal", async (): Promise<void> => {
+      const poiId: string = "30000000-0000-4000-8000-000000000001";
       await database.exec("set role authenticated");
       await rejects(database.exec("select * from public.quest_opsi"), /permission denied/);
+      await rejects(
+        database.query("select public.verifikasi_gps_poi($1,$2,$3,0,0,5)", [
+          userId,
+          visitId,
+          poiId,
+        ]),
+        /permission denied/,
+      );
       await rejects(
         database.query("select public.progres_kunjungan($1,$2)", [userId, visitId]),
         /permission denied/,
@@ -550,6 +581,75 @@ Deno.test("integrasi SQL: migrasi, enam POI, hak akses, QR, jawaban, idempotensi
         [userId, visitId, "a".repeat(64)],
       );
       deepStrictEqual(repeated, visit);
+    });
+    await test.step("GPS utama: radius, akurasi, pemilik sesi dan akses kuis tanpa QR", async (): Promise<void> => {
+      const poiId: string = "30000000-0000-4000-8000-000000000001";
+      const gpsVisitId: string = "50000000-0000-4000-8000-000000000077";
+      await database.exec("begin");
+      try {
+        await database.query(
+          "update public.poi set latitude=0,longitude=0,radius=15 where id_poi=$1",
+          [poiId],
+        );
+        await database.query("select public.buat_sesi_gps($1,$2,$3,'id','dewasa')", [
+          userId,
+          gpsVisitId,
+          "20000000-0000-4000-8000-000000000001",
+        ]);
+        const failures: readonly {
+          readonly latitude: number;
+          readonly longitude: number;
+          readonly accuracy: number;
+          readonly expected: RegExp;
+        }[] = [
+          { latitude: 0, longitude: 0.001, accuracy: 5, expected: /OUTSIDE_POI_AREA/ },
+          { latitude: 0, longitude: 0, accuracy: 35, expected: /GPS_ACCURACY_EXCEEDS_20_METERS/ },
+          { latitude: 91, longitude: 0, accuracy: 5, expected: /LOCATION_INVALID/ },
+        ];
+        for (const item of failures) {
+          await database.exec("savepoint invalid_gps");
+          await rejects(
+            database.query("select public.verifikasi_gps_poi($1,$2,$3,$4,$5,$6)", [
+              userId,
+              gpsVisitId,
+              poiId,
+              item.latitude,
+              item.longitude,
+              item.accuracy,
+            ]),
+            item.expected,
+          );
+          await database.exec("rollback to savepoint invalid_gps");
+        }
+        await database.exec("savepoint foreign_session");
+        await rejects(
+          database.query("select public.verifikasi_gps_poi($1,$2,$3,0,0,5)", [
+            otherUserId,
+            gpsVisitId,
+            poiId,
+          ]),
+          /SESSION_NOT_FOUND/,
+        );
+        await database.exec("rollback to savepoint foreign_session");
+        const receipt: JsonObject = await resultObject(
+          database,
+          "select public.verifikasi_gps_poi($1,$2,$3,0,0,5) as result",
+          [userId, gpsVisitId, poiId],
+        );
+        equal(receipt.idPoi, poiId);
+        equal(receipt.verified, true);
+        ok(Date.parse(String(receipt.expiresAt)) > Date.now());
+        await database.query("select public.tutup_kartu($1,$2,$3)", [userId, gpsVisitId, poiId]);
+        const answer: JsonObject = await resultObject(
+          database,
+          "select public.jawab_quest($1,$2,$3,'A',$4) as result",
+          [userId, gpsVisitId, questId, crypto.randomUUID()],
+        );
+        equal(answer.answerCorrect, true);
+        equal(answer.pointsAwarded, 20);
+      } finally {
+        await database.exec("rollback");
+      }
     });
     await test.step("kepemilikan sesi dan verifikasi checkpoint diwajibkan", async (): Promise<void> => {
       await rejects(
