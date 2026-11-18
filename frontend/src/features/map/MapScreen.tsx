@@ -82,7 +82,6 @@ export function MapScreen(props: Props): ReactElement {
   if (!props.hasVisit && !props.loading && props.error === null) {
     return (
       <StartMap
-        notice={props.notice}
         checkingLocation={props.checkingLocation}
         onScan={props.onScan}
         onCheckLocation={props.onCheckLocation}

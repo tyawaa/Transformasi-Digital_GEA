@@ -1,5 +1,4 @@
-// Hasil cek lokasi GPS (Figma Hifi Sprint 3: "Sukses Splash - Lokasi" 436:3226 dan "Gagal Splash - Lokasi" 436:3360).
-// Hijau = posisi di dalam area museum; merah = di luar area museum.
+// Splash hasil cek lokasi (Hifi Sprint 3: Sukses/Gagal Splash - Lokasi).
 import { Image } from "expo-image";
 import type { ReactElement } from "react";
 import { Linking, Pressable, StyleSheet, View } from "react-native";
@@ -16,7 +15,6 @@ const failTop = require("../../../assets/design/loc-fail-top.svg") as number;
 const mascot = require("../../../assets/design/mascot.svg") as number;
 const mascotSad = require("../../../assets/design/mascot-sad.svg") as number;
 
-// Museum Geologi Bandung (Jl. Diponegoro No. 57) untuk tombol "lihat arah".
 const MUSEUM_DIRECTIONS = "https://www.google.com/maps/dir/?api=1&destination=Museum+Geologi+Bandung";
 
 export function LocationSuccessSplash({ onContinue }: { readonly onContinue: () => void }): ReactElement {
@@ -43,10 +41,8 @@ export function LocationSuccessSplash({ onContinue }: { readonly onContinue: () 
 }
 
 export function LocationFailedSplash(
-  { onRecheck, onUseQr, checking }: {
+  { onRecheck, checking }: {
     readonly onRecheck: () => void;
-    /** Jalur alternatif agar pengguna tidak terjebak: lanjut dan mulai kunjungan dengan QR pintu masuk. */
-    readonly onUseQr: () => void;
     readonly checking: boolean;
   },
 ): ReactElement {
@@ -84,11 +80,6 @@ export function LocationFailedSplash(
               {checking ? "Memeriksa lokasi..." : "Cek ulang lokasi"}
             </GeaText>
           </Pressable>
-          <Pressable accessibilityRole="button" hitSlop={8} onPress={onUseQr}>
-            <GeaText variant="body14" color={colors.secondaryGreen[200]} style={styles.link}>
-              Sudah di museum? Pakai QR pintu masuk
-            </GeaText>
-          </Pressable>
         </View>
       </View>
     </FrameStage>
@@ -108,7 +99,6 @@ const styles = StyleSheet.create({
     height: 374.314,
     transform: [{ rotate: "-4.2deg" }],
   },
-  // Maskot mengintip dari kanan bawah (Figma: miring 7.34°).
   mascotBox: { position: "absolute", width: 316.866, height: 340.396 },
   mascotOk: { left: 133, top: 556, transform: [{ rotate: "7.34deg" }] },
   mascotSad: { left: 145, top: 592, transform: [{ rotate: "8deg" }] },
@@ -127,5 +117,4 @@ const styles = StyleSheet.create({
     borderColor: colors.secondaryGreen[200],
   },
   pressed: { opacity: 0.7 },
-  link: { textDecorationLine: "underline", textAlign: "center" },
 });

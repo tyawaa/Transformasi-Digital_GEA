@@ -1,6 +1,4 @@
-// Petualangan selesai (semua koleksi tuntas), Figma Hifi Sprint 3:
-// "Selesai Story Splash" 436:2028 (Well Done + reward) → "Petualangan selesai — Bagikan hasil" 476:3066.
-// Poin = total resmi (mode API: Supabase, ditambah poin tantangan yang belum dinilai server).
+// Petualangan selesai (Hifi Sprint 3): Well Done → kartu hasil untuk dibagikan.
 import { Image } from "expo-image";
 import { type ReactElement, useState } from "react";
 import { Linking, Pressable, Share, StyleSheet, View } from "react-native";
@@ -24,11 +22,10 @@ export type AdventureSummary = {
   readonly questsDone: number;
   readonly questsTotal: number;
   readonly totalPoints: number;
-  /** Lencana terbaik yang diraih; null = belum ada lencana. */
+  /** null = belum ada lencana. */
   readonly badgeName: string | null;
 };
 
-/** Pita merah "Well done!" dengan ekor di kiri dan kanan. */
 function WellDoneRibbon({ top }: { readonly top: number }): ReactElement {
   return (
     <View style={[ribbon.root, { top }]} accessibilityRole="header" accessibilityLabel="Well done!">
@@ -45,7 +42,6 @@ function formatPoints(points: number): string {
   return points.toLocaleString("id-ID");
 }
 
-/** Layar "Well Done!": reward poin, cara tukar, bagikan, kembali. */
 export function WellDoneScreen(
   { summary, onShare, onHome }: {
     readonly summary: AdventureSummary;
@@ -103,7 +99,6 @@ export function WellDoneScreen(
   );
 }
 
-/** Kartu hasil untuk dibagikan (tangkap layar / Share). */
 export function ShareResultScreen(
   { summary, onBack }: { readonly summary: AdventureSummary; readonly onBack: () => void },
 ): ReactElement {

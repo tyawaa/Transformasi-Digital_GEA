@@ -1,6 +1,5 @@
 // SEMENTARA: belum ada desain hi-fi untuk layar tantangan. Kartu mengikuti gaya Mini Quiz.
-// Penilaian: bila `grade` diberikan (mode API, quest backend bertipe sama), jawaban dinilai server
-// (jawab_quest milik backend: poin, percobaan, lencana). Tanpa `grade` (mode mock) dinilai di aplikasi.
+// Mode API: dinilai jawab_quest di backend. Mode mock: dinilai di aplikasi.
 import { type ReactElement, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { TextField } from "../../../design/TextField";
@@ -21,7 +20,7 @@ type Props = {
   readonly testMode?: boolean;
   /** Foto referensi POI dari backend, ditampilkan di layar foto. */
   readonly references?: PoiDetail["photoChallenges"] | undefined;
-  /** Penilaian server; null = jawaban tidak bisa dipetakan ke quest backend (dinilai lokal). */
+  /** null = dinilai lokal. */
   readonly grade?: ((answer: ChallengeAnswer) => Promise<ServerGrade> | null) | undefined;
 };
 
@@ -30,7 +29,6 @@ export type ChallengeAnswer =
   | { readonly kind: "text"; readonly text: string }
   | { readonly kind: "choice"; readonly choice: string };
 
-/** Hasil jawab_quest yang dipakai layar ini. */
 export type ServerGrade = {
   readonly correct: boolean;
   readonly failed: boolean;
@@ -46,7 +44,6 @@ function normalize(text: string): string {
 
 export function ChallengeScreen({ challenge, onBack, onDone, testMode = false, references, grade }: Props): ReactElement {
   const [outcome, setOutcome] = useState<boolean | null>(null);
-  // Poin dari server (bila dinilai server); null = pakai poin sheet.
   const [serverPoints, setServerPoints] = useState<number | null>(null);
   const [serverHint, setServerHint] = useState<string | null>(null);
   const [sending, setSending] = useState<boolean>(false);
@@ -94,7 +91,6 @@ export function ChallengeScreen({ challenge, onBack, onDone, testMode = false, r
     } else setWrong(true);
   }
 
-  /** Terapkan hasil penilaian server. */
   async function apply(graded: Promise<ServerGrade>): Promise<void> {
     setSending(true);
     setSendError(null);
@@ -225,7 +221,7 @@ export function ChallengeScreen({ challenge, onBack, onDone, testMode = false, r
                 label="Lanjut"
                 onPress={(): void => onDone({
                   success: outcome,
-                  // Dinilai server: poinnya sudah tercatat di backend (pointsAwarded), jangan dihitung lagi.
+                  // Poin dari server sudah masuk pointsAwarded.
                   points: serverPoints !== null ? 0 : outcome ? challenge.poin : 0,
                   attempts: photoType ? 0 : attempts,
                 })}

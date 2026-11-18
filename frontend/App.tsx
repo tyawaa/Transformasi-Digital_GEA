@@ -1,6 +1,6 @@
 import { randomUUID } from "expo-crypto";
 import { StatusBar } from "expo-status-bar";
-import { type ReactElement, useEffect, useMemo, useState } from "react";
+import { type ReactElement, useEffect, useMemo, useRef, useState } from "react";
 import { Platform, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { colors } from "./src/design/tokens";
@@ -105,14 +105,17 @@ function Home(): ReactElement {
   const { visit, progress, progressOf } = visitState;
 
   const [screen, setScreen] = useState<Screen>({ name: "map" });
-  // Hasil cek GPS area museum (Figma Sprint 3): hijau = di dalam area, merah = di luar area.
+  // Splash lokasi: ok = di area museum, fail = selain itu.
   const [locationSplash, setLocationSplash] = useState<"ok" | "fail" | null>(null);
+  const wasCheckingLocation = useRef<boolean>(false);
   useEffect((): void => {
-    const decision = session.decision;
-    if (decision === null) return;
-    if (decision.status === "inside" && decision.accessAllowed) setLocationSplash("ok");
-    else if (decision.status === "outside") setLocationSplash("fail");
-  }, [session.decision]);
+    const checking: boolean = busy === "location";
+    if (wasCheckingLocation.current && !checking) {
+      const decision = session.decision;
+      setLocationSplash(decision !== null && decision.status === "inside" && decision.accessAllowed ? "ok" : "fail");
+    }
+    wasCheckingLocation.current = checking;
+  }, [busy, session.decision]);
   const [summaries, setSummaries] = useState<readonly PoiSummary[] | null>(null);
   const [poisError, setPoisError] = useState<string | null>(null);
   const [scanState, setScanState] = useState<ScanState>("scanning");
@@ -196,7 +199,7 @@ function Home(): ReactElement {
     return next === undefined ? null : `${next.museum.code} · ${next.museum.name}`;
   }
   const allDone: boolean = refs.length > 0 && mapPois.every((poi: MapPoi): boolean => poi.id === null || poi.status === "selesai");
-  // Ringkasan untuk layar "Well Done!" / kartu bagikan. Lencana: yang bonusnya paling besar.
+  // Data layar Well Done.
   const bestBadge: BadgeDef | undefined = badgeDefs
     .filter((badge: BadgeDef): boolean => badges.includes(badge.id))
     .sort((a: BadgeDef, b: BadgeDef): number => b.bonus - a.bonus)[0];
@@ -331,7 +334,6 @@ function Home(): ReactElement {
           onRecheck={(): void => {
             void session.checkLocation();
           }}
-          onUseQr={closeLocationSplash}
         />
       </>
     );
