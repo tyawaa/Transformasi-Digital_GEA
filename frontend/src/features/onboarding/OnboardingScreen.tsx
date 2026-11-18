@@ -1,7 +1,7 @@
 import { useCameraPermissions } from "expo-camera";
 import { Image } from "expo-image";
 import * as Location from "expo-location";
-import { type ReactElement, useEffect, useRef, useState } from "react";
+import { type ReactElement, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Easing,
@@ -40,17 +40,24 @@ type Props = {
   readonly locationNotice: DecisionMessage | null;
   readonly locationError: string | null;
   readonly currentLocation: DeviceLocation | null;
+  /** true = posisi sudah di dalam area museum. */
+  readonly locationOk: boolean;
+  /** Langkah awal; 3 = langsung ke cek lokasi. */
+  readonly initialStep?: Step;
   readonly onDone: () => void;
 };
 
 export function OnboardingScreen(
-  { onCheckLocation, checkingLocation, locationLabel, locationNotice, locationError, currentLocation, onDone }: Props,
+  { onCheckLocation, checkingLocation, locationLabel, locationNotice, locationError, currentLocation, locationOk, initialStep = 0, onDone }: Props,
 ): ReactElement {
   const { width, height } = useWindowDimensions();
   const scale: number = Math.min(width / FRAME_W, height / FRAME_H);
-  const [step, setStep] = useState<Step>(0);
-  const scroll = useRef(new Animated.Value(0)).current;
-  const [moving, setMoving] = useState<boolean>(false);
+  const [step, setStep] = useState<Step>(initialStep);
+  const scroll = useRef(new Animated.Value(STEP_SCROLL[initialStep] ?? 0)).current;
+  // Warna latar ikut bergeser bersama adegan (0 = Selamat datang, 1 = langkah lain).
+  const background = useRef(new Animated.Value(initialStep === 0 ? 0 : 1)).current;
+  // Pakai ref agar layar tidak di-render ulang saat animasi mulai (bikin patah-patah).
+  const moving = useRef<boolean>(false);
 
   // Web: browser menggulir kontainer ber-overflow hidden agar tombol yang difokus terlihat,
   // sehingga adegan bergeser. Kunci posisi gulirnya di 0 (tidak terjadi di HP).
@@ -71,22 +78,25 @@ export function OnboardingScreen(
   // Mikrofon dan notifikasi belum punya fitur di aplikasi; pilihan hanya dicatat.
   const [microphone, setMicrophone] = useState<boolean>(false);
   const [notification, setNotification] = useState<boolean>(false);
-  const [permissionWarning, setPermissionWarning] = useState<string | null>(null);
+  const [warning, setWarning] = useState<{ readonly title: string; readonly description: string } | null>(null);
   useEffect((): (() => void) | undefined => {
-    if (permissionWarning === null) return undefined;
-    const timer = setTimeout((): void => setPermissionWarning(null), 6000);
+    if (warning === null) return undefined;
+    const timer = setTimeout((): void => setWarning(null), 6000);
     return (): void => clearTimeout(timer);
-  }, [permissionWarning]);
+  }, [warning]);
 
-  function goTo(next: Step): void {
-    setMoving(true);
-    Animated.timing(scroll, {
-      toValue: STEP_SCROLL[next] ?? 0,
-      duration: 700,
-      easing: Easing.inOut(Easing.cubic),
-      useNativeDriver: true,
-    }).start((): void => setMoving(false));
-    setStep(next);
+  function goTo(next: Step, after?: () => void): void {
+    if (moving.current) return;
+    moving.current = true;
+    const easing = Easing.inOut(Easing.cubic);
+    Animated.parallel([
+      Animated.timing(scroll, { toValue: STEP_SCROLL[next] ?? 0, duration: 700, easing, useNativeDriver: true }),
+      Animated.timing(background, { toValue: next === 0 ? 0 : 1, duration: 700, easing, useNativeDriver: false }),
+    ]).start((): void => {
+      moving.current = false;
+      setStep(next);
+      after?.();
+    });
   }
 
   async function askPermission(kind: "location" | "camera"): Promise<void> {
@@ -101,36 +111,50 @@ export function OnboardingScreen(
     }
   }
 
-  async function finishPermissions(): Promise<void> {
-    // Lokasi dan kamera wajib diizinkan dulu.
-    const missing: string[] = [
-      ...(location?.granted === true ? [] : ["Lokasi"]),
-      ...(camera?.granted === true ? [] : ["Kamera"]),
-    ];
-    if (missing.length > 0) {
-      const blocked: boolean = (location?.granted !== true && location?.canAskAgain === false) ||
-        (camera?.granted !== true && camera?.canAskAgain === false);
-      setPermissionWarning(
-        `Izinkan ${missing.join(" dan ")} dulu untuk melanjutkan. Tekan tombol izin pada kartu yang bertanda WAJIB.` +
-          (blocked ? " Izin sempat ditolak, jadi buka pengaturan HP/browser untuk mengizinkannya." : ""),
-      );
-      return;
-    }
-    setPermissionWarning(null);
-    goTo(3);
-    onCheckLocation();
+  /** Notifikasi saat Lanjut ditekan sebelum izin wajib diberikan. */
+  function warnPermissions(): void {
+    const needLocation: boolean = location?.granted !== true;
+    const needCamera: boolean = camera?.granted !== true;
+    const blocked: boolean = (needLocation && location?.canAskAgain === false) || (needCamera && camera?.canAskAgain === false);
+    const what: string = needLocation && needCamera ? "lokasi dan kamera" : needLocation ? "lokasi" : "kamera";
+    const why: string = needLocation && needCamera
+      ? "Lokasi dipakai untuk tahu kamu sudah tiba di museum, kamera untuk scan QR koleksi."
+      : needLocation
+      ? "Lokasi dipakai untuk tahu kamu sudah tiba di museum."
+      : "Kamera dipakai untuk scan QR koleksi.";
+    setWarning({
+      title: `Izinkan ${what} dulu, ya!`,
+      description: blocked
+        ? `${why} Izinnya sempat ditolak, buka pengaturan HP untuk mengaktifkannya.`
+        : `${why} Ketuk kotak di kartu yang bertanda WAJIB.`,
+    });
   }
 
-  const welcomeY = Animated.multiply(scroll, -1);
-  const canvasY = Animated.multiply(Animated.add(scroll, CANVAS_SHIFT), -1);
-  const shape4Opacity = scroll.interpolate({
-    inputRange: [STEP_SCROLL[2] ?? 0, STEP_SCROLL[3] ?? 0],
-    outputRange: [0, 1],
-    extrapolate: "clamp",
-  });
+  async function finishPermissions(): Promise<void> {
+    if (location?.granted !== true || camera?.granted !== true) {
+      warnPermissions();
+      return;
+    }
+    setWarning(null);
+    goTo(3, onCheckLocation);
+  }
+
+  const { welcomeY, canvasY, shape4Opacity, rootColor } = useMemo(() => ({
+    welcomeY: Animated.multiply(scroll, -1),
+    canvasY: Animated.multiply(Animated.add(scroll, CANVAS_SHIFT), -1),
+    shape4Opacity: scroll.interpolate({
+      inputRange: [STEP_SCROLL[2] ?? 0, STEP_SCROLL[3] ?? 0],
+      outputRange: [0, 1],
+      extrapolate: "clamp",
+    }),
+    rootColor: background.interpolate({
+      inputRange: [0, 1],
+      outputRange: [componentColors.welcomeBackground, colors.primary[300]],
+    }),
+  }), [scroll, background]);
 
   return (
-    <View ref={rootRef} style={[styles.root, { backgroundColor: step === 0 ? componentColors.welcomeBackground : colors.primary[300] }]}>
+    <Animated.View ref={rootRef} style={[styles.root, { backgroundColor: rootColor }]}>
       <View
         style={[
           styles.stage,
@@ -144,7 +168,7 @@ export function OnboardingScreen(
         {/* Langkah 2–4: kanvas panjang yang digulir. */}
         <Animated.View style={[styles.canvas, { transform: [{ translateY: canvasY }] }]}>
           <SceneIllustrations />
-          <PathTexts onNext={(): void => goTo(2)} disabled={moving || step !== 1} />
+          <PathTexts onNext={(): void => goTo(2)} disabled={step !== 1} />
           <Animated.View style={[styles.full, { opacity: Animated.subtract(1, shape4Opacity) }]} pointerEvents="none">
             <SceneLayer layer={{ src: img.shapeStep3, left: -109, top: 2501, width: 607.035, height: 449.5 }} />
           </Animated.View>
@@ -164,7 +188,8 @@ export function OnboardingScreen(
             onMicrophone={(): void => setMicrophone((value: boolean): boolean => !value)}
             onNotification={(): void => setNotification((value: boolean): boolean => !value)}
             onNext={(): void => void finishPermissions()}
-            disabled={moving || step !== 2}
+            onLocked={warnPermissions}
+            disabled={step !== 2}
           />
           </Animated.View>
           <LocationStep
@@ -175,17 +200,27 @@ export function OnboardingScreen(
             error={locationError}
             location={currentLocation}
             onRetry={onCheckLocation}
-            onNext={onDone}
+            onNext={(): void => {
+              // Lanjut hanya kalau posisi sudah di area museum.
+              if (locationOk) {
+                onDone();
+                return;
+              }
+              setWarning({
+                title: "Lokasi belum sesuai",
+                description: "Kamu belum berada di area museum. Tekan Periksa lokasi lagi setelah sampai di museum.",
+              });
+            }}
           />
         </Animated.View>
 
-        {permissionWarning !== null && step === 2 && (
+        {warning !== null && step >= 2 && (
           <View style={styles.toast}>
             <Toast
               tone="danger"
-              title="Izin wajib belum diberikan"
-              description={permissionWarning}
-              onClose={(): void => setPermissionWarning(null)}
+              title={warning.title}
+              description={warning.description}
+              onClose={(): void => setWarning(null)}
             />
           </View>
         )}
@@ -212,25 +247,28 @@ export function OnboardingScreen(
             left={86.5}
             label="Jelajah lebih jauh!"
             arrow
-            disabled={moving || step !== 0}
+            disabled={step !== 0}
             onPress={(): void => goTo(1)}
           />
         </Animated.View>
       </View>
-    </View>
+    </Animated.View>
   );
 }
 
 function NextButton(
-  { top, left = 89, label, arrow, disabled, onPress }: {
+  { top, left = 89, label, arrow, disabled, onPress, onLocked }: {
     readonly top: number;
     readonly left?: number;
     readonly label: string;
     readonly arrow: boolean;
     readonly disabled: boolean;
     readonly onPress: () => void;
+    /** Ada = tombol tampil nonaktif, tetapi ketukan memunculkan notifikasi. */
+    readonly onLocked?: (() => void) | undefined;
   },
 ): ReactElement {
+  const locked: boolean = onLocked !== undefined;
   return (
     <View style={[styles.buttonGroup, { top, left }]}>
       <Button
@@ -238,9 +276,18 @@ function NextButton(
         tone="primary"
         label={label}
         onPress={onPress}
-        disabled={disabled}
+        disabled={disabled || locked}
         style={styles.button}
       />
+      {locked && !disabled && (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${label} (belum bisa)`}
+          accessibilityState={{ disabled: true }}
+          onPress={onLocked}
+          style={styles.lockedCover}
+        />
+      )}
       {arrow && (
         <Image accessible={false} source={img.arrowDown} style={styles.arrow} />
       )}
@@ -285,6 +332,8 @@ type PermissionProps = {
   readonly onMicrophone: () => void;
   readonly onNotification: () => void;
   readonly onNext: () => void;
+  /** Lanjut ditekan sebelum lokasi dan kamera diizinkan. */
+  readonly onLocked: () => void;
   readonly disabled: boolean;
 };
 
@@ -332,7 +381,14 @@ function PermissionStep(props: PermissionProps): ReactElement {
           onPressAction={disabled ? undefined : props.onNotification}
         />
       </View>
-      <NextButton top={top + 728} label="Lanjut" arrow disabled={disabled} onPress={props.onNext} />
+      <NextButton
+        top={top + 728}
+        label="Lanjut"
+        arrow
+        disabled={disabled}
+        onPress={props.onNext}
+        onLocked={props.location && props.camera ? undefined : props.onLocked}
+      />
     </>
   );
 }
@@ -446,6 +502,7 @@ const styles = StyleSheet.create({
   upper: { textTransform: "uppercase" },
   abs: { position: "absolute" },
   fill: { width: "100%", height: "100%" },
+  lockedCover: { position: "absolute", left: 0, top: 0, width: "100%", height: 44 },
   buttonGroup: {
     position: "absolute",
     width: 212,
