@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { Button } from "../../design/Button";
 import { PoiCard } from "../../design/Cards";
+import { Toast } from "../../design/Toast";
 import { colors, componentColors, spacing } from "../../design/tokens";
 import { GeaText } from "../../design/typography";
 import type { DecisionMessage, DeviceLocation } from "../../domain/contracts";
@@ -70,6 +71,12 @@ export function OnboardingScreen(
   // Mikrofon dan notifikasi belum punya fitur di aplikasi; pilihan hanya dicatat.
   const [microphone, setMicrophone] = useState<boolean>(false);
   const [notification, setNotification] = useState<boolean>(false);
+  const [permissionWarning, setPermissionWarning] = useState<string | null>(null);
+  useEffect((): (() => void) | undefined => {
+    if (permissionWarning === null) return undefined;
+    const timer = setTimeout((): void => setPermissionWarning(null), 6000);
+    return (): void => clearTimeout(timer);
+  }, [permissionWarning]);
 
   function goTo(next: Step): void {
     setMoving(true);
@@ -95,10 +102,21 @@ export function OnboardingScreen(
   }
 
   async function finishPermissions(): Promise<void> {
-    // Izin lokasi diminta oleh proses pengecekan, sehingga layar menampilkan progresnya.
-    if (camera?.granted !== true && camera?.canAskAgain !== false) {
-      await askPermission("camera");
+    // Lokasi dan kamera wajib diizinkan dulu.
+    const missing: string[] = [
+      ...(location?.granted === true ? [] : ["Lokasi"]),
+      ...(camera?.granted === true ? [] : ["Kamera"]),
+    ];
+    if (missing.length > 0) {
+      const blocked: boolean = (location?.granted !== true && location?.canAskAgain === false) ||
+        (camera?.granted !== true && camera?.canAskAgain === false);
+      setPermissionWarning(
+        `Izinkan ${missing.join(" dan ")} dulu untuk melanjutkan. Tekan tombol izin pada kartu yang bertanda WAJIB.` +
+          (blocked ? " Izin sempat ditolak, jadi buka pengaturan HP/browser untuk mengizinkannya." : ""),
+      );
+      return;
     }
+    setPermissionWarning(null);
     goTo(3);
     onCheckLocation();
   }
@@ -160,6 +178,17 @@ export function OnboardingScreen(
             onNext={onDone}
           />
         </Animated.View>
+
+        {permissionWarning !== null && step === 2 && (
+          <View style={styles.toast}>
+            <Toast
+              tone="danger"
+              title="Izin wajib belum diberikan"
+              description={permissionWarning}
+              onClose={(): void => setPermissionWarning(null)}
+            />
+          </View>
+        )}
 
         {/* Langkah 1: Selamat datang (Onboarding #1). */}
         <Animated.View style={[styles.welcome, { transform: [{ translateY: welcomeY }] }]}>
@@ -380,6 +409,7 @@ function LocationStep(
 
 const styles = StyleSheet.create({
   root: { flex: 1, overflow: "hidden" },
+  toast: { position: "absolute", left: 15, top: 47, width: 360, zIndex: 10 },
   stage: { position: "absolute", width: FRAME_W, height: FRAME_H },
   canvas: {
     position: "absolute",
