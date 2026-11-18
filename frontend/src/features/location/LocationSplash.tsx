@@ -5,7 +5,7 @@ import { Linking, Pressable, StyleSheet, View } from "react-native";
 import { Button } from "../../design/Button";
 import { colors, spacing } from "../../design/tokens";
 import { GeaText } from "../../design/typography";
-import { FrameStage, StoryButton } from "../stories/hifi/parts";
+import { BackButton, FrameStage, StoryButton } from "../stories/hifi/parts";
 
 const okEllipse = require("../../../assets/design/loc-ok-ellipse.svg") as number;
 const okGroup = require("../../../assets/design/loc-ok-group.svg") as number;
@@ -41,8 +41,9 @@ export function LocationSuccessSplash({ onContinue }: { readonly onContinue: () 
 }
 
 export function LocationFailedSplash(
-  { onRecheck, checking }: {
+  { onRecheck, onBack, checking }: {
     readonly onRecheck: () => void;
+    readonly onBack: () => void;
     readonly checking: boolean;
   },
 ): ReactElement {
@@ -54,6 +55,7 @@ export function LocationFailedSplash(
         <Image accessible={false} source={mascotSad} style={styles.fill} contentFit="contain" />
       </View>
       <Image accessible={false} source={failTop} style={styles.failTop} contentFit="fill" />
+      <BackButton label="Kembali" labelColor={colors.secondaryGreen[100]} onPress={onBack} />
       <View style={[styles.content, { top: 238 }]}>
         <GeaText variant="display42" color={colors.secondaryGreen[100]} style={styles.title} accessibilityRole="header">
           Kamu belum berada di area museum

@@ -11,6 +11,8 @@ export type OnboardingState = "loading" | "show" | "done";
 export function useOnboarding(): {
   readonly state: OnboardingState;
   readonly complete: () => void;
+  /** Buka lagi onboarding (mis. kembali dari splash lokasi gagal). */
+  readonly reopen: () => void;
 } {
   const [state, setState] = useState<OnboardingState>("loading");
 
@@ -39,5 +41,9 @@ export function useOnboarding(): {
     });
   }
 
-  return { state, complete };
+  function reopen(): void {
+    setState("show");
+  }
+
+  return { state, complete, reopen };
 }
