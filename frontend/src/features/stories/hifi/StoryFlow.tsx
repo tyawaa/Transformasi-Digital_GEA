@@ -82,7 +82,6 @@ type Props = {
   readonly totalPoints: number;
   readonly earnedBadges: readonly BadgeId[];
   readonly allCompleted: boolean;
-  /** Ringkasan petualangan untuk layar "Well Done!" (dipakai saat semua koleksi tuntas). */
   readonly adventure: AdventureSummary;
   readonly dummyScans: readonly DummyScan[];
   /** Ruangan berikutnya di rute rekomendasi, mis. "P08 · Terjadinya Tenaga Tektonik". */
@@ -329,10 +328,7 @@ export function StoryFlow(props: Props): ReactElement {
     (poi.quest.type === "pilgan" || poi.quest.type === "cocokkan") &&
     poi.quest.isDisabled !== true;
 
-  /**
-   * Tantangan dinilai backend (jawab_quest) bila quest POI di server bertipe sama dan tidak ada Mini Quiz
-   * yang memakai quest itu. Mode mock / tipe berbeda → null (dinilai lokal).
-   */
+  // Tantangan dinilai backend kalau tipe quest-nya sama.
   const serverQuest = poi.quest;
   const gradeOnServer = source.kind === "api" && !hasQuiz && challenge !== undefined && serverQuest.isDisabled !== true &&
       serverTypeMatches(challenge, serverQuest.type)
@@ -455,7 +451,6 @@ export function StoryFlow(props: Props): ReactElement {
     );
   }
 
-  // Semua koleksi tuntas: "Well Done!" (reward poin) → kartu hasil untuk dibagikan.
   if (step === "final") {
     return <WellDoneScreen summary={props.adventure} onShare={(): void => setStep("share")} onHome={props.onExit} />;
   }
