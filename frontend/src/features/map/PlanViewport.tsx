@@ -15,6 +15,8 @@ import {
 } from "react-native";
 import { colors, shadows } from "../../design/tokens";
 import { GeaText } from "../../design/typography";
+import { headingDelta, headingUpRotation } from "../../domain/heading";
+import type { MapHeading } from "../../hooks/useHeading";
 import type { MapPoi } from "./MapScreen";
 import {
   ENTRANCE,
@@ -55,6 +57,8 @@ type Props = {
   readonly leftOnly: boolean;
   readonly onSelect: (code: string) => void;
   readonly onLocate: () => void;
+  readonly orientation: MapHeading;
+  readonly planBearing: number | null;
 };
 
 function shouldPan(event: GestureResponderEvent, gesture: PanResponderGestureState): boolean {
@@ -63,6 +67,10 @@ function shouldPan(event: GestureResponderEvent, gesture: PanResponderGestureSta
 
 function centeredCamera(point: PlanPoint, zoom: number): Camera {
   return boundCamera({ x: VIEW_WIDTH / 2 - point.x * zoom, y: VIEW_HEIGHT * 0.55 - point.y * zoom, zoom });
+}
+
+function headingCamera(point: PlanPoint, zoom: number): Camera {
+  return { x: VIEW_WIDTH / 2 - point.x * zoom, y: VIEW_HEIGHT * 0.58 - point.y * zoom, zoom };
 }
 
 function boundCamera(camera: Camera): Camera {
@@ -123,6 +131,12 @@ export function PlanViewport(props: Props): ReactElement {
   const screenScale: number = Math.min(width / 390, height / 844);
   const [camera, setCamera] = useState<Camera>(centeredCamera(props.location ?? ENTRANCE, 0.65));
   const [following, setFollowing] = useState<boolean>(true);
+  const rotation = useRef<Animated.Value>(new Animated.Value(0)).current;
+  const rotationTarget = useRef<number>(0);
+  const rotationAnchor = useRef<PlanPoint | null>(props.location);
+  const rotationStyle = useMemo(() => rotation.interpolate({ inputRange: [0, 360], outputRange: ["0deg", "360deg"] }), [rotation]);
+  const counterRotationStyle = useMemo(() => rotation.interpolate({ inputRange: [0, 360], outputRange: ["0deg", "-360deg"] }), [rotation]);
+  const compassActive: boolean = props.orientation.state.degrees !== null && props.planBearing !== null && props.location !== null;
   const cameraRef = useRef<Camera>(camera);
   const gestureRef = useRef<GestureStart>({ camera, span: null, offset: { x: 0, y: 0 } });
   const dot = useRef<Animated.ValueXY>(new Animated.ValueXY(props.location ?? ENTRANCE)).current;
@@ -131,6 +145,23 @@ export function PlanViewport(props: Props): ReactElement {
   const source: { readonly uri: string } = useMemo(() => ({ uri: routeSvg(props.legs) }), [props.legs]);
   const locationX: number | undefined = props.location?.x;
   const locationY: number | undefined = props.location?.y;
+  if (following && props.location !== null) rotationAnchor.current = props.location;
+
+  useEffect((): void => {
+    if (props.orientation.state.status === "requesting" || props.orientation.state.status === "simulated") setFollowing(true);
+    // Aktivasi adalah tindakan pengguna; pembaruan sensor tidak membatalkan geser manual.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.orientation.activation]);
+
+  useEffect((): void => {
+    const degrees: number | null = props.orientation.state.degrees;
+    if (compassActive && !following) return;
+    const target: number = compassActive && degrees !== null && props.planBearing !== null
+      ? headingUpRotation(degrees, props.planBearing) : 0;
+    const next: number = rotationTarget.current + headingDelta(rotationTarget.current, target);
+    rotationTarget.current = next;
+    Animated.timing(rotation, { toValue: next, duration: 180, useNativeDriver: true }).start();
+  }, [props.orientation.state.degrees, props.planBearing, compassActive, following, rotation]);
 
   useEffect((): void => {
     if (locationX === undefined || locationY === undefined) {
@@ -138,18 +169,19 @@ export function PlanViewport(props: Props): ReactElement {
       return;
     }
     const point: PlanPoint = { x: locationX, y: locationY };
-    if (lastLocation.current === null) dot.setValue(point);
+    if (lastLocation.current === null || (compassActive && following)) dot.setValue(point);
     else Animated.timing(dot, { toValue: point, duration: 450, useNativeDriver: false }).start();
     lastLocation.current = point;
-    if (following) setCamera((current: Camera): Camera => centeredCamera(point, current.zoom));
-  }, [locationX, locationY, following, dot]);
+    if (following) setCamera((current: Camera): Camera => compassActive ? headingCamera(point, current.zoom) : centeredCamera(point, current.zoom));
+  }, [locationX, locationY, following, compassActive, dot]);
 
   useEffect((): void => {
     const pin: PlanPin | undefined = PLAN_PINS.find((item: PlanPin): boolean => item.code === props.selectedCode);
     if (pin === undefined) return;
+    props.orientation.disable();
     setFollowing(false);
     setCamera((current: Camera): Camera => boundCamera(centeredCamera(pin, Math.max(0.75, current.zoom))));
-  }, [props.selectedCode]);
+  }, [props.selectedCode, props.orientation.disable]);
 
   const panResponder = useMemo(() => PanResponder.create({
     onStartShouldSetPanResponder: (): boolean => false,
@@ -189,7 +221,7 @@ export function PlanViewport(props: Props): ReactElement {
   function zoomBy(multiplier: number): void {
     setCamera((current: Camera): Camera => {
       const zoom: number = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, current.zoom * multiplier));
-      if (following && props.location !== null) return centeredCamera(props.location, zoom);
+      if (following && props.location !== null) return compassActive ? headingCamera(props.location, zoom) : centeredCamera(props.location, zoom);
       const ratio: number = zoom / current.zoom;
       return boundDraggedCamera({
         x: VIEW_WIDTH / 2 - (VIEW_WIDTH / 2 - current.x) * ratio,
@@ -200,6 +232,7 @@ export function PlanViewport(props: Props): ReactElement {
   }
 
   function showPlan(): void {
+    props.orientation.disable();
     const planWidth: number = props.leftOnly ? 1145 : PLAN_WIDTH;
     const zoom: number = (VIEW_WIDTH - 32) / planWidth;
     setFollowing(false);
@@ -211,6 +244,7 @@ export function PlanViewport(props: Props): ReactElement {
     if (points === undefined || points.length === 0) {
       throw new RangeError("Jalur menuju tujuan belum tersedia pada denah.");
     }
+    props.orientation.disable();
     const minX: number = Math.min(...points.map((point: PlanPoint): number => point.x));
     const maxX: number = Math.max(...points.map((point: PlanPoint): number => point.x));
     const minY: number = Math.min(...points.map((point: PlanPoint): number => point.y));
@@ -224,13 +258,33 @@ export function PlanViewport(props: Props): ReactElement {
     setFollowing(true);
     const point: PlanPoint = props.location ?? ENTRANCE;
     const zoom: number = Math.max(camera.zoom, 0.65);
-    setCamera(centeredCamera(point, zoom));
+    setCamera(compassActive ? headingCamera(point, zoom) : centeredCamera(point, zoom));
     if (props.location === null) props.onLocate();
   }
+
+  function toggleHeading(): void {
+    if (compassActive || props.orientation.state.status === "requesting") {
+      props.orientation.disable();
+      return;
+    }
+    setFollowing(true);
+    void props.orientation.enable();
+  }
+
+  const pivotX: number = rotationAnchor.current === null ? VIEW_WIDTH / 2 : camera.x + rotationAnchor.current.x * camera.zoom;
+  const pivotY: number = rotationAnchor.current === null ? VIEW_HEIGHT / 2 : camera.y + rotationAnchor.current.y * camera.zoom;
+  const headingHint: string = props.orientation.state.status === "simulated" && compassActive
+    ? `Uji arah · ${Math.round(props.orientation.state.degrees ?? 0)}°`
+    : props.orientation.state.status === "requesting" ? "Menunggu kompas…"
+    : props.orientation.state.message !== null ? "Kompas belum siap · lihat keterangan di bawah"
+    : compassActive && following ? "Mengikuti perkiraan arah hadap"
+    : following && props.location !== null ? "Mengikuti lokasi · ↑ untuk arah hadap"
+    : "Geser peta · ◎ untuk mengikuti";
 
   return (
     <>
       <View style={[styles.viewport, Platform.OS === "web" && webTouchStyle]} {...panResponder.panHandlers}>
+        <Animated.View style={[StyleSheet.absoluteFill, { transformOrigin: [pivotX, pivotY, 0], transform: [{ rotate: rotationStyle }] }]}>
         <View style={[styles.plan, { transform: [{ translateX: camera.x }, { translateY: camera.y }, { scale: camera.zoom }] }]}>
           <View pointerEvents="none" style={StyleSheet.absoluteFill}>
             <Image accessible={false} draggable={false} source={floor} style={styles.floor} contentFit="fill" />
@@ -243,13 +297,15 @@ export function PlanViewport(props: Props): ReactElement {
             const selected: boolean = props.selectedCode === pin.code;
             const next: boolean = props.nextCode === pin.code;
             return (
+              <Animated.View key={pin.code} style={[styles.pin, { left: pin.x - 27, top: pin.y - 64,
+                transform: [{ scale: Math.max(1, 0.5 / camera.zoom) }, { rotate: counterRotationStyle }] }, poi.id === null && styles.unavailable]}>
               <Pressable
                 key={pin.code}
                 accessibilityRole="button"
                 accessibilityLabel={`${pin.code}, ${poi.museum.name}${poi.id === null ? ", segera hadir" : ""}${next ? ", tujuan berikutnya" : ""}`}
                 accessibilityState={{ selected }}
                 onPress={(): void => { setFollowing(false); props.onSelect(pin.code); }}
-                style={[styles.pin, { left: pin.x - 27, top: pin.y - 64, transform: [{ scale: Math.max(1, 0.5 / camera.zoom) }] }, poi.id === null && styles.unavailable]}
+                style={StyleSheet.absoluteFill}
                 hitSlop={10}
               >
                 <View pointerEvents="none" style={StyleSheet.absoluteFill}>
@@ -266,20 +322,23 @@ export function PlanViewport(props: Props): ReactElement {
                 )}
                 </View>
               </Pressable>
+              </Animated.View>
             );
           })}
-          <View style={[styles.pin, { left: 990, top: 361 }]} pointerEvents="none">
+          <Animated.View style={[styles.pin, { left: 990, top: 361, transform: [{ rotate: counterRotationStyle }] }]} pointerEvents="none">
             <Image draggable={false} source={pinShadow} style={styles.pinShadow} />
             <Image draggable={false} source={pinImage} style={styles.pinImage} />
             <View style={styles.pinLabel}><GeaText variant="heading24" color={colors.primary[900]}>S</GeaText></View>
-          </View>
+          </Animated.View>
           {props.location !== null && (
-            <Animated.View accessibilityLabel="Perkiraan posisimu dari GPS" pointerEvents="none" style={[styles.you, { left: dot.x, top: dot.y }]}>
+            <Animated.View accessibilityLabel="Perkiraan posisimu dari GPS" pointerEvents="none" style={[styles.you, { left: dot.x, top: dot.y, transform: [{ rotate: counterRotationStyle }] }]}>
+              {compassActive && following && <View style={styles.youDirection} />}
               <View style={styles.youHalo}><View style={styles.youDot} /></View>
               <View style={styles.youLabel}><GeaText variant="caption12" color={colors.white}>Kamu</GeaText></View>
             </Animated.View>
           )}
         </View>
+        </Animated.View>
         <Pressable accessibilityRole="button" accessibilityLabel={props.legs.length === 0 ? "Lihat seluruh denah" : "Lihat jalur menuju tujuan"}
           onPress={props.legs.length === 0 ? showPlan : showRoute} style={styles.routeButton}>
           <View style={styles.routeIndicator} />
@@ -287,6 +346,13 @@ export function PlanViewport(props: Props): ReactElement {
             {props.legs[0] === undefined ? "Denah lantai 1" : `${props.location === null ? "Dari pintu masuk →" : "Menuju"} ${props.legs[0].code}`}
           </GeaText>
           <GeaText variant="body14" color={colors.primary[700]}>↗</GeaText>
+        </Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={compassActive ? "Kembali ke orientasi denah" : "Aktifkan peta mengikuti arah hadap HP"}
+          accessibilityState={{ selected: compassActive, disabled: props.location === null || props.planBearing === null }}
+          disabled={props.location === null || props.planBearing === null} onPress={toggleHeading}
+          style={[styles.compass, compassActive && styles.controlActive, (props.location === null || props.planBearing === null) && styles.unavailable]}>
+          <GeaText variant="bold16" color={compassActive ? colors.white : colors.primary[800]}>↑</GeaText>
+          <GeaText variant="chip10" color={compassActive ? colors.white : colors.primary[800]}>POV</GeaText>
         </Pressable>
         <View style={styles.controls}>
           <View style={styles.zoomGroup}>
@@ -299,7 +365,7 @@ export function PlanViewport(props: Props): ReactElement {
         </View>
         <View pointerEvents="none" style={styles.hint}>
           <GeaText variant="caption12" color={colors.primary[800]}>
-            {following && props.location !== null ? "Mengikuti lokasi" : "Geser untuk jelajahi peta"}
+            {headingHint}
           </GeaText>
         </View>
       </View>
@@ -325,7 +391,7 @@ const styles = StyleSheet.create({
   plan: { position: "absolute", left: 0, top: 0, width: PLAN_WIDTH, height: PLAN_HEIGHT, transformOrigin: "top left" },
   floor: { position: "absolute", left: 0.29, top: 7.86, width: 1917.16, height: 516.851, transform: [{ rotate: "0.62deg" }] },
   route: { position: "absolute", left: 0, top: 0, width: PLAN_WIDTH, height: PLAN_HEIGHT },
-  pin: { position: "absolute", width: 58, height: 73, transformOrigin: "center bottom" },
+  pin: { position: "absolute", width: 58, height: 73, transformOrigin: [27, 64, 0] },
   pinImage: { position: "absolute", left: -3.1, top: -2.9, width: 58.06, height: 69.17 },
   pinShadow: { position: "absolute", left: 11, top: 61, width: 29, height: 11 },
   pinLabel: { position: "absolute", left: 3.73, top: 4.56, width: 45.73, height: 45.73, borderRadius: 23, alignItems: "center", justifyContent: "center", backgroundColor: colors.primary[0] },
@@ -335,7 +401,8 @@ const styles = StyleSheet.create({
   order: { position: "absolute", right: -5, top: -10, minWidth: 24, height: 24, paddingHorizontal: 4, alignItems: "center", justifyContent: "center", borderRadius: 12, borderWidth: 2, borderColor: colors.primary[0], backgroundColor: colors.primary[700] },
   nextOrder: { backgroundColor: colors.secondaryGreen[800] },
   unavailable: { opacity: 0.5 },
-  you: { position: "absolute", width: 54, marginLeft: -27, marginTop: -18, alignItems: "center", zIndex: 4 },
+  you: { position: "absolute", width: 54, marginLeft: -27, marginTop: -18, alignItems: "center", zIndex: 4, transformOrigin: [27, 18, 0] },
+  youDirection: { position: "absolute", top: -7, width: 0, height: 0, borderLeftWidth: 6, borderRightWidth: 6, borderBottomWidth: 10, borderLeftColor: "transparent", borderRightColor: "transparent", borderBottomColor: colors.primary[800] },
   youHalo: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.secondaryGreen[200], alignItems: "center", justifyContent: "center" },
   youDot: { width: 19, height: 19, borderRadius: 10, borderWidth: 3, borderColor: colors.white, backgroundColor: colors.secondaryGreen[700] },
   youLabel: { backgroundColor: colors.primary[800], borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
@@ -345,8 +412,9 @@ const styles = StyleSheet.create({
   controlText: { fontSize: 23, lineHeight: 27 },
   controlDivider: { height: 1, marginHorizontal: 10, backgroundColor: colors.primary[100] },
   controlActive: { backgroundColor: colors.primary[700] },
-  hint: { position: "absolute", left: 12, bottom: 14, borderRadius: 10, paddingHorizontal: 9, paddingVertical: 5, backgroundColor: colors.primary[0] },
-  routeButton: { position: "absolute", left: 12, top: 12, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingVertical: 9, borderRadius: 12, backgroundColor: colors.white, boxShadow: shadows.drop },
+  hint: { position: "absolute", left: 12, bottom: 14, maxWidth: 278, borderRadius: 10, paddingHorizontal: 9, paddingVertical: 5, backgroundColor: colors.primary[0] },
+  routeButton: { position: "absolute", left: 12, top: 12, maxWidth: 278, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingVertical: 9, borderRadius: 12, backgroundColor: colors.white, boxShadow: shadows.drop },
+  compass: { position: "absolute", right: 12, top: 12, width: 40, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: colors.white },
   routeIndicator: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.primary[700] },
   pressed: { opacity: 0.7 },
 });

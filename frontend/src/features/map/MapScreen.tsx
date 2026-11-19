@@ -6,9 +6,11 @@ import type { MuseumPoi, ZoneInfo } from "../../data/museum";
 import type { Fix } from "../../domain/geofence";
 import type { PoiStatus } from "../../domain/points";
 import type { GeofenceStatus } from "../../hooks/useGeofence";
+import { useHeading } from "../../hooks/useHeading";
+import { estimatePlanBearing, type HeadingAnchor } from "../../domain/heading";
 import type { Route } from "../preferences/recommend";
 import { FrameStage } from "../stories/hifi/parts";
-import { ENTRANCE, locateOnPlan, routeLegs, type LocationAnchor, type PlanPoint, type RouteLeg } from "./navigation";
+import { ENTRANCE, PLAN_PINS, locateOnPlan, routeLegs, type LocationAnchor, type PlanPin, type PlanPoint, type RouteLeg } from "./navigation";
 import { PlanViewport } from "./PlanViewport";
 import { StartMap } from "./StartMap";
 
@@ -19,6 +21,13 @@ export type MapPoi = {
 };
 export type GpsTest = { readonly label: string; readonly fix: Fix | null };
 type Notice = { readonly title: string; readonly description: string };
+type HeadingTest = { readonly label: string; readonly degrees: number };
+const headingTests: readonly HeadingTest[] = [
+  { label: "Hadap utara", degrees: 0 },
+  { label: "Hadap timur", degrees: 90 },
+  { label: "Hadap selatan", degrees: 180 },
+  { label: "Hadap barat", degrees: 270 },
+];
 type Props = {
   readonly wingsMode: "left" | "both";
   readonly pois: readonly MapPoi[];
@@ -53,12 +62,17 @@ const CARD_TOP: number = 584;
 
 /** Pemilihan pin tidak memberi akses cerita; Buka cerita memulai verifikasi GPS. */
 export function MapScreen(props: Props): ReactElement {
+  const orientation = useHeading();
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
   const [testsOpen, setTestsOpen] = useState<boolean>(false);
   const anchors: readonly LocationAnchor[] = useMemo((): readonly LocationAnchor[] => props.pois.map((poi: MapPoi): LocationAnchor => ({
     code: poi.museum.code, latitude: poi.museum.latitude, longitude: poi.museum.longitude,
   })), [props.pois]);
   const location: PlanPoint | null = useMemo((): PlanPoint | null => locateOnPlan(props.userFix, anchors), [props.userFix, anchors]);
+  const planBearing: number | null = useMemo((): number | null => estimatePlanBearing(anchors.flatMap((anchor: LocationAnchor): readonly HeadingAnchor[] => {
+    const pin: PlanPin | undefined = PLAN_PINS.find((item: PlanPin): boolean => item.code === anchor.code);
+    return pin === undefined ? [] : [{ ...anchor, x: pin.x, y: pin.y }];
+  })), [anchors]);
   const remaining: readonly MapPoi[] = useMemo((): readonly MapPoi[] => (props.route?.codes ?? [])
     .map((code: string): MapPoi | undefined => props.pois.find((poi: MapPoi): boolean => poi.museum.code === code))
     .filter((poi: MapPoi | undefined): poi is MapPoi => poi !== undefined && poi.id !== null && poi.status !== "selesai"), [props.route, props.pois]);
@@ -88,7 +102,7 @@ export function MapScreen(props: Props): ReactElement {
     <FrameStage background={colors.primary[0]}>
       <PlanViewport pois={props.pois} selectedCode={selectedCode} nextCode={target?.museum.code ?? null}
         routeCodes={props.route?.codes ?? []} legs={legs} location={location} leftOnly={props.wingsMode === "left"}
-        onSelect={choosePoi} onLocate={props.onCheckLocation} />
+        onSelect={choosePoi} onLocate={props.onCheckLocation} orientation={orientation} planBearing={planBearing} />
       <View style={styles.header}>
         <View style={styles.flex}>
           <GeaText variant="heading24" color={colors.primary[900]}>Peta petualangan</GeaText>
@@ -170,6 +184,9 @@ export function MapScreen(props: Props): ReactElement {
               {target?.id != null ? "Lokasi diperiksa saat membuka cerita. QR jika diperlukan." : "Pilih pin koleksi untuk melihat ceritanya."}
             </GeaText>
             {props.gpsError !== null && <GeaText variant="caption12" color={colors.tertiary[200]} accessibilityRole="alert">{props.gpsError}</GeaText>}
+            {orientation.state.message !== null && orientation.state.status !== "requesting" && (
+              <GeaText variant="caption12" color={colors.tertiary[200]} accessibilityRole="alert">{orientation.state.message}</GeaText>
+            )}
             {props.zoneIntro !== null && selected === null && target === null && (
               <Pressable accessibilityRole="button" accessibilityLabel="Tutup informasi sayap" onPress={props.onDismissZone} style={styles.zone}>
                 <GeaText variant="caption12" color={colors.primary[800]}>{props.zoneIntro.name} · ketuk untuk tutup</GeaText>
@@ -182,6 +199,14 @@ export function MapScreen(props: Props): ReactElement {
       {testsOpen && props.hasVisit && props.gpsTests.length > 0 && (
         <View style={styles.testMenu}>
           <ScrollView>
+            <GeaText variant="bold16" color={colors.primary[800]} style={styles.testHeading}>Uji arah hadap</GeaText>
+            {headingTests.map((test: HeadingTest): ReactElement => (
+              <Pressable key={test.label} accessibilityRole="button"
+                onPress={(): void => { orientation.simulate(test.degrees); setTestsOpen(false); }} style={styles.testItem}>
+                <GeaText variant="body14" color={colors.primary[900]}>{test.label} · {test.degrees}°</GeaText>
+              </Pressable>
+            ))}
+            <GeaText variant="bold16" color={colors.primary[800]} style={styles.testHeading}>Uji posisi GPS</GeaText>
             {props.gpsTests.map((test: GpsTest): ReactElement => (
             <Pressable key={test.label} accessibilityRole="button"
               onPress={(): void => { props.onGpsTest(test.fix); setTestsOpen(false); setSelectedCode(null); }} style={styles.testItem}>
@@ -225,4 +250,5 @@ const styles = StyleSheet.create({
   testPill: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 5, backgroundColor: colors.primary[0] },
   testMenu: { position: "absolute", right: 16, top: 144, width: 230, maxHeight: 300, padding: 8, borderRadius: 16, backgroundColor: colors.white, boxShadow: shadows.drop, zIndex: 10 },
   testItem: { paddingHorizontal: 8, paddingVertical: 12 },
+  testHeading: { paddingHorizontal: 8, paddingVertical: 10 },
 });
