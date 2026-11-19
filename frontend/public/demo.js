@@ -55,6 +55,10 @@ frame.addEventListener("load", () => {
   frame.contentWindow?.postMessage("gea:request-source", window.location.origin);
 });
 reset.addEventListener("click", resetDemo);
-frame.contentWindow?.postMessage("gea:request-source", window.location.origin);
+
+// Preview statis: muat dokumen aplikasi baru setiap halaman demo dibuka, tanpa menghapus progres.
+const previewUrl = new URL("/", window.location.origin);
+previewUrl.searchParams.set("preview", String(Date.now()));
+frame.src = previewUrl.href;
 
 export {};

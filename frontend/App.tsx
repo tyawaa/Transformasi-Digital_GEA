@@ -14,7 +14,6 @@ import {
   activePois,
   museumPoiById,
   museumPois,
-  type Wing,
   type ZoneInfo,
   zones,
 } from "./src/data/museum";
@@ -124,8 +123,6 @@ function Home(): ReactElement {
   const [scanState, setScanState] = useState<ScanState>("scanning");
   const [scanMessage, setScanMessage] = useState<string | null>(null);
   const [scanNotice, setScanNotice] = useState<string | null>(null);
-  const [zone, setZone] = useState<ZoneInfo | null>(null);
-  const [manualWing, setManualWing] = useState<Wing | null>(null);
   const [qrZoneIntro, setQrZoneIntro] = useState<ZoneInfo | null>(null);
 
   async function loadPois(): Promise<void> {
@@ -227,27 +224,8 @@ function Home(): ReactElement {
     })),
   ], [mapPois, screen]);
   const geofence = useGeofence({ visitId: visit?.id_sesi ?? null, checkpoints });
-  const gpsWing: Wing | null = geofence.active === null
-    ? null
-    : zones.find((z: ZoneInfo): boolean => z.code === geofence.active?.id)?.wing ??
-      mapPois.find((poi: MapPoi): boolean => poi.museum.code === geofence.active?.id)?.museum.wing ?? null;
   const cardZone: ZoneInfo | null = zones.find((z: ZoneInfo): boolean => z.code === geofence.card) ?? null;
   const cardPoi: MapPoi | null = mapPois.find((poi: MapPoi): boolean => poi.museum.code === geofence.card) ?? null;
-
-  // Ruang aktif: GPS (bila kuat), pilihan manual, QR zona terakhir, atau sayap POI yang terakhir diverifikasi.
-  const activeWing: Wing | null = useMemo((): Wing | null => {
-    if (gpsWing !== null) return gpsWing;
-    if (manualWing !== null) return manualWing;
-    if (zone !== null) return zone.wing;
-    let latest: { wing: Wing; until: number } | null = null;
-    for (const [poiId, state] of Object.entries(progress)) {
-      const wing: Wing | undefined = mapPois.find((poi: MapPoi): boolean => poi.id === poiId)?.museum.wing;
-      if (wing !== undefined && state.verifiedUntil !== null && (latest === null || state.verifiedUntil > latest.until)) {
-        latest = { wing, until: state.verifiedUntil };
-      }
-    }
-    return latest?.wing ?? null;
-  }, [gpsWing, manualWing, zone, progress, mapPois]);
 
   async function beginVisit(token: string): Promise<Visit> {
     const created: Visit = await storiesSource.startQrVisit(randomUUID(), token, profile);
@@ -276,7 +254,6 @@ function Home(): ReactElement {
       if (result.kind === "zone") {
         if (visit === null) await beginVisit(result.token);
         const info: ZoneInfo | undefined = zones.find((z: ZoneInfo): boolean => z.code === result.code);
-        setZone(info ?? null);
         setQrZoneIntro(info ?? null);
         setScanNotice(`Kamu di ${info?.name ?? "zona ini"}. Pilih koleksi di peta dan tekan Buka cerita untuk memeriksa GPS, atau scan QR koleksi di sini.`);
         return;
@@ -289,7 +266,6 @@ function Home(): ReactElement {
         }
         await beginVisit(MOCK_ENTRANCE_TOKEN);
       }
-      setZone(null);
       const target = result.poiId === null ? undefined : museumPoiById(result.poiId);
       if (target !== undefined && !wingEnabled(target.wing)) {
         failScan("Koleksi ini ada di Sayap Kanan, yang belum dibuka di versi ini.");
@@ -344,6 +320,13 @@ function Home(): ReactElement {
           onRecheck={(): void => {
             void session.checkLocation();
           }}
+          onScanQr={(): void => {
+            closeLocationSplash();
+            setScanMessage(null);
+            setScanNotice(null);
+            setScanState("scanning");
+            setScreen({ name: "scan" });
+          }}
         />
       </>
     );
@@ -382,6 +365,7 @@ function Home(): ReactElement {
           poiId={screen.poiId}
           initialToken={screen.token}
           gpsFix={geofence.currentFix}
+          gpsSimulation={geofence.status === "simulated" ? geofence.currentFix : null}
           progressOf={progressOf}
           onProgress={visitState.update}
           onAnswer={visitState.recordAnswer}
@@ -431,8 +415,6 @@ function Home(): ReactElement {
           onBack={(): void => setScreen({ name: "map" })}
           onEndVisit={(): void => {
             visitState.endVisit();
-            setZone(null);
-            setManualWing(null);
             setScreen({ name: "map" });
           }}
         />
@@ -457,18 +439,18 @@ function Home(): ReactElement {
         hasVisit={visit !== null}
         totalPoints={points}
         completedCount={mapPois.filter((poi: MapPoi): boolean => poi.id !== null && poi.status === "selesai").length}
-        activeWing={activeWing}
         zoneIntro={cardZone ?? qrZoneIntro}
         nearby={cardPoi}
         gpsWeak={visit !== null && geofence.weak}
+        gpsStatus={geofence.status}
+        gpsError={geofence.error}
         gpsTests={gpsTests}
         onGpsTest={geofence.simulate}
-        onPickWing={setManualWing}
         onDismissNearby={(): void => {
           if (cardPoi !== null) geofence.dismiss(cardPoi.museum.code);
         }}
         notice={visit === null ? notice : null}
-        checkingLocation={busy === "location"}
+        checkingLocation={busy === "location" || busy === "connection"}
         onDismissZone={(): void => {
           if (cardZone !== null) geofence.dismiss(cardZone.code);
           else setQrZoneIntro(null);
@@ -480,13 +462,15 @@ function Home(): ReactElement {
           setScreen({ name: "scan" });
         }}
         onCheckLocation={(): void => {
-          void session.checkLocation();
+          if (visit === null) void session.checkLocation();
+          else void runOperation("connection", geofence.refresh);
         }}
         onRetry={(): void => {
           setSummaries(null);
           void loadPois();
         }}
         onOpenProgress={(): void => setScreen({ name: "progress" })}
+        onOpenPoi={(poiId: string): void => setScreen({ name: "story", poiId, token: null })}
         userFix={geofence.fix}
         route={route}
         topicsFor={(code: string): readonly string[] => matchedTopics(preferences.preferences, code)}

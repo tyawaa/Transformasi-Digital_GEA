@@ -41,8 +41,9 @@ export function LocationSuccessSplash({ onContinue }: { readonly onContinue: () 
 }
 
 export function LocationFailedSplash(
-  { onRecheck }: {
+  { onRecheck, onScanQr }: {
     readonly onRecheck: () => void;
+    readonly onScanQr: () => void;
   },
 ): ReactElement {
   return (
@@ -75,6 +76,11 @@ export function LocationFailedSplash(
           >
             <GeaText variant="button16" color={colors.secondaryGreen[200]}>
               Cek ulang lokasi
+            </GeaText>
+          </Pressable>
+          <Pressable accessibilityRole="button" onPress={onScanQr} style={styles.stretch}>
+            <GeaText variant="button16" color={colors.white} style={styles.text}>
+              Lokasi belum tersedia? Pindai QR pintu masuk
             </GeaText>
           </Pressable>
         </View>

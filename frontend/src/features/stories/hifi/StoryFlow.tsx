@@ -76,6 +76,8 @@ type Props = {
   /** Token QR koleksi yang sudah dipindai dari peta; langsung diverifikasi. */
   readonly initialToken?: string | null;
   readonly gpsFix: Fix | null;
+  /** Posisi yang dipilih secara eksplisit dalam Mode uji GPS; null memakai bacaan perangkat baru. */
+  readonly gpsSimulation: Fix | null;
   readonly progressOf: (poiId: string) => PoiProgress;
   readonly onProgress: (poiId: string, patch: Partial<PoiProgress>) => void;
   readonly onAnswer: (answer: AnswerResult) => void;
@@ -112,7 +114,7 @@ export function StoryFlow(props: Props): ReactElement {
   const progress: PoiProgress = progressOf(poiId);
   const verified: boolean = isVerified(progress);
   const [step, setStep] = useState<Step>(
-    props.initialToken != null ? "scan" : progress.completed || progress.failed || verified ? "loading" : "gps",
+    props.initialToken != null ? "scan" : "gps",
   );
   const [scanState, setScanState] = useState<ScanState>(props.initialToken != null ? "detected" : "scanning");
   const [scanMessage, setScanMessage] = useState<string | null>(null);
@@ -167,9 +169,9 @@ export function StoryFlow(props: Props): ReactElement {
     setError(null);
     setGpsLabel("Memeriksa lokasi koleksi...");
     async function verifyGps(): Promise<void> {
-      const reading: LocationReading = props.gpsFix === null || !Number.isFinite(props.gpsFix.accuracyMeters)
+      const reading: LocationReading = props.gpsSimulation === null
         ? await readVisitorLocation((message: string): void => { if (active) setGpsLabel(message); })
-        : { status: "available", location: props.gpsFix };
+        : { status: "available", location: props.gpsSimulation };
       if (!active) return;
       if (reading.status !== "available") {
         throw new GeaServiceError(0, "LOCATION_UNAVAILABLE", "Posisi belum dapat dibaca. Periksa izin lokasi dan coba lagi, atau gunakan QR koleksi.");
