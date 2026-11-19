@@ -31,6 +31,7 @@ import { type ParsedQr, qrErrorMessage, wrapQr } from "./src/features/qr/qrPaylo
 import { type DummyScan, ScanQrScreen, type ScanState } from "./src/features/stories/hifi/ScanQrScreen";
 import { StoryFlow } from "./src/features/stories/hifi/StoryFlow";
 import { LocationFailedSplash, LocationSuccessSplash } from "./src/features/location/LocationSplash";
+import { LocationCheckingSplash } from "./src/features/location/LocationChecking";
 import type { AdventureSummary } from "./src/features/stories/hifi/AdventureDoneScreens";
 import { StoryButton } from "./src/features/stories/hifi/parts";
 import { useOperation } from "./src/hooks/useOperation";
@@ -107,16 +108,17 @@ function Home(): ReactElement {
   const [screen, setScreen] = useState<Screen>({ name: "map" });
   // Splash lokasi: ok = di area museum, fail = selain itu.
   const [locationSplash, setLocationSplash] = useState<"ok" | "fail" | null>(null);
-  const [onboardingStep, setOnboardingStep] = useState<0 | 3>(0);
   const wasCheckingLocation = useRef<boolean>(false);
   useEffect((): void => {
     const checking: boolean = busy === "location";
     if (wasCheckingLocation.current && !checking) {
       const decision = session.decision;
-      setLocationSplash(decision !== null && decision.status === "inside" && decision.accessAllowed ? "ok" : "fail");
+      const verified: boolean = decision?.status === "inside" && decision.accessAllowed &&
+        session.visit !== null && operationError === null;
+      setLocationSplash(verified ? "ok" : "fail");
     }
     wasCheckingLocation.current = checking;
-  }, [busy, session.decision]);
+  }, [busy, session.decision, session.visit, operationError]);
   const [summaries, setSummaries] = useState<readonly PoiSummary[] | null>(null);
   const [poisError, setPoisError] = useState<string | null>(null);
   const [scanState, setScanState] = useState<ScanState>("scanning");
@@ -318,6 +320,14 @@ function Home(): ReactElement {
     setLocationSplash(null);
     if (onboarding.state === "show") onboarding.complete();
   }
+  if (busy === "location" && locationSplash !== null) {
+    return (
+      <>
+        <StatusBar style="dark" />
+        <LocationCheckingSplash />
+      </>
+    );
+  }
   if (locationSplash === "ok") {
     return (
       <>
@@ -331,15 +341,8 @@ function Home(): ReactElement {
       <>
         <StatusBar style="light" />
         <LocationFailedSplash
-          checking={busy === "location"}
           onRecheck={(): void => {
             void session.checkLocation();
-          }}
-          onBack={(): void => {
-            // Kembali ke onboarding, langkah cek lokasi.
-            setLocationSplash(null);
-            setOnboardingStep(3);
-            if (onboarding.state !== "show") onboarding.reopen();
           }}
         />
       </>
@@ -351,16 +354,9 @@ function Home(): ReactElement {
         <StatusBar style="dark" />
         <OnboardingScreen
           checkingLocation={busy === "location"}
-          locationLabel={session.locationLabel}
-          locationNotice={session.notice}
-          locationOk={session.decision?.status === "inside" && session.decision.accessAllowed}
-          initialStep={onboardingStep}
-          locationError={operationError}
-          currentLocation={session.currentLocation}
           onCheckLocation={(): void => {
             void session.checkLocation();
           }}
-          onDone={onboarding.complete}
         />
       </>
     );
