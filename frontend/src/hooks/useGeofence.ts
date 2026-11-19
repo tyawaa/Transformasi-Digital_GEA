@@ -8,11 +8,14 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Location from "expo-location";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type Checkpoint, distanceMeters, type Fix, nearestInside, stepGeofence } from "../domain/geofence";
+import { readVisitorLocation, type LocationReading } from "../services/location";
 
-export type GeofenceStatus = "off" | "watching" | "no_permission" | "simulated";
+export type GeofenceStatus = "off" | "watching" | "no_permission" | "error" | "simulated";
 
 export type GeofenceState = {
   readonly status: GeofenceStatus;
+  readonly error: string | null;
+  readonly refresh: () => Promise<void>;
   /** Checkpoint terdekat yang sedang dimasuki (ruang aktif). */
   readonly active: Checkpoint | null;
   readonly currentFix: Fix | null;
@@ -39,6 +42,8 @@ export function useGeofence(
   },
 ): GeofenceState {
   const [status, setStatus] = useState<GeofenceStatus>("off");
+  const [error, setError] = useState<string | null>(null);
+  const [watchRevision, setWatchRevision] = useState<number>(0);
   const [active, setActive] = useState<Checkpoint | null>(null);
   const [currentFix, setCurrentFix] = useState<Fix | null>(null);
   const [weak, setWeak] = useState(false);
@@ -58,6 +63,7 @@ export function useGeofence(
     setCurrentFix(null);
     setWeak(false);
     setCard(null);
+    setError(null);
   };
 
   // Daftar kartu yang sudah ditutup, per kunjungan.
@@ -113,8 +119,18 @@ export function useGeofence(
     if (visitId === null || simulated !== null) return undefined;
     let cancelled = false;
     let subscription: Location.LocationSubscription | null = null;
+    function failWatch(message: string): void {
+      console.warn("gea_gps_watch_failed", { message, visitId });
+      if (cancelled) return;
+      setCurrentFix(null);
+      setActive(null);
+      setCard(null);
+      setError(message);
+      setStatus("error");
+    }
     (async (): Promise<void> => {
       try {
+        setError(null);
         const permission = await Location.getForegroundPermissionsAsync();
         if (cancelled) return;
         if (!permission.granted) {
@@ -129,21 +145,21 @@ export function useGeofence(
         subscription = await Location.watchPositionAsync(
           watchOptions,
           (position: Location.LocationObject): void => {
+            if (cancelled) return;
+            setError(null);
+            setStatus("watching");
             handleFix({
               latitude: position.coords.latitude,
               longitude: position.coords.longitude,
               accuracyMeters: position.coords.accuracy ?? Number.POSITIVE_INFINITY,
             });
           },
+          failWatch,
         );
         if (cancelled) subscription.remove();
         else setStatus("watching");
       } catch (cause: unknown) {
-        console.warn("gea_gps_watch_failed", { error: cause instanceof Error ? cause.message : String(cause) });
-        if (!cancelled) {
-          setCurrentFix(null);
-          setStatus("no_permission");
-        }
+        failWatch(cause instanceof Error ? cause.message : String(cause));
       }
     })();
     return (): void => {
@@ -151,11 +167,36 @@ export function useGeofence(
       subscription?.remove();
       setStatus("off");
     };
-  }, [visitId, simulated, handleFix]);
+  }, [visitId, simulated, handleFix, watchRevision]);
+
+  async function refresh(): Promise<void> {
+    const reading: LocationReading = await readVisitorLocation((): void => undefined).catch((cause: unknown): never => {
+      setCurrentFix(null);
+      setActive(null);
+      setCard(null);
+      setError(cause instanceof Error ? cause.message : String(cause));
+      setStatus("error");
+      throw cause;
+    });
+    if (reading.status !== "available") {
+      const message: string = `Lokasi belum dapat dibaca (${reading.status}). Periksa izin dan layanan lokasi, atau pindai QR.`;
+      setCurrentFix(null);
+      setActive(null);
+      setCard(null);
+      setError(message);
+      setStatus(reading.status === "permission_denied" || reading.status === "permission_blocked" ? "no_permission" : "error");
+      throw new Error(message);
+    }
+    setSimulated(null);
+    setError(null);
+    handleFix(reading.location);
+    setWatchRevision((revision: number): number => revision + 1);
+  }
 
   // Posisi buatan dari Mode uji.
   useEffect((): void => {
     if (simulated === null || visitId === null) return;
+    setError(null);
     setStatus("simulated");
     handleFix(simulated);
   }, [simulated, visitId, handleFix]);
@@ -175,5 +216,5 @@ export function useGeofence(
     setSimulated(fix);
   }, []);
 
-  return { status, active, currentFix, weak, card, dismiss, simulate, fix: currentFix };
+  return { status, error, refresh, active, currentFix, weak, card, dismiss, simulate, fix: currentFix };
 }
