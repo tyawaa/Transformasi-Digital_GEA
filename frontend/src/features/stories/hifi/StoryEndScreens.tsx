@@ -88,7 +88,7 @@ function MascotSplash(
 
 /** "Selamat Penjelajah!": bintang dari kuis, SCORE (poin koleksi ini) dan REWARD (total poin). */
 export function ExplorerResultScreen(
-  { poiName, stars, conquered, score, reward, explanation, extra, onHome }: {
+  { poiName, stars, conquered, reward, explanation, onHome }: {
     readonly poiName: string;
     /** Penjelasan jawaban Mini Quiz (kolom "Penjelasan setelah Menjawab"). */
     readonly explanation?: string | undefined;
@@ -96,10 +96,8 @@ export function ExplorerResultScreen(
     readonly stars: number;
     /** true = kuis dijawab benar. */
     readonly conquered: boolean;
-    readonly score: number;
+    /** Poin yang didapat di POI ini. */
     readonly reward: number;
-    /** Baris tambahan: rute berikutnya, lencana baru. */
-    readonly extra: readonly string[];
     readonly onHome: () => void;
   },
 ): ReactElement {
@@ -136,14 +134,8 @@ export function ExplorerResultScreen(
         {explanation !== undefined && (
           <GeaText variant="body14" color={componentColors.cardCaption} style={splash.center}>{explanation}</GeaText>
         )}
-        {extra.map((line: string): ReactElement => (
-          <GeaText key={line} variant="label16" color={colors.secondaryGreen[900]} style={splash.center}>{line}</GeaText>
-        ))}
         <View style={result.divider} />
-        <View style={result.scores}>
-          <ScoreBox label="SCORE" value={String(score)} />
-          <ScoreBox label="REWARD" value={String(reward)} unit="POINTS" />
-        </View>
+        <ScoreBox label="REWARD" value={String(reward)} unit="POINTS" />
         <StoryButton label="Kembali ke Halaman Utama" onPress={onHome} style={result.button} />
       </View>
     </FrameStage>
@@ -255,8 +247,7 @@ const result = StyleSheet.create({
   star: { fontSize: 56, lineHeight: 60 },
   starGlow: { textShadowColor: "rgba(212, 80, 30, 0.45)", textShadowRadius: 12, textShadowOffset: { width: 0, height: 0 } },
   divider: { width: 246, height: 1, backgroundColor: colors.greys[0] },
-  scores: { flexDirection: "row", gap: spacing[12], alignSelf: "stretch" },
-  scoreCol: { flex: 1, alignItems: "center", gap: spacing[8] },
+  scoreCol: { alignSelf: "stretch", alignItems: "center", gap: spacing[8] },
   box: {
     alignSelf: "stretch",
     height: 52,

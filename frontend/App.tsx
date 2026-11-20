@@ -7,7 +7,7 @@ import { colors } from "./src/design/tokens";
 import { GeaFontsProvider, GeaText } from "./src/design/typography";
 import type { PoiSummary, Visit } from "./src/domain/contracts";
 import { availableBadges, type BadgeContext, type BadgeDef, badgeBonus, type BadgeId, badges as badgeDefs, earnedBadges, poiStatus, type PoiRef, totalPoints } from "./src/domain/points";
-import { localChallengePoints } from "./src/features/stories/progress";
+import { localActivityPoints, localChallengePoints } from "./src/features/stories/progress";
 import { useQuestDays } from "./src/features/progress/useQuestDays";
 import { questKind } from "./src/features/stories/questPlan";
 import {
@@ -103,6 +103,15 @@ function Home(): ReactElement {
   const session = useVisitSession(api, runOperation, profile);
   const visitState = useVisitProgress(storiesSource);
   const { visit, progress, progressOf } = visitState;
+  // Toast "Rute Untuk Anda" sekali saat kunjungan baru dimulai (dari peta awal).
+  const [routeToast, setRouteToast] = useState<boolean>(false);
+  const lastVisitId = useRef<string | null | undefined>(undefined);
+  useEffect((): void => {
+    if (!visitState.ready) return;
+    const id: string | null = visit?.id_sesi ?? null;
+    if (lastVisitId.current === null && id !== null) setRouteToast(true);
+    lastVisitId.current = id;
+  }, [visitState.ready, visit?.id_sesi]);
 
   const [screen, setScreen] = useState<Screen>({ name: "map" });
   // Splash lokasi: ok = di area museum, fail = selain itu.
@@ -178,11 +187,12 @@ function Home(): ReactElement {
   const badges: readonly BadgeId[] = storiesSource.kind === "api"
     ? [...new Set([...visitState.rewards.badges, ...localBadges])]
     : localBadges;
-  const points: number = storiesSource.kind === "api"
+  // Poin aktivitas (check-in, cerita, percobaan pertama, POI tuntas) dihitung di aplikasi.
+  const points: number = localActivityPoints(progress) + (storiesSource.kind === "api"
     ? visitState.rewards.totalPoints + localChallengePoints(progress) + badgeBonus(
       localBadges.filter((id: BadgeId): boolean => !visitState.rewards.badges.includes(id)),
     )
-    : totalPoints(refs, progress, badgeContext);
+    : totalPoints(refs, progress, badgeContext));
   // Rute rekomendasi dari preferensi, hanya dari ruangan yang ceritanya sudah tersedia.
   const route: Route | null = useMemo((): Route | null =>
     recommendRoute(
@@ -430,6 +440,8 @@ function Home(): ReactElement {
     <>
       <StatusBar style="dark" />
       <MapScreen
+        routeToast={routeToast}
+        onCloseRouteToast={(): void => setRouteToast(false)}
         wingsMode={wingsMode}
         pois={mapPois}
         loading={summaries === null && poisError === null}
