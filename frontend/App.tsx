@@ -31,7 +31,7 @@ import { type DummyScan, ScanQrScreen, type ScanState } from "./src/features/sto
 import { StoryFlow } from "./src/features/stories/hifi/StoryFlow";
 import { LocationFailedSplash, LocationSuccessSplash } from "./src/features/location/LocationSplash";
 import { LocationCheckingSplash } from "./src/features/location/LocationChecking";
-import type { AdventureSummary } from "./src/features/stories/hifi/AdventureDoneScreens";
+import { type AdventureSummary, formatVisitDuration, ShareResultScreen, WellDoneScreen } from "./src/features/stories/hifi/AdventureDoneScreens";
 import { StoryButton } from "./src/features/stories/hifi/parts";
 import { useOperation } from "./src/hooks/useOperation";
 import { useAuthRefresh } from "./src/hooks/useAuthRefresh";
@@ -92,6 +92,8 @@ type Screen =
   | { readonly name: "map" }
   | { readonly name: "scan" }
   | { readonly name: "progress" }
+  | { readonly name: "summary" }
+  | { readonly name: "share" }
   | { readonly name: "story"; readonly poiId: string; readonly token: string | null };
 
 function Home(): ReactElement {
@@ -208,7 +210,12 @@ function Home(): ReactElement {
       );
     return next === undefined ? null : `${next.museum.code} · ${next.museum.name}`;
   }
-  const allDone: boolean = refs.length > 0 && mapPois.every((poi: MapPoi): boolean => poi.id === null || poi.status === "selesai");
+  const routeDone: boolean = route !== null && route.codes.length > 0 &&
+    route.codes.every((code: string): boolean => {
+      const match = mapPois.find((poi: MapPoi): boolean => poi.museum.code === code);
+      return match !== undefined && match.status === "selesai";
+    });
+  const allDone: boolean = (refs.length > 0 && mapPois.every((poi: MapPoi): boolean => poi.id === null || poi.status === "selesai")) || routeDone;
   // Data layar Well Done.
   const bestBadge: BadgeDef | undefined = badgeDefs
     .filter((badge: BadgeDef): boolean => badges.includes(badge.id))
@@ -220,6 +227,8 @@ function Home(): ReactElement {
     questsTotal: refs.filter((ref: PoiRef): boolean => ref.quest !== null).length,
     totalPoints: points,
     badgeName: bestBadge?.name ?? null,
+    durationText: formatVisitDuration(visit?.startedAt),
+    durationMinutes: Math.max(1, Math.round((Date.now() - (visit?.startedAt ?? Date.now())) / 60_000)),
   };
 
   // Zona dipantau selama kunjungan; POI hanya diperiksa setelah Buka cerita ditekan.
@@ -412,6 +421,31 @@ function Home(): ReactElement {
     );
   }
 
+  if (screen.name === "summary") {
+    return (
+      <>
+        <StatusBar style="dark" />
+        <WellDoneScreen
+          summary={adventure}
+          onShare={(): void => setScreen({ name: "share" })}
+          onHome={(): void => setScreen({ name: "map" })}
+        />
+      </>
+    );
+  }
+
+  if (screen.name === "share") {
+    return (
+      <>
+        <StatusBar style="dark" />
+        <ShareResultScreen
+          summary={adventure}
+          onBack={(): void => setScreen({ name: "summary" })}
+        />
+      </>
+    );
+  }
+
   if (screen.name === "progress") {
     return (
       <>
@@ -422,10 +456,10 @@ function Home(): ReactElement {
           totalPoints={points}
           earned={badges}
           available={availableBadges(badgeContext)}
+          durationText={adventure.durationText}
           onBack={(): void => setScreen({ name: "map" })}
           onEndVisit={(): void => {
-            visitState.endVisit();
-            setScreen({ name: "map" });
+            setScreen({ name: "summary" });
           }}
         />
       </>
@@ -482,6 +516,7 @@ function Home(): ReactElement {
           void loadPois();
         }}
         onOpenProgress={(): void => setScreen({ name: "progress" })}
+        onOpenSummary={(): void => setScreen({ name: "summary" })}
         onOpenPoi={(poiId: string): void => setScreen({ name: "story", poiId, token: null })}
         userFix={geofence.fix}
         route={route}

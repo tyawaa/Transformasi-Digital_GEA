@@ -88,7 +88,7 @@ function MascotSplash(
 
 /** "Selamat Penjelajah!": bintang dari kuis, SCORE (poin koleksi ini) dan REWARD (total poin). */
 export function ExplorerResultScreen(
-  { poiName, stars, conquered, reward, explanation, onHome }: {
+  { poiName, stars, conquered, score, reward, explanation, extra, allCompleted = false, onHome }: {
     readonly poiName: string;
     /** Penjelasan jawaban Mini Quiz (kolom "Penjelasan setelah Menjawab"). */
     readonly explanation?: string | undefined;
@@ -97,7 +97,12 @@ export function ExplorerResultScreen(
     /** true = kuis dijawab benar. */
     readonly conquered: boolean;
     /** Poin yang didapat di POI ini. */
+    readonly score?: number;
+    /** Total poin terkumpul. */
     readonly reward: number;
+    /** Baris tambahan: rute berikutnya, lencana baru. */
+    readonly extra?: readonly string[];
+    readonly allCompleted?: boolean;
     readonly onHome: () => void;
   },
 ): ReactElement {
@@ -135,8 +140,19 @@ export function ExplorerResultScreen(
           <GeaText variant="body14" color={componentColors.cardCaption} style={splash.center}>{explanation}</GeaText>
         )}
         <View style={result.divider} />
-        <ScoreBox label="REWARD" value={String(reward)} unit="POINTS" />
-        <StoryButton label="Kembali ke Halaman Utama" onPress={onHome} style={result.button} />
+        {score !== undefined ? (
+          <View style={result.scores}>
+            <ScoreBox label="SCORE" value={String(score)} />
+            <ScoreBox label="REWARD" value={String(reward)} unit="POINTS" />
+          </View>
+        ) : (
+          <ScoreBox label="REWARD" value={String(reward)} unit="POINTS" />
+        )}
+        <StoryButton
+          label={allCompleted ? "Lihat Ringkasan Akhir" : "Kembali ke Halaman Utama"}
+          onPress={onHome}
+          style={result.button}
+        />
       </View>
     </FrameStage>
   );

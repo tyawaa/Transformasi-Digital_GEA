@@ -1,11 +1,17 @@
 // Petualangan selesai (Hifi Sprint 3): Well Done → kartu hasil untuk dibagikan.
 import { Image } from "expo-image";
-import { type ReactElement, useState } from "react";
-import { Linking, Pressable, Share, StyleSheet, View } from "react-native";
+import { Asset } from "expo-asset";
+import * as Sharing from "expo-sharing";
+import { type ReactElement, useRef, useState } from "react";
+import { Linking, Platform, Pressable, Share, StyleSheet, View } from "react-native";
+import { captureRef } from "react-native-view-shot";
 import { colors, componentColors, shadows, spacing } from "../../../design/tokens";
 import { GeaText } from "../../../design/typography";
 import { ScanBackground } from "./backgrounds";
+import { formatVisitDuration } from "../../../domain/points";
 import { FrameStage, StoryButton } from "./parts";
+
+export { formatVisitDuration };
 
 const mascot = require("../../../../assets/design/mascot.svg") as number;
 const ellipse = require("../../../../assets/design/welldone-ellipse.svg") as number;
@@ -24,6 +30,9 @@ export type AdventureSummary = {
   readonly totalPoints: number;
   /** null = belum ada lencana. */
   readonly badgeName: string | null;
+  /** Durasi kunjungan dalam teks (mis. "45 menit" atau "1 jam 15 menit"). */
+  readonly durationText?: string;
+  readonly durationMinutes?: number;
 };
 
 function WellDoneRibbon({ top }: { readonly top: number }): ReactElement {
@@ -67,6 +76,22 @@ export function WellDoneScreen(
             POINTS
           </GeaText>
         </View>
+        <View style={done.statsRow}>
+          <View style={done.statItem}>
+            <GeaText variant="bold16" color={colors.primary[900]}>{summary.poisDone}/{summary.poisTotal}</GeaText>
+            <GeaText variant="caption12" color={colors.primary[700]}>Koleksi</GeaText>
+          </View>
+          <View style={done.statDivider} />
+          <View style={done.statItem}>
+            <GeaText variant="bold16" color={colors.primary[900]}>{summary.durationText ?? "15 menit"}</GeaText>
+            <GeaText variant="caption12" color={colors.primary[700]}>Durasi</GeaText>
+          </View>
+          <View style={done.statDivider} />
+          <View style={done.statItem}>
+            <GeaText variant="bold16" color={colors.primary[900]}>{summary.questsDone}/{summary.questsTotal}</GeaText>
+            <GeaText variant="caption12" color={colors.primary[700]}>Misi</GeaText>
+          </View>
+        </View>
         <GeaText variant="body14" color={colors.black} style={done.howText}>
           Tukarkan Reward dengan merchandise Museum Geologi Bandung.{" "}
           <GeaText
@@ -99,24 +124,245 @@ export function WellDoneScreen(
   );
 }
 
+async function renderSummaryCardToBlob(summary: AdventureSummary): Promise<{ blob: Blob; dataUrl: string }> {
+  if (typeof document === "undefined") {
+    throw new Error("DOM document tidak tersedia");
+  }
+
+  // Muat gambar maskot dari bundled asset untuk digambar ke kanvas
+  let mascotImg: HTMLImageElement | null = null;
+  try {
+    const asset = Asset.fromModule(mascot);
+    await asset.downloadAsync();
+    const url = asset.localUri ?? asset.uri;
+    if (url) {
+      mascotImg = await new Promise<HTMLImageElement>((res, rej) => {
+        const img = new window.Image();
+        img.crossOrigin = "anonymous";
+        img.onload = (): void => res(img);
+        img.onerror = (): void => rej(new Error("Gagal memuat maskot"));
+        img.src = url;
+      });
+    }
+  } catch {
+    // Lanjut tanpa maskot jika gagal dimuat
+  }
+
+  const canvas = document.createElement("canvas");
+  const scale = 2;
+  const w = 350 * scale;
+  const h = 438 * scale;
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas context tidak tersedia");
+
+  // Background rounded rect
+  const r = 16 * scale;
+  ctx.beginPath();
+  ctx.moveTo(r, 0);
+  ctx.lineTo(w - r, 0);
+  ctx.quadraticCurveTo(w, 0, w, r);
+  ctx.lineTo(w, h - r);
+  ctx.quadraticCurveTo(w, h, w - r, h);
+  ctx.lineTo(r, h);
+  ctx.quadraticCurveTo(0, h, 0, h - r);
+  ctx.lineTo(0, r);
+  ctx.quadraticCurveTo(0, 0, r, 0);
+  ctx.closePath();
+  ctx.fillStyle = "#FEEBB5";
+  ctx.fill();
+
+  // Gambar maskot di kiri atas kartu (sesuai posisi React component)
+  if (mascotImg) {
+    ctx.drawImage(mascotImg, 22 * scale, 53 * scale, 100 * scale, Math.round(100 * MASCOT_RATIO) * scale);
+  }
+
+  ctx.fillStyle = "#0F3224";
+  ctx.font = `bold ${12 * scale}px sans-serif`;
+  ctx.textAlign = "center";
+  ctx.fillText("MUSEUM GEOLOGI BANDUNG", w / 2, 32 * scale);
+
+  ctx.font = `bold ${11 * scale}px sans-serif`;
+  ctx.textAlign = "left";
+  ctx.fillText("AKU ADALAH", 138 * scale, 68 * scale);
+  ctx.font = `bold ${24 * scale}px sans-serif`;
+  ctx.fillText("Penjelajah Bumi!", 138 * scale, 98 * scale);
+
+  // Pill status
+  const pillY = 175 * scale;
+  const pillH = 36 * scale;
+  ctx.fillStyle = "#0F3224";
+  ctx.beginPath();
+  if ("roundRect" in ctx && typeof ctx.roundRect === "function") {
+    ctx.roundRect(20 * scale, pillY, 310 * scale, pillH, 6 * scale);
+  } else {
+    ctx.rect(20 * scale, pillY, 310 * scale, pillH);
+  }
+  ctx.fill();
+
+  const percent = summary.poisTotal === 0 ? 0 : Math.round((summary.poisDone / summary.poisTotal) * 100);
+  ctx.fillStyle = "#FEEBB5";
+  ctx.font = `bold ${13 * scale}px sans-serif`;
+  ctx.textAlign = "center";
+  ctx.fillText(`✓  ${percent}% PETUALANGAN TUNTAS`, w / 2, pillY + 23 * scale);
+
+  // Stats row
+  const statsY = 250 * scale;
+  const colW = (310 * scale) / 4;
+  const stats = [
+    { val: `${summary.poisDone}/${summary.poisTotal}`, lbl: "Koleksi" },
+    { val: summary.durationText ?? "15 mnt", lbl: "Durasi" },
+    { val: `${summary.questsDone}/${summary.questsTotal}`, lbl: "Misi" },
+    { val: summary.totalPoints.toLocaleString("id-ID"), lbl: "Poin" },
+  ];
+
+  stats.forEach((item, idx) => {
+    const cx = 20 * scale + colW * idx + colW / 2;
+    ctx.fillStyle = "#0F3224";
+    ctx.font = `bold ${17 * scale}px sans-serif`;
+    ctx.textAlign = "center";
+    ctx.fillText(item.val, cx, statsY);
+    ctx.font = `${10 * scale}px sans-serif`;
+    ctx.fillText(item.lbl, cx, statsY + 18 * scale);
+
+    if (idx < 3) {
+      const divX = 20 * scale + colW * (idx + 1);
+      ctx.strokeStyle = "#C9D4C9";
+      ctx.lineWidth = 1 * scale;
+      ctx.beginPath();
+      ctx.moveTo(divX, statsY - 14 * scale);
+      ctx.lineTo(divX, statsY + 18 * scale);
+      ctx.stroke();
+    }
+  });
+
+  // Reward box
+  const rewY = 320 * scale;
+  const rewH = 64 * scale;
+  ctx.fillStyle = "#CC4B18";
+  ctx.beginPath();
+  if ("roundRect" in ctx && typeof ctx.roundRect === "function") {
+    ctx.roundRect(20 * scale, rewY, 310 * scale, rewH, 8 * scale);
+  } else {
+    ctx.rect(20 * scale, rewY, 310 * scale, rewH);
+  }
+  ctx.fill();
+
+  ctx.fillStyle = "#FFFFFF";
+  ctx.font = `bold ${10 * scale}px sans-serif`;
+  ctx.textAlign = "left";
+  ctx.fillText("★  REWARD TERBUKA", 38 * scale, rewY + 24 * scale);
+  ctx.font = `bold ${14 * scale}px sans-serif`;
+  ctx.fillText(`Lencana ${summary.badgeName ?? "Penjelajah Bumi"}`, 38 * scale, rewY + 46 * scale);
+
+  ctx.fillStyle = "#0F3224";
+  ctx.font = `${11 * scale}px sans-serif`;
+  ctx.textAlign = "center";
+  ctx.fillText("#JelajahMuseumGeologi", w / 2, 415 * scale);
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob: Blob | null): void => {
+      if (blob === null) return reject(new Error("Gagal membuat gambar PNG"));
+      resolve({ blob, dataUrl: canvas.toDataURL("image/png") });
+    }, "image/png");
+  });
+}
+
 export function ShareResultScreen(
   { summary, onBack }: { readonly summary: AdventureSummary; readonly onBack: () => void },
 ): ReactElement {
   const percent: number = summary.poisTotal === 0 ? 0 : Math.round((summary.poisDone / summary.poisTotal) * 100);
   const badge: string = summary.badgeName ?? "Penjelajah Bumi";
+  const cardRef = useRef<View>(null);
+  const [sharing, setSharing] = useState<boolean>(false);
+  const [shareStatus, setShareStatus] = useState<string | null>(null);
 
   async function share(): Promise<void> {
+    setSharing(true);
+    setShareStatus(null);
+    const duration = summary.durationText ?? "15 menit";
     const message = [
       "Aku adalah Penjelajah Bumi! 🌏",
-      `${summary.poisDone}/${summary.poisTotal} petualangan · ${summary.questsDone}/${summary.questsTotal} misi · ${formatPoints(summary.totalPoints)} poin`,
+      `${summary.poisDone}/${summary.poisTotal} koleksi · ${summary.questsDone}/${summary.questsTotal} misi · durasi ${duration} · ${formatPoints(summary.totalPoints)} poin`,
       `Reward terbuka: Lencana ${badge}`,
       "#JelajahMuseumGeologi",
     ].join("\n");
+
     try {
+      if (Platform.OS === "web") {
+        const { blob } = await renderSummaryCardToBlob(summary);
+        const fileName = "GEA-Hasil-Penjelajahan.png";
+
+        // Deteksi iframe: di dalam iframe navigator.share/canShare bisa return true
+        // padahal file sharing diblokir browser — paksa download saja.
+        const isInIframe = typeof window !== "undefined" && window.parent !== window;
+        const file = new File([blob], fileName, { type: "image/png" });
+
+        const canWebShare =
+          !isInIframe &&
+          typeof navigator !== "undefined" &&
+          typeof navigator.canShare === "function" &&
+          navigator.canShare({ files: [file] });
+
+        if (canWebShare) {
+          try {
+            await navigator.share({
+              title: "Hasil Penjelajahan Museum Geologi",
+              text: message,
+              files: [file],
+            });
+            setShareStatus("✓ Berhasil dibagikan!");
+            return;
+          } catch {
+            // Fallthrough ke download jika share gagal
+          }
+        }
+
+        // Force download via object URL (lebih reliable daripada dataUrl di iframe)
+        const objectUrl = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = objectUrl;
+        link.download = fileName;
+        link.style.display = "none";
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => {
+          document.body.removeChild(link);
+          URL.revokeObjectURL(objectUrl);
+        }, 1500);
+
+        setShareStatus("✓ Gambar tersimpan!");
+        return;
+      }
+
+      if (cardRef.current !== null) {
+        const uri: string = await captureRef(cardRef, {
+          format: "png",
+          quality: 1.0,
+        });
+
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(uri, {
+            mimeType: "image/png",
+            dialogTitle: "Bagikan Hasil Penjelajahan",
+            UTI: "public.png",
+          });
+          setShareStatus("✓ Berhasil dibagikan!");
+          return;
+        }
+      }
+
       await Share.share({ message });
-    } catch {
-      // Browser tanpa Web Share API: buka Instagram saja.
-      void Linking.openURL("https://www.instagram.com/");
+    } catch (cause: unknown) {
+      console.warn("gea_share_failed", cause);
+      try {
+        await Share.share({ message });
+      } catch {
+        void Linking.openURL("https://www.instagram.com/");
+      }
+    } finally {
+      setSharing(false);
     }
   }
 
@@ -124,7 +370,7 @@ export function ShareResultScreen(
     <FrameStage background={colors.primary[300]}>
       <ScanBackground />
       <WellDoneRibbon top={113} />
-      <View style={share_.card}>
+      <View ref={cardRef} collapsable={false} style={share_.card}>
         <GeaText variant="bold16" color={colors.primary[900]} style={share_.museum}>MUSEUM GEOLOGI BANDUNG</GeaText>
         <Image accessible={false} source={mascot} style={share_.mascot} contentFit="contain" />
         <GeaText variant="bold16" color={colors.primary[900]} style={share_.iam}>AKU ADALAH</GeaText>
@@ -136,11 +382,13 @@ export function ShareResultScreen(
           </GeaText>
         </View>
         <View style={share_.stats}>
-          <Stat value={`${summary.poisDone}/${summary.poisTotal}`} label="Petualangan" />
+          <Stat value={`${summary.poisDone}/${summary.poisTotal}`} label="Koleksi" />
           <View style={share_.divider} />
-          <Stat value={`${summary.questsDone}/${summary.questsTotal}`} label="Misi selesai" />
+          <Stat value={summary.durationText ?? "15 mnt"} label="Durasi" />
           <View style={share_.divider} />
-          <Stat value={formatPoints(summary.totalPoints)} label="Total poin" />
+          <Stat value={`${summary.questsDone}/${summary.questsTotal}`} label="Misi" />
+          <View style={share_.divider} />
+          <Stat value={formatPoints(summary.totalPoints)} label="Poin" />
         </View>
         <View style={share_.reward}>
           <Image accessible={false} source={medal} style={share_.medal} />
@@ -151,7 +399,12 @@ export function ShareResultScreen(
         </View>
         <GeaText variant="caption12" color={colors.primary[900]} style={share_.tag}>#JelajahMuseumGeologi</GeaText>
       </View>
-      <StoryButton label="Bagikan" onPress={(): void => void share()} style={share_.button} />
+      <StoryButton
+        label={sharing ? "Menyiapkan Gambar..." : shareStatus ?? "Bagikan Gambar"}
+        disabled={sharing}
+        onPress={(): void => void share()}
+        style={share_.button}
+      />
       <Pressable accessibilityRole="button" hitSlop={8} onPress={onBack} style={share_.back}>
         <GeaText variant="label16" color={colors.primary[900]} style={share_.underline}>Kembali</GeaText>
       </Pressable>
@@ -196,15 +449,27 @@ const done = StyleSheet.create({
   card: {
     position: "absolute",
     left: 10.5,
-    top: 446,
+    top: 430,
     width: 369,
     alignItems: "center",
-    gap: spacing[16],
+    gap: spacing[12],
     paddingHorizontal: spacing[16],
-    paddingVertical: spacing[24],
+    paddingVertical: spacing[20],
     borderRadius: 16,
     backgroundColor: colors.white,
   },
+  statsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
+    alignSelf: "stretch",
+    paddingVertical: spacing[8],
+    paddingHorizontal: spacing[12],
+    backgroundColor: "#F7F5F0",
+    borderRadius: 8,
+  },
+  statItem: { alignItems: "center", gap: 2 },
+  statDivider: { width: 1, height: 26, backgroundColor: colors.primary[200] },
   pointBox: {
     alignSelf: "stretch",
     alignItems: "center",
@@ -263,7 +528,7 @@ const share_ = StyleSheet.create({
   statusText: { fontSize: 12, lineHeight: 16 },
   stats: { position: "absolute", left: 20, top: 242, width: 310, flexDirection: "row", alignItems: "center" },
   stat: { flex: 1, alignItems: "center", gap: spacing[4] },
-  statValue: { fontSize: 28, lineHeight: 34 },
+  statValue: { fontSize: 18, lineHeight: 24 },
   divider: { width: 1, height: 44, backgroundColor: colors.primary[200] },
   reward: {
     position: "absolute",

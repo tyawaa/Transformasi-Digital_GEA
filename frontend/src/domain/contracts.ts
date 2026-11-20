@@ -47,6 +47,8 @@ export const visitSchema = z.object({
   profil: storedProfileSchema,
   verification_method: z.enum(["gps", "entrance_qr"]),
   status: z.literal("aktif"),
+  start_time: z.string().optional(),
+  startedAt: z.number().optional(),
 });
 export type Visit = z.infer<typeof visitSchema>;
 
