@@ -61,6 +61,8 @@ export type BadgeDef = {
   readonly lowPriority?: boolean;
   /** false = belum bisa diraih di versi ini. */
   readonly active?: boolean;
+  /** Dari sheet lama; ditahan (tidak tampil) selama fokus sayap kiri. */
+  readonly oldSheet?: boolean;
 };
 
 export const badges: readonly BadgeDef[] = [
@@ -68,17 +70,17 @@ export const badges: readonly BadgeDef[] = [
   { id: "BD-02", name: "Pemburu Foto", description: "Selesaikan semua quest tipe Foto.", bonus: 30, audience: "umum" },
   { id: "BD-03", name: "Otak Geologi", description: "Jawab benar semua kuis tanpa salah.", bonus: 40, audience: "semua" },
   { id: "BD-04", name: "Geolog Sejati", description: "Selesaikan semua POI.", bonus: 100, audience: "semua" },
-  { id: "BD-05", name: "Penjelajah Sayap Kanan", description: "Check-in di semua POI sayap kanan (POI-12 s.d. POI-20).", bonus: 50, audience: "semua", lowPriority: true },
-  { id: "BD-06", name: "Langkah Pertama", description: "Selesaikan quest pertamamu di POI mana pun.", bonus: 10, audience: "semua" },
-  { id: "BD-07", name: "Pembaca Gerak Bumi", description: "Selesaikan quest di POI-03, POI-04, POI-05, dan POI-08.", bonus: 30, audience: "semua" },
-  { id: "BD-08", name: "Pengelana Lorong Waktu", description: "Selesaikan quest di POI-12 s.d. POI-17.", bonus: 40, audience: "semua", lowPriority: true },
-  { id: "BD-09", name: "Jejak Manusia Purba", description: "Selesaikan quest di POI-18, POI-19, dan POI-20.", bonus: 30, audience: "semua", lowPriority: true },
-  { id: "BD-10", name: "Kolektor Batuan", description: "Selesaikan quest di POI-07, POI-10, dan POI-11.", bonus: 30, audience: "semua" },
-  { id: "BD-11", name: "Rajin Berkunjung", description: "Selesaikan minimal 1 quest pada 3 hari kunjungan yang berbeda.", bonus: 20, audience: "semua" },
-  { id: "BD-12", name: "Si Teliti", description: "Jawab benar pada percobaan pertama di 5 quest kuis.", bonus: 25, audience: "semua" },
-  { id: "BD-13", name: "Penakluk Tantangan Sulit", description: "Selesaikan semua quest tingkat Sulit (POI-06 dan POI-10).", bonus: 40, audience: "semua" },
-  { id: "BD-14", name: "Fotografer Cilik", description: "Selesaikan semua quest foto anak-anak.", bonus: 25, audience: "anak", active: false },
-  { id: "BD-15", name: "Penjelajah Cilik", description: "Selesaikan quest anak-anak di minimal 2 POI berbeda.", bonus: 15, audience: "anak" },
+  { id: "BD-05", name: "Penjelajah Sayap Kanan", description: "Check-in di semua POI sayap kanan (POI-12 s.d. POI-20).", bonus: 50, audience: "semua", lowPriority: true, oldSheet: true },
+  { id: "BD-06", name: "Langkah Pertama", description: "Selesaikan quest pertamamu di POI mana pun.", bonus: 10, audience: "semua", oldSheet: true },
+  { id: "BD-07", name: "Pembaca Gerak Bumi", description: "Selesaikan quest di POI-03, POI-04, POI-05, dan POI-08.", bonus: 30, audience: "semua", oldSheet: true },
+  { id: "BD-08", name: "Pengelana Lorong Waktu", description: "Selesaikan quest di POI-12 s.d. POI-17.", bonus: 40, audience: "semua", lowPriority: true, oldSheet: true },
+  { id: "BD-09", name: "Jejak Manusia Purba", description: "Selesaikan quest di POI-18, POI-19, dan POI-20.", bonus: 30, audience: "semua", lowPriority: true, oldSheet: true },
+  { id: "BD-10", name: "Kolektor Batuan", description: "Selesaikan quest di POI-07, POI-10, dan POI-11.", bonus: 30, audience: "semua", oldSheet: true },
+  { id: "BD-11", name: "Rajin Berkunjung", description: "Selesaikan minimal 1 quest pada 3 hari kunjungan yang berbeda.", bonus: 20, audience: "semua", oldSheet: true },
+  { id: "BD-12", name: "Si Teliti", description: "Jawab benar pada percobaan pertama di 5 quest kuis.", bonus: 25, audience: "semua", oldSheet: true },
+  { id: "BD-13", name: "Penakluk Tantangan Sulit", description: "Selesaikan semua quest tingkat Sulit (POI-06 dan POI-10).", bonus: 40, audience: "semua", oldSheet: true },
+  { id: "BD-14", name: "Fotografer Cilik", description: "Selesaikan semua quest foto anak-anak.", bonus: 25, audience: "anak", active: false, oldSheet: true },
+  { id: "BD-15", name: "Penjelajah Cilik", description: "Selesaikan quest anak-anak di minimal 2 POI berbeda.", bonus: 15, audience: "anak", oldSheet: true },
 ];
 
 /**
@@ -100,12 +102,15 @@ export type BadgeContext = {
   readonly questDays?: number;
   /** Sayap kanan dibuka di versi ini (lencana prioritas rendah). */
   readonly rightWing?: boolean;
+  /** true = tampilkan juga lencana sheet lama (BD-05 s.d. BD-15). */
+  readonly oldSheet?: boolean;
 };
 
 /** Lencana yang tampil untuk pengunjung ini. */
 export function availableBadges(ctx: BadgeContext = {}): readonly BadgeDef[] {
   return badges.filter((badge: BadgeDef): boolean =>
     badge.active !== false &&
+    (badge.oldSheet !== true || ctx.oldSheet === true) &&
     (badge.lowPriority !== true || ctx.rightWing === true) &&
     (badge.audience === "semua" || (badge.audience === "anak") === (ctx.kid === true))
   );
@@ -169,13 +174,15 @@ export function earnedBadges(
     pois.filter((poi: PoiRef): boolean => kind === "foto" ? questOf(poi) === "foto" : questOf(poi) === "quiz" || questOf(poi) === "kuis");
   const photos = withQuest("foto");
   const quizzes = withQuest("kuiz");
+  const scope: readonly PoiRef[] = ctx.rightWing === true ? pois : pois.filter((poi: PoiRef): boolean => poi.wing !== "right");
   const questsDone: number = pois.filter((poi: PoiRef): boolean => questOf(poi) !== null && finished(poi)).length;
 
   const earned: { readonly [id in BadgeId]?: boolean } = {
     "BD-01": wingVisited("left"),
     "BD-02": photos.length > 0 && photos.every(finished),
     "BD-03": quizzes.length > 0 && quizzes.every((poi: PoiRef): boolean => firstTry(poi, states[poi.id])),
-    "BD-04": pois.every((poi: PoiRef): boolean => done(states[poi.id])),
+    // Selama sayap kanan belum dibuka, "semua POI" = semua POI sayap kiri.
+    "BD-04": scope.length > 0 && scope.every((poi: PoiRef): boolean => done(states[poi.id])),
     "BD-05": wingVisited("right"),
     "BD-06": questsDone >= 1,
     "BD-07": finishedAll(["P03", "P04", "P05", "P08"]),
@@ -211,4 +218,38 @@ export function badgeBonus(ids: readonly BadgeId[]): number {
       sum + (badges.find((badge: BadgeDef): boolean => badge.id === id)?.bonus ?? 0),
     0,
   );
+}
+
+// Poin dasar per aktivitas (sheet Badge_Poin). Dihitung di aplikasi, di luar poin kuis dari server.
+export type ActivityId = "checkIn" | "story" | "firstTry" | "poiDone";
+
+export const ACTIVITIES: { readonly [id in ActivityId]: { readonly points: number; readonly label: string } } = {
+  checkIn: { points: 10, label: "Check-in lokasi" },
+  story: { points: 5, label: "Cerita selesai dibaca" },
+  firstTry: { points: 5, label: "Benar di percobaan pertama" },
+  poiDone: { points: 10, label: "POI tuntas" },
+};
+
+export type ActivityState = QuestState & {
+  readonly closed: boolean;
+  readonly checkedIn?: boolean;
+  readonly challengeAttempts?: number;
+  readonly challengeSuccess?: boolean;
+};
+
+/** Aktivitas yang sudah didapat di satu POI. */
+export function activitiesDone(state: ActivityState | undefined): readonly ActivityId[] {
+  if (state === undefined) return [];
+  const done: ActivityId[] = [];
+  if (state.checkedIn === true) done.push("checkIn");
+  if (state.closed) done.push("story");
+  if ((state.completed && state.attempts === 1) || (state.challengeSuccess === true && state.challengeAttempts === 1)) {
+    done.push("firstTry");
+  }
+  if (state.completed || state.failed) done.push("poiDone");
+  return done;
+}
+
+export function activityPoints(state: ActivityState | undefined): number {
+  return activitiesDone(state).reduce((sum: number, id: ActivityId): number => sum + ACTIVITIES[id].points, 0);
 }
