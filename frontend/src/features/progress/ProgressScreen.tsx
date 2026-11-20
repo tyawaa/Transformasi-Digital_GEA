@@ -4,7 +4,7 @@ import { type ReactElement, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { colors, componentColors, radius, shadows, spacing } from "../../design/tokens";
 import { GeaText } from "../../design/typography";
-import { type BadgeDef, badges, type BadgeId } from "../../domain/points";
+import { type BadgeDef, badges, type BadgeId, activityPoints } from "../../domain/points";
 import type { MapPoi } from "../map/MapScreen";
 import { ScanBackground } from "../stories/hifi/backgrounds";
 import { FrameStage } from "../stories/hifi/parts";
@@ -57,7 +57,7 @@ export function ProgressScreen({ pois, progressOf, totalPoints, earned, availabl
           <View style={styles.bar}>
             <View style={[styles.barFill, { width: `${ratio * 100}%` }]} />
           </View>
-          <GeaText variant="caption12" color={componentColors.cardCaption}>Mini Quiz 20/10/5 poin · tantangan sesuai sheet · bonus lencana</GeaText>
+          <GeaText variant="caption12" color={componentColors.cardCaption}>Check-in 10 · cerita 5 · kuis 20/10/5 · POI tuntas 10 · lencana</GeaText>
         </View>
       </View>
 
@@ -119,7 +119,7 @@ export function ProgressScreen({ pois, progressOf, totalPoints, earned, availabl
 
 /** Poin satu POI: Mini Quiz (dari server/mode mock) + tantangan. */
 function poiPoints(state: PoiProgress): number {
-  return state.pointsAwarded + (state.challengePoints ?? 0);
+  return state.pointsAwarded + (state.challengePoints ?? 0) + activityPoints(state);
 }
 
 // Bagian lencana, koleksi, dan tautan akhir mengalir mulai y=290.

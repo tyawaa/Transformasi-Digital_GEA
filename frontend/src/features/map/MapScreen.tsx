@@ -1,5 +1,6 @@
-import { type ReactElement, useMemo, useState } from "react";
+import { type ReactElement, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Toast } from "../../design/Toast";
 import { colors, shadows, spacing } from "../../design/tokens";
 import { GeaText } from "../../design/typography";
 import type { MuseumPoi, ZoneInfo } from "../../data/museum";
@@ -29,6 +30,9 @@ const headingTests: readonly HeadingTest[] = [
   { label: "Hadap barat", degrees: 270 },
 ];
 type Props = {
+  /** Tampilkan toast "Rute Untuk Anda" (baru masuk dari peta awal). */
+  readonly routeToast?: boolean;
+  readonly onCloseRouteToast?: () => void;
   readonly wingsMode: "left" | "both";
   readonly pois: readonly MapPoi[];
   readonly loading: boolean;
@@ -84,6 +88,15 @@ export function MapScreen(props: Props): ReactElement {
     return target === null || target.id === null ? codes : [target.museum.code, ...codes.filter((code: string): boolean => code !== target.museum.code)];
   }, [remaining, target]);
   const legs: readonly RouteLeg[] = useMemo((): readonly RouteLeg[] => routeLegs(location ?? ENTRANCE, destinationCodes), [location, destinationCodes]);
+
+  const routeCount: number = props.route?.codes.length ?? 0;
+  const showRouteToast: boolean = props.routeToast === true && props.hasVisit && routeCount > 0;
+  useEffect((): (() => void) | undefined => {
+    if (!showRouteToast) return undefined;
+    const timer = setTimeout((): void => props.onCloseRouteToast?.(), 5000);
+    return (): void => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showRouteToast]);
 
   function choosePoi(code: string): void {
     setSelectedCode(code);
@@ -202,6 +215,16 @@ export function MapScreen(props: Props): ReactElement {
         )}
         </ScrollView>
       </View>
+      {showRouteToast && (
+        <View style={styles.toast}>
+          <Toast
+            tone="success"
+            title="Rute Untuk Anda"
+            description={`${routeCount} Titik Kunjungan`}
+            onClose={(): void => props.onCloseRouteToast?.()}
+          />
+        </View>
+      )}
       {testsOpen && props.hasVisit && props.gpsTests.length > 0 && (
         <View style={styles.testMenu}>
           <ScrollView>
@@ -257,4 +280,5 @@ const styles = StyleSheet.create({
   testMenu: { position: "absolute", right: 16, top: 144, width: 230, maxHeight: 300, padding: 8, borderRadius: 16, backgroundColor: colors.white, boxShadow: shadows.drop, zIndex: 10 },
   testItem: { paddingHorizontal: 8, paddingVertical: 12 },
   testHeading: { paddingHorizontal: 8, paddingVertical: 10 },
+  toast: { position: "absolute", left: 15, top: 47, width: 360, zIndex: 20 },
 });

@@ -1,7 +1,7 @@
 import { randomUUID } from "expo-crypto";
 import { Image } from "expo-image";
 import { type ReactElement, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, useWindowDimensions, View } from "react-native";
 import { Toast, type ToastTone } from "../../../design/Toast";
 import { colors, componentColors, radius, shadows, spacing } from "../../../design/tokens";
 import { GeaText } from "../../../design/typography";
@@ -15,6 +15,10 @@ import type {
   Visit,
 } from "../../../domain/contracts";
 import {
+  ACTIVITIES,
+  activitiesDone,
+  activityPoints,
+  type ActivityId,
   attemptsLeft,
   type BadgeDef,
   badges,
@@ -64,7 +68,7 @@ const ISI_TOP = 592;
 const ISI_BOTTOM = 52;
 const ISI_FILL_TOP = 860;
 // Kuis: kartu mulai paling tinggi di y=110 (di bawah tombol Keluar).
-const CARD_TOP = 110;
+const CARD_TOP = 124;
 const QUIZ_BOTTOM = 48;
 
 type ToastMessage ={ readonly tone: ToastTone; readonly title: string; readonly description: string };
@@ -107,11 +111,82 @@ function resumeStep(state: PoiProgress, plan: QuestPlan): Step {
  * → Tantangan → Yeay! → Mini Quiz → Selamat Penjelajah. GPS memverifikasi radius koleksi (QR sebagai
  * alternatif); verifikasi berlaku 15 menit. Mini Quiz dinilai backend (maks. 3 percobaan, 20/10/5/0).
  */
+type Reward = { readonly points: number; readonly labels: readonly string[] };
+
+/** Alur cerita + notifikasi poin kecil di atas layar. */
 export function StoryFlow(props: Props): ReactElement {
+  const [reward, setReward] = useState<Reward | null>(null);
+  // Ukuran pil mengikuti skala frame 390 × 844 seperti layar lain.
+  const { width, height } = useWindowDimensions();
+  const scale: number = Math.min(width / 390, height / FRAME_H);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function addRewards(items: readonly { readonly points: number; readonly label: string }[]): void {
+    // Poin yang masuk bersamaan digabung jadi satu notifikasi.
+    setReward((current: Reward | null): Reward => ({
+      points: (current?.points ?? 0) + items.reduce((sum, item): number => sum + item.points, 0),
+      labels: [...(current?.labels ?? []), ...items.map((item): string => item.label)],
+    }));
+    if (timer.current !== null) clearTimeout(timer.current);
+    timer.current = setTimeout((): void => setReward(null), 3000);
+  }
+  useEffect((): (() => void) => (): void => {
+    if (timer.current !== null) clearTimeout(timer.current);
+  }, []);
+  return (
+    <View style={styles.flowRoot}>
+      <StoryFlowSteps {...props} onRewards={addRewards} />
+      {reward !== null && (
+        <View pointerEvents="box-none" style={[styles.rewardWrap, { top: (height - FRAME_H * scale) / 2 + 47 * scale, transform: [{ scale }] }]}>
+          <View style={styles.rewardToast}>
+            <Toast
+              tone="success"
+              title={`+${reward.points} Poin`}
+              description={reward.labels.join(" · ")}
+              onClose={(): void => setReward(null)}
+            />
+          </View>
+        </View>
+      )}
+    </View>
+  );
+}
+
+function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { readonly points: number; readonly label: string }[]) => void }): ReactElement {
   const { source, visit, progressOf, onProgress } = props;
   const [poiId, setPoiId] = useState<string>(props.poiId);
   const [poi, setPoi] = useState<PoiDetail | null>(null);
   const progress: PoiProgress = progressOf(poiId);
+  // Poin baru (aktivitas, kuis, tantangan) dibandingkan dengan keadaan sebelumnya → toast.
+  const earnedBefore = useRef<{ readonly poiId: string; readonly activities: readonly ActivityId[]; readonly quiz: number; readonly challenge: number } | null>(null);
+  useEffect((): void => {
+    const now = {
+      poiId,
+      activities: activitiesDone(progress),
+      quiz: progress.pointsAwarded,
+      challenge: progress.challengePoints ?? 0,
+    };
+    const before = earnedBefore.current;
+    earnedBefore.current = now;
+    if (before === null || before.poiId !== poiId) return;
+    const items: { points: number; label: string }[] = [];
+    if (now.quiz > before.quiz) items.push({ points: now.quiz - before.quiz, label: "Jawaban benar" });
+    if (now.challenge > before.challenge) items.push({ points: now.challenge - before.challenge, label: "Tantangan selesai" });
+    for (const id of now.activities) {
+      if (!before.activities.includes(id)) items.push({ points: ACTIVITIES[id].points, label: ACTIVITIES[id].label });
+    }
+    if (items.length > 0) props.onRewards(items);
+  });
+  // Lencana baru juga muncul sebagai toast poin.
+  const badgesSeen = useRef<readonly BadgeId[]>(props.earnedBadges);
+  useEffect((): void => {
+    const fresh: readonly BadgeDef[] = badges.filter((badge: BadgeDef): boolean =>
+      props.earnedBadges.includes(badge.id) && !badgesSeen.current.includes(badge.id)
+    );
+    badgesSeen.current = props.earnedBadges;
+    if (fresh.length > 0) {
+      props.onRewards(fresh.map((badge: BadgeDef) => ({ points: badge.bonus, label: `Lencana ${badge.name}` })));
+    }
+  }, [props.earnedBadges]);
   const verified: boolean = isVerified(progress);
   const [step, setStep] = useState<Step>(
     props.initialToken != null ? "scan" : "gps",
@@ -125,7 +200,6 @@ export function StoryFlow(props: Props): ReactElement {
   const checkpoint = museumPoiById(poiId);
   const gpsInsidePoi: boolean = checkpoint !== undefined && props.gpsFix !== null &&
     stepGeofence([], props.gpsFix, [{ ...checkpoint, id: poiId }]).inside.includes(poiId);
-  const badgesAtStart = useRef<readonly BadgeId[]>(props.earnedBadges);
   // true = pengguna menuju Mini Quiz tetapi verifikasi QR sudah habis; setelah scan langsung ke kuis.
   const quizPending = useRef<boolean>(false);
   const [narrationFrom, setNarrationFrom] = useState<"story" | "story2">("story");
@@ -237,7 +311,7 @@ export function StoryFlow(props: Props): ReactElement {
   function acceptVerification(result: PoiVerification): void {
     const until: number = Date.parse(result.expiresAt);
     if (!Number.isFinite(until)) throw new Error("Masa berlaku verifikasi koleksi tidak valid.");
-    onProgress(result.idPoi, { verifiedUntil: until });
+    onProgress(result.idPoi, { verifiedUntil: until, checkedIn: true });
     const state: PoiProgress = progressOf(result.idPoi);
     setPoiId(result.idPoi);
     setPoi(result.poi);
@@ -283,7 +357,7 @@ export function StoryFlow(props: Props): ReactElement {
         onRetry={(): void => setScanState("scanning")}
         onBack={props.onExit}
         {...(props.initialToken == null && {
-          title: "Scan QR sebagai alternatif GPS",
+          title: `Pindai QR koleksi untuk membuka ${museumPoiById(poiId)?.name ?? "ceritanya"}`,
           helper: "Scan QR di dekat koleksi untuk membuka cerita dan tantangannya.",
         })}
         dummies={props.dummyScans}
@@ -388,8 +462,8 @@ export function StoryFlow(props: Props): ReactElement {
     return (
       <PhotoTaskScreen
         title="Cari & foto koleksi ini"
-        instruction={item}
-        target={`${item} terlihat jelas, sebaiknya bersama labelnya`}
+        instruction={`Cari ${item} di ruangan ini, lalu foto bersama labelnya.`}
+        photoUrl={description.photoUrl}
         onBack={(): void => setStep("story2")}
         onDone={(): void => {
           onProgress(poiId, { photos: [...new Set([...photos, photoIndex])] });
@@ -426,13 +500,15 @@ export function StoryFlow(props: Props): ReactElement {
       <ChallengeScreen
         challenge={challenge}
         references={poi.photoChallenges}
+        photoUrl={description.photoUrl}
         grade={gradeOnServer}
         onBack={(): void => setStep("storyDone")}
-        onDone={({ points, attempts }): void => {
+        onDone={({ success, points, attempts }): void => {
           onProgress(poiId, {
             challengeDone: true,
             challengePoints: points,
             challengeAttempts: attempts,
+            challengeSuccess: success,
             ...(hasQuiz ? {} : { completed: true }),
           });
           setStep(hasQuiz ? "challengeDone" : "result");
@@ -460,15 +536,11 @@ export function StoryFlow(props: Props): ReactElement {
     return <ShareResultScreen summary={props.adventure} onBack={(): void => setStep("final")} />;
   }
 
-  const newBadges: readonly BadgeDef[] = badges.filter((badge: BadgeDef): boolean =>
-    props.earnedBadges.includes(badge.id) && !badgesAtStart.current.includes(badge.id)
-  );
-  const score: number = progress.pointsAwarded + (progress.challengePoints ?? 0);
 
   if (step === "result") {
     // Bintang: Mini Quiz benar di percobaan 1/2/3 = 3/2/1. Tanpa kuis: tantangan berhasil = 3, kesempatan
     // habis = 1. Tanpa quest sama sekali (mis. anak di POI tanpa quest foto): cerita selesai = 3.
-    const challengeWon: boolean = (progress.challengePoints ?? 0) > 0;
+    const challengeWon: boolean = progress.challengeSuccess ?? (progress.challengePoints ?? 0) > 0;
     const stars: number = hasQuiz
       ? progress.completed ? Math.max(1, 4 - progress.attempts) : 0
       : challenge !== undefined
@@ -479,14 +551,10 @@ export function StoryFlow(props: Props): ReactElement {
         poiName={poi.nama}
         stars={stars}
         conquered={hasQuiz ? progress.completed : challenge !== undefined ? challengeWon : progress.completed}
-        score={score}
+        score={progress.pointsAwarded + (progress.challengePoints ?? 0)}
         reward={props.totalPoints}
         allCompleted={props.allCompleted}
         explanation={hasQuiz && (progress.completed || progress.failed) ? poi.quest.penjelasan ?? local?.penjelasan : undefined}
-        extra={[
-          ...(props.nextStop != null ? [`Berikutnya di rutemu: ${props.nextStop}`] : []),
-          ...newBadges.map((badge: BadgeDef): string => `Lencana baru: ${badge.name} (+${badge.bonus} poin)`),
-        ]}
         onHome={(): void => {
           if (props.allCompleted) setStep("final");
           else props.onExit();
@@ -719,17 +787,22 @@ function Quiz(
     }
   }
 
+  // Figma "Story - Mini quiz": progres percobaan, kartu soal, pilihan berkotak centang, Submit.
+  const attempt: number = Math.min(MAX_ATTEMPTS, attemptsUsed + 1);
   return (
     <>
       <BackButton onPress={onBack} />
-      <View style={styles.quizCard} onLayout={(event): void => onHeight(event.nativeEvent.layout.height)}>
-        <View style={styles.quizHeader}>
-          <GeaText variant="label16" color={colors.primary[700]}>MINI QUIZ</GeaText>
-          <GeaText variant="label16" color={colors.primary[700]} accessibilityLabel={`Sisa ${left} kesempatan`}>
-            {"●".repeat(left)}{"○".repeat(MAX_ATTEMPTS - left)}
-          </GeaText>
+      <View
+        accessibilityRole="progressbar"
+        accessibilityLabel={`Percobaan ${attempt} dari ${MAX_ATTEMPTS}, sisa ${left} kesempatan`}
+        style={styles.quizProgress}
+      >
+        <View style={[styles.quizProgressFill, { width: `${(attempt / MAX_ATTEMPTS) * 100}%` }]} />
+      </View>
+      <View style={styles.quizBody} onLayout={(event): void => onHeight(event.nativeEvent.layout.height)}>
+        <View style={styles.quizQuestion}>
+          <GeaText variant="label16" color={colors.black} style={styles.quizQuestionText}>{poi.quest.pertanyaan}</GeaText>
         </View>
-        <GeaText variant="heading24" color={colors.primary[900]}>{poi.quest.pertanyaan}</GeaText>
         <View accessibilityRole="radiogroup" style={styles.options}>
           {poi.quest.options.map((option: QuestOption): ReactElement => {
             const active: boolean = selected === option.label_opsi;
@@ -741,16 +814,19 @@ function Quiz(
                 accessibilityState={{ checked: active, disabled: busy || crossed }}
                 disabled={busy || crossed}
                 onPress={(): void => setSelected(option.label_opsi)}
-                style={[
+                style={({ pressed }) => [
                   styles.option,
-                  { borderColor: active ? colors.primary[800] : colors.primary[400] },
+                  active && styles.optionActive,
                   crossed && styles.optionCrossed,
+                  pressed && styles.optionPressed,
                 ]}
               >
-                <View style={[styles.letter, { backgroundColor: active ? colors.primary[800] : colors.primary[0] }]}>
-                  <GeaText variant="bold16" color={active ? colors.secondaryYellow[0] : colors.primary[900]}>{option.label_opsi}</GeaText>
+                <GeaText variant="label16" color={componentColors.bodyDark} style={[styles.flex, crossed && styles.strike]}>
+                  {option.teks_opsi}
+                </GeaText>
+                <View style={[styles.checkbox, active && styles.checkboxOn]}>
+                  {active && <GeaText variant="bold16" color={colors.secondaryGreen[900]}>✓</GeaText>}
                 </View>
-                <GeaText variant="body16" color={colors.black} style={[styles.flex, crossed && styles.strike]}>{option.teks_opsi}</GeaText>
               </Pressable>
             );
           })}
@@ -761,7 +837,12 @@ function Quiz(
             <GeaText variant="body14" color={componentColors.bodyDark}>{hint}</GeaText>
           </View>
         )}
-        <StoryButton label={busy ? "Memeriksa..." : "Kirim Jawaban"} disabled={selected === null || busy} onPress={(): void => void send()} />
+        <StoryButton
+          label={busy ? "Memeriksa..." : "Submit"}
+          disabled={selected === null || busy}
+          onPress={(): void => void send()}
+          style={styles.quizSubmit}
+        />
       </View>
     </>
   );
@@ -800,11 +881,12 @@ function splitHighlights(text: string | undefined): string[] {
 }
 
 // Posisi kartu bertumpuk seperti frame "Story - Story Isi 2".
-const CARD_SPOTS: readonly { left: number; top: number; rotate: number }[] = [
-  { left: 32, top: 132, rotate: -1.6 },
-  { left: 78, top: 216, rotate: 1.2 },
-  { left: 26, top: 300, rotate: -1.1 },
-  { left: 86, top: 386, rotate: 1.4 },
+// Posisi & ikon kartu sesuai frame "Story Isi 2" (komponen Cards).
+const CARD_SPOTS: readonly { left: number; top: number; rotate: number; icon: number }[] = [
+  { left: 33, top: 140, rotate: -2.5, icon: require("../../../../assets/design/card-discover.svg") as number },
+  { left: 79, top: 215, rotate: 2.5, icon: require("../../../../assets/design/card-search-zoom.svg") as number },
+  { left: 25, top: 314, rotate: -2.5, icon: require("../../../../assets/design/card-tree.svg") as number },
+  { left: 87, top: 390, rotate: 2.5, icon: require("../../../../assets/design/card-search.svg") as number },
 ];
 
 /**
@@ -824,7 +906,7 @@ function HighlightCards(
   return (
     <>
       {items.map((item: string, i: number): ReactElement => {
-        const spot = CARD_SPOTS[i] ?? { left: 32, top: 132, rotate: 0 };
+        const spot = CARD_SPOTS[i] ?? { left: 33, top: 140, rotate: 0, icon: cameraIcon };
         const checked: boolean = done.includes(i);
         return (
           <Pressable
@@ -839,10 +921,10 @@ function HighlightCards(
               pressed && styles.pressed,
             ]}
           >
-            <Image accessible={false} source={cameraIcon} style={styles.icon28} />
-            <View style={styles.flex}>
+            <Image accessible={false} source={spot.icon} style={styles.cardIcon} />
+            <View style={styles.cardContent}>
               <GeaText variant="heading20" color={colors.secondaryGreen[900]}>{photoEnabled ? "CARI & FOTO" : "KOLEKSI"}</GeaText>
-              <GeaText variant="body14" color={componentColors.bodyDark} numberOfLines={2}>{item}</GeaText>
+              <GeaText variant="body16" color={componentColors.bodyDark} numberOfLines={2}>{item}</GeaText>
             </View>
             {photoEnabled && (
               <View style={[styles.cardCheck, checked && styles.cardCheckDone]}>
@@ -857,17 +939,20 @@ function HighlightCards(
 }
 
 const styles = StyleSheet.create({
+  flowRoot: { flex: 1 },
+  rewardWrap: { position: "absolute", left: 0, right: 0, alignItems: "center", zIndex: 50, transformOrigin: "top" },
+  rewardToast: { width: 360 },
   pressed: { opacity: 0.8 },
   // Kotak centang menjorok keluar di tepi kanan kartu, seperti frame "Story Isi 2".
   cardCheck: {
     position: "absolute",
-    right: -14,
-    top: 16,
-    width: 26,
-    height: 26,
+    right: -12,
+    top: "50%",
+    marginTop: -12,
+    width: 24,
+    height: 24,
     borderWidth: 2,
     borderColor: colors.primary[600],
-    borderRadius: 3,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.secondaryYellow[0],
@@ -905,18 +990,21 @@ const styles = StyleSheet.create({
   icon28: { width: 28, height: 28 },
   highlightCard: {
     position: "absolute",
-    width: 285,
+    width: 287,
+    minHeight: 92,
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing[12],
-    paddingHorizontal: spacing[16],
-    paddingVertical: spacing[12],
-    borderWidth: 2.5,
-    borderColor: colors.primary[600],
-    borderRadius: 6,
+    gap: spacing[8],
+    padding: spacing[12],
+    paddingRight: spacing[24],
+    borderWidth: 2,
+    borderColor: colors.primary[500],
+    borderRadius: 8,
     backgroundColor: colors.primary[0],
-    boxShadow: shadows.card,
+    boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.12)",
   },
+  cardIcon: { width: 32, height: 32 },
+  cardContent: { flex: 1, gap: spacing[4] },
   texts: { alignSelf: "stretch", gap: spacing[12] },
   // Isi cerita mengikuti panjang teks; minimal setinggi frame 844 (tombol tetap di bawah).
   isiContent: {
@@ -939,31 +1027,54 @@ const styles = StyleSheet.create({
   isiNav: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   flex: { flex: 1 },
   link: { textDecorationLine: "underline" },
-  quizCard: {
+  quizProgress: {
     position: "absolute",
-    left: 16,
-    width: 362,
-    bottom: 48,
-    gap: spacing[16],
-    paddingHorizontal: spacing[16],
-    paddingVertical: spacing[24],
-    borderRadius: radius.control,
+    left: 15,
+    top: 105,
+    width: 360,
+    height: 6,
+    borderRadius: 100,
+    overflow: "hidden",
     backgroundColor: colors.primary[0],
   },
-  quizHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  quizProgressFill: { height: 6, backgroundColor: colors.tertiary[300] },
+  quizBody: { position: "absolute", left: 16, top: CARD_TOP, width: 358, gap: spacing[8] },
+  quizQuestion: {
+    marginBottom: 56,
+    minHeight: 140,
+    justifyContent: "center",
+    padding: spacing[16],
+    borderRadius: 8,
+    backgroundColor: colors.white,
+  },
+  quizQuestionText: { fontSize: 18, lineHeight: 27, textAlign: "center" },
   options: { gap: spacing[8] },
   option: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing[12],
-    padding: spacing[12],
-    borderWidth: 1,
-    borderRadius: radius.control,
-    backgroundColor: colors.secondaryYellow[0],
+    gap: spacing[16],
+    padding: spacing[16],
+    borderWidth: 2,
+    borderColor: colors.primary[500],
+    borderRadius: 8,
+    backgroundColor: colors.primary[0],
+    boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.12)",
   },
+  optionActive: { borderColor: colors.tertiary[200] },
+  optionPressed: { opacity: 0.85 },
   optionCrossed: { opacity: 0.45 },
   strike: { textDecorationLine: "line-through" },
-  letter: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  checkbox: {
+    width: 24,
+    height: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: colors.primary[600],
+    backgroundColor: colors.secondaryYellow[0],
+  },
+  checkboxOn: { backgroundColor: colors.secondaryGreen[100] },
+  quizSubmit: { marginTop: 48, boxShadow: shadows.drop },
   hint: { gap: spacing[4], padding: spacing[12], borderRadius: radius.control, backgroundColor: colors.warning[0] },
   toast: { position: "absolute", left: 15, top: 47, width: 360 },
 });

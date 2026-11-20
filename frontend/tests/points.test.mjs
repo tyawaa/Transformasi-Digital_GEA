@@ -2,6 +2,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  activitiesDone,
+  activityPoints,
   attemptsLeft,
   availableBadges,
   earnedBadges,
@@ -45,11 +47,11 @@ test("status POI belum/sebagian/selesai", () => {
 });
 
 test("daftar lencana sesuai sheet Badge_Poin dan profil", () => {
-  const umum = availableBadges({ kid: false }).map((b) => b.id);
-  const anak = availableBadges({ kid: true }).map((b) => b.id);
+  const umum = availableBadges({ kid: false, oldSheet: true }).map((b) => b.id);
+  const anak = availableBadges({ kid: true, oldSheet: true }).map((b) => b.id);
   // Prioritas rendah (sayap kanan) hanya tampil bila sayap kanan dibuka.
   assert.equal(umum.includes("BD-05") || umum.includes("BD-08") || umum.includes("BD-09"), false);
-  assert.equal(availableBadges({ rightWing: true }).some((b) => b.id === "BD-05"), true);
+  assert.equal(availableBadges({ rightWing: true, oldSheet: true }).some((b) => b.id === "BD-05"), true);
   // Anak tidak mengerjakan quest foto: tanpa Pemburu Foto dan Fotografer Cilik; ada Penjelajah Cilik.
   assert.equal(anak.includes("BD-02") || anak.includes("BD-14"), false);
   assert.equal(anak.includes("BD-15"), true);
@@ -63,18 +65,21 @@ test("lencana dari quest per POI dan total poin tidak ganda", () => {
     { id: "c", wing: "left", code: "P05", quest: "kuis" },
     { id: "d", wing: "left", code: "P08", quest: "kuis" },
   ];
-  assert.deepEqual(earnedBadges(pois, {}), []);
+  const old = { oldSheet: true };
+  assert.deepEqual(earnedBadges(pois, {}, old), []);
   const one = { b: challenge(true, 1, 10) };
-  assert.deepEqual(earnedBadges(pois, one), ["BD-06"]);
-  assert.equal(totalPoints(pois, one), 10 + 10);
+  assert.deepEqual(earnedBadges(pois, one, old), ["BD-06"]);
+  assert.equal(totalPoints(pois, one, old), 10 + 10);
   const all = {
     a: challenge(true, 0, 20),
     b: challenge(true, 1, 10),
     c: challenge(true, 1, 10),
     d: challenge(true, 1, 20),
   };
-  assert.deepEqual(earnedBadges(pois, all), ["BD-01", "BD-02", "BD-03", "BD-04", "BD-06", "BD-07"]);
-  assert.equal(totalPoints(pois, all), 60 + 50 + 30 + 40 + 100 + 10 + 30);
+  assert.deepEqual(earnedBadges(pois, all, old), ["BD-01", "BD-02", "BD-03", "BD-04", "BD-06", "BD-07"]);
+  assert.equal(totalPoints(pois, all, old), 60 + 50 + 30 + 40 + 100 + 10 + 30);
+  // Sheet terbaru: hanya BD-01 s.d. BD-04.
+  assert.deepEqual(earnedBadges(pois, all), ["BD-01", "BD-02", "BD-03", "BD-04"]);
 });
 
 test("anak: POI quest foto jadi cerita saja; Penjelajah Cilik di 2 POI", () => {
@@ -84,9 +89,33 @@ test("anak: POI quest foto jadi cerita saja; Penjelajah Cilik di 2 POI", () => {
     { id: "c", wing: "left", code: "P04", quest: "kuis" },
   ];
   const states = { a: s(true, false, 0), b: s(true, false, 2), c: challenge(true, 2, 10) };
-  const ids = earnedBadges(pois, states, { kid: true });
+  const ids = earnedBadges(pois, states, { kid: true, oldSheet: true });
   assert.deepEqual(ids, ["BD-01", "BD-04", "BD-06", "BD-15"]);
-  assert.equal(earnedBadges(pois, states, { kid: true, questDays: 3 }).includes("BD-11"), true);
+  assert.equal(earnedBadges(pois, states, { kid: true, questDays: 3, oldSheet: true }).includes("BD-11"), true);
+});
+
+test("poin aktivitas sheet: check-in 10, cerita 5, percobaan pertama 5, POI tuntas 10", () => {
+  assert.equal(activityPoints(undefined), 0);
+  assert.equal(activityPoints({ ...s(false, false, 0, false), checkedIn: true }), 10);
+  assert.equal(activityPoints({ ...s(false, false, 0, true), checkedIn: true }), 15);
+  assert.deepEqual(activitiesDone({ ...s(true, false, 1), checkedIn: true }), ["checkIn", "story", "firstTry", "poiDone"]);
+  assert.equal(activityPoints({ ...s(true, false, 1), checkedIn: true }), 30);
+  assert.equal(activityPoints({ ...s(true, false, 2), checkedIn: true }), 25);
+  // Tantangan benar di percobaan pertama juga dapat bonus; foto (0 percobaan) tidak.
+  assert.ok(activitiesDone({ ...s(true, false, 0), challengeSuccess: true, challengeAttempts: 1 }).includes("firstTry"));
+  assert.ok(!activitiesDone({ ...s(true, false, 0), challengeSuccess: true, challengeAttempts: 0 }).includes("firstTry"));
+});
+
+test("sheet terbaru: lencana aktif BD-01 s.d. BD-04, sheet lama ditahan; Geolog Sejati = sayap kiri", () => {
+  assert.deepEqual(availableBadges({ kid: false }).map((b) => b.id), ["BD-01", "BD-02", "BD-03", "BD-04"]);
+  assert.deepEqual(availableBadges({ kid: true }).map((b) => b.id), ["BD-01", "BD-03", "BD-04"]);
+  const pois = [
+    { id: "a", wing: "left", code: "P01", quest: "quiz" },
+    { id: "b", wing: "right", code: "P12", quest: "quiz" },
+  ];
+  const states = { a: s(true, false, 1) };
+  assert.ok(earnedBadges(pois, states).includes("BD-04"));
+  assert.ok(!earnedBadges(pois, states, { rightWing: true }).includes("BD-04"));
 });
 
 test("format durasi kunjungan (menit dan jam)", () => {
