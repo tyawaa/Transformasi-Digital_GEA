@@ -84,6 +84,47 @@ hasil poin. Progres (poin, lencana) bisa dilihat dari tombol poin di peta.
 - Layar "Kisah Selesai" dan "Side Quest" ada di `StoryEndScreens.tsx` dan masih **sementara**
   (desain belum final). Ilustrasi ikan belum diekspor dari Figma.
 
+## Quest dan Gating Lokasi / QR (Sprint 3, PB12 / C-2)
+
+Sesuai kriteria penerimaan Sprint 3 (PB12): *"Quest terkunci di luar checkpoint terkait"*:
+
+- **Mekanisme Gating Checkpoint**:
+  - Untuk mengakses konten dan quest suatu POI, pengunjung wajib berada di checkpoint terkait yang divalidasi via **Radius GPS (15 meter)** atau **Scan QR koleksi**.
+  - Status verifikasi tersimpan dengan masa berlaku aktif **15 menit** (`verifiedUntil`).
+  - Saat pengunjung membuka quest / Mini Quiz (`goQuiz()` di `StoryFlow.tsx`), sistem memverifikasi masa aktif checkpoint. Jika masa berlaku habis atau pengunjung belum berada di lokasi, **quest langsung terkunci** dan aplikasi mengarahkan pengunjung untuk memeriksa lokasi GPS atau memindai QR koleksi kembali.
+  - Di tingkat backend (PostgreSQL RPC `jawab_quest`), query memvalidasi keberadaan record aktif di `private.poi_verification`. Jika pengunjung mencoba menjawab di luar checkpoint atau setelah token verifikasi kedaluwarsa, server menolak dengan error `403: CHECKPOINT_VERIFICATION_REQUIRED`.
+- **Spesifikasi Mini Quiz (Pilgan)**:
+  - 4 pilihan jawaban (A, B, C, D) dengan satu kunci jawaban benar.
+  - Maksimal 3 kali percobaan per quest.
+  - Sistem skor bergradasi: 20 poin (percobaan ke-1), 10 poin (ke-2), 5 poin (ke-3), dan 0 poin jika 3 kali salah (status `failed`).
+  - Fitur **Petunjuk (Hint)** otomatis muncul saat jawaban salah pada percobaan ke-1 dan ke-2.
+  - Setelah 3 kali gagal, tombol jawaban dinonaktifkan (`QUEST_ATTEMPTS_EXCEEDED`).
+- **Verifikasi Unit Test**: Diuji otomatis di `tests/points.test.mjs` (skenario gating aktif, kedaluwarsa, unverified, dan batas 3 percobaan).
+
+## Ringkasan Akhir & Durasi Kunjungan (Sprint 3, PB18 / C-2)
+
+Modul ringkasan akhir petualangan dan pelacakan durasi kunjungan:
+
+- **Pencatatan Waktu Mulai (`startedAt`)**: Disimpan otomatis di `useVisitProgress.ts` dan dipersistensi ke `AsyncStorage` (`gea.visit.v1`) saat kunjungan dimulai via QR pintu masuk atau verifikasi GPS. Waktu mulai bertahan saat aplikasi ditutup/dibuka kembali.
+- **Kalkulasi & Formatter Durasi (`formatVisitDuration`)**: Terletak di `src/domain/points.ts` (diuji di `tests/points.test.mjs`), mengonversi durasi waktu ke format ramah pengguna:
+  - Kurang dari 60 menit: `"X menit"` (mis. `"45 menit"`)
+  - Tepat 60 menit: `"1 jam"`
+  - Lebih dari 60 menit: `"X jam Y menit"` (mis. `"1 jam 15 menit"`)
+  - Fallback bila belum tercatat: `"15 menit"`
+- **Layar Ringkasan Akhir (`WellDoneScreen` di `src/features/stories/hifi/AdventureDoneScreens.tsx`)**: Menampilkan total poin, reward merchandise, serta bar ringkasan statistik (Koleksi selesai, Durasi kunjungan, dan Misi selesai).
+- **Pemicu & Alur Buka Ringkasan Akhir**:
+  - **Selesai Rute Rekomendasi / Semua POI**: Saat seluruh POI pada rute rekomendasi pengguna selesai (`routeDone`), tombol di layar akhir cerita "Selamat Penjelajah!" otomatis berubah menjadi `"Lihat Ringkasan Akhir"` dan langsung membawa pengguna ke `WellDoneScreen`.
+  - **Tombol di Peta**: Saat kartu bawah peta menampilkan *"Rutemu selesai!"*, tersedia tombol aksi `"Lihat Ringkasan Akhir"`.
+  - **Tombol di Layar Progres**: Menekan `"Akhiri Kunjungan"` di `ProgressScreen` membuka layar ringkasan akhir.
+- **Layar Bagikan Hasil (`ShareResultScreen`)**: Menampilkan kartu hasil penjelajahan dengan 4 statistik utama (Koleksi, Durasi, Misi, Poin) dan reward lencana.
+- **Bagikan Hasil sebagai GAMBAR (`ShareResultScreen`)**:
+  - **Android / iOS**: Memanfaatkan `react-native-view-shot` (`captureRef`) dan `expo-sharing` (`Sharing.shareAsync`) untuk menangkap kartu snapshot dan membuka native share sheet perangkat dengan file PNG gambar hasil terlampir.
+  - **Web / Browser**: Merender kartu secara dinamis ke kanvas 2x retina lalu memaksa unduhan `GEA-Hasil-Penjelajahan.png` via `URL.createObjectURL` + klik link tersembunyi.
+    - **Catatan iframe**: Demo berjalan dalam `<iframe>` di `demo.html`. Browser (termasuk Chrome mobile) dapat melaporkan `navigator.canShare({ files })` sebagai `true` di dalam iframe, padahal `navigator.share` dengan file diblokir secara diam-diam oleh kebijakan keamanan browser. Karena itu kode **mendeteksi konteks iframe** (`window.parent !== window`) dan melewati `navigator.share` sepenuhnya, langsung memaksa unduhan file PNG.
+    - Di browser standalone (bukan iframe) di perangkat mobile yang mendukung Web Share API Level 2, `navigator.share({ files })` tetap dicoba terlebih dahulu sebelum fallback ke unduhan.
+  - Teks share resmi juga memuat statistik tuntas dan tagar `#JelajahMuseumGeologi`.
+- **Layar Progres Kunjungan (`ProgressScreen`)**: Menampilkan durasi kunjungan aktif yang sedang berjalan berdampingan dengan jumlah koleksi yang diselesaikan.
+
 ### Foto survei POI (tidak masuk Git)
 
 Foto asli disimpan di folder `POI/P01 … P14` (di luar repo). Untuk memakainya di aplikasi:
