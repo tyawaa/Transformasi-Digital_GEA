@@ -551,7 +551,9 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
         poiName={poi.nama}
         stars={stars}
         conquered={hasQuiz ? progress.completed : challenge !== undefined ? challengeWon : progress.completed}
-        reward={progress.pointsAwarded + (progress.challengePoints ?? 0) + activityPoints(progress)}
+        score={progress.pointsAwarded + (progress.challengePoints ?? 0)}
+        reward={props.totalPoints}
+        allCompleted={props.allCompleted}
         explanation={hasQuiz && (progress.completed || progress.failed) ? poi.quest.penjelasan ?? local?.penjelasan : undefined}
         onHome={(): void => {
           if (props.allCompleted) setStep("final");
