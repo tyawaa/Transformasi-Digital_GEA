@@ -1,5 +1,4 @@
-// SEMENTARA: belum ada desain hi-fi untuk layar foto. Gaya mengikuti "Story - Scan QR"
-// (latar, bingkai kamera hijau miring, judul Ellak kuning).
+// "Temukan gambar ini" (Hifi Sprint 3 "Story - Side Quest") → Upload Foto membuka kamera.
 // Foto hanya ditampilkan sebagai pratinjau di HP; tidak disimpan dan tidak dikirim ke server.
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { Image } from "expo-image";
@@ -9,8 +8,9 @@ import { colors, componentColors, radius, shadows, spacing } from "../../../desi
 import { GeaText } from "../../../design/typography";
 import type { PoiDetail } from "../../../domain/contracts";
 import { mediaSource } from "../../../services/media";
-import { ScanBackground } from "./backgrounds";
-import { FrameStage, StoryButton } from "./parts";
+import { SceneLayer } from "../../onboarding/scene";
+import { isiPanelLayer, ScanBackground, StoryBackground } from "./backgrounds";
+import { BackButton, FrameStage, PhotoFrame, StoryButton } from "./parts";
 
 type Props = {
   /** Judul besar, mis. "Cari & foto koleksi ini" atau judul tantangan. */
@@ -27,11 +27,16 @@ type Props = {
   readonly testMode?: boolean;
   /** Foto referensi dari backend ("Temukan gambar ini"), bila ada untuk POI ini. */
   readonly references?: PoiDetail["photoChallenges"] | undefined;
+  /** Foto koleksi bila belum ada foto referensi dari backend. */
+  readonly photoUrl?: string | undefined;
 };
 
 export function PhotoTaskScreen(
-  { title, instruction, target, hint, onBack, onDone, testMode = false, references = [] }: Props,
+  { title, instruction, target, hint, onBack, onDone, testMode = false, references = [], photoUrl }: Props,
 ): ReactElement {
+  const [stage, setStage] = useState<"find" | "camera">(references.length > 0 || photoUrl !== undefined ? "find" : "camera");
+  const [refIndex, setRefIndex] = useState<number>(0);
+  const [findHeight, setFindHeight] = useState<number>(0);
   const [permission, requestPermission] = useCameraPermissions();
   const camera = useRef<CameraView>(null);
   const [photo, setPhoto] = useState<string | null>(null);
@@ -57,6 +62,42 @@ export function PhotoTaskScreen(
 
   const granted: boolean = permission?.granted === true;
 
+  if (stage === "find") {
+    const reference: PoiDetail["photoChallenges"][number] | undefined = references[refIndex];
+    const image: string | undefined = reference?.photoUrl ?? photoUrl;
+    const text: string = reference?.instruction ?? (target !== undefined ? `${instruction} ${target}.` : instruction);
+    return (
+      <FrameStage background={colors.primary[300]} frameHeight={Math.max(844, FIND_TOP + findHeight + 40)}>
+        <StoryBackground />
+        <BackButton onPress={onBack} />
+        {image !== undefined && (
+          <PhotoFrame photoUrl={image} label={title} left={19} top={110} box={352} size={{ width: 330, height: 322 }} border={14} rotate={-1.6} />
+        )}
+        <SceneLayer layer={isiPanelLayer} />
+        <View style={[styles.findFill, { height: Math.max(0, FIND_TOP + findHeight + 40 - 860) }]} />
+        <View style={styles.find} onLayout={(event): void => setFindHeight(event.nativeEvent.layout.height)}>
+          <GeaText variant="heading28" color={colors.secondaryYellow[100]}>Temukan gambar ini</GeaText>
+          <GeaText variant="body16" color={colors.white} style={styles.findText}>{text}</GeaText>
+          {references.length > 1 && (
+            <Pressable
+              accessibilityRole="button"
+              hitSlop={8}
+              onPress={(): void => setRefIndex((refIndex + 1) % references.length)}
+            >
+              <GeaText variant="label16" color={colors.secondaryYellow[100]} style={styles.link}>
+                Gambar {refIndex + 1} dari {references.length} · lihat berikutnya
+              </GeaText>
+            </Pressable>
+          )}
+          <StoryButton label="Upload Foto" onPress={(): void => setStage("camera")} style={styles.button} />
+          <Pressable accessibilityRole="button" hitSlop={8} onPress={onBack}>
+            <GeaText variant="body16" color={colors.white} style={[styles.link, styles.center]}>Kembali</GeaText>
+          </Pressable>
+        </View>
+      </FrameStage>
+    );
+  }
+
   return (
     <FrameStage background={colors.primary[300]} frameHeight={INFO_TOP + boxHeight + 24}>
       <ScanBackground />
@@ -66,7 +107,10 @@ export function PhotoTaskScreen(
           accessibilityRole="button"
           accessibilityLabel="Kembali"
           hitSlop={8}
-          onPress={onBack}
+          onPress={(): void => {
+            if (references.length > 0 || photoUrl !== undefined) setStage("find");
+            else onBack();
+          }}
           style={({ pressed }) => [styles.pill, pressed && styles.pressed]}
         >
           <GeaText variant="bold16" color={colors.primary[900]}>‹</GeaText>
@@ -104,7 +148,6 @@ export function PhotoTaskScreen(
 
       {/* Info + tombol: ikut memanjang, halaman digulir bila tidak muat */}
       <View style={styles.info} onLayout={(event): void => setBoxHeight(event.nativeEvent.layout.height)}>
-        {references.length > 0 && <ReferenceGallery challenges={references} />}
         <View style={styles.card}>
           <GeaText variant="label16" color={colors.primary[700]}>CARI &amp; FOTO</GeaText>
           <GeaText variant="bold16" color={componentColors.bodyDark}>{instruction}</GeaText>
@@ -154,52 +197,9 @@ export function PhotoTaskScreen(
   );
 }
 
-/** Foto referensi nomor 3+ dari backend; tiap gambar punya instruksinya sendiri (dari kode tim). */
-function ReferenceGallery({ challenges }: { readonly challenges: PoiDetail["photoChallenges"] }): ReactElement | null {
-  const [index, setIndex] = useState<number>(0);
-  const challenge: PoiDetail["photoChallenges"][number] | undefined = challenges[index];
-  if (challenge === undefined) return null;
-  const last: boolean = index === challenges.length - 1;
-  return (
-    <View style={styles.gallery}>
-      <GeaText variant="heading20" color={colors.primary[900]}>Temukan gambar ini</GeaText>
-      <Image
-        source={mediaSource(challenge.photoUrl)}
-        accessibilityLabel={`Referensi tantangan foto ${index + 1}`}
-        contentFit="contain"
-        style={styles.referencePhoto}
-      />
-      <GeaText variant="body14" color={componentColors.bodyDark}>{challenge.instruction}</GeaText>
-      {challenges.length > 1 && (
-        <View style={styles.galleryNav}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Referensi sebelumnya"
-            disabled={index === 0}
-            accessibilityState={{ disabled: index === 0 }}
-            onPress={(): void => setIndex(index - 1)}
-            style={[styles.referenceButton, index === 0 && styles.disabled]}
-          >
-            <GeaText variant="label16" color={colors.primary[900]}>Sebelumnya</GeaText>
-          </Pressable>
-          <GeaText variant="label16" color={colors.primary[900]}>{index + 1} / {challenges.length}</GeaText>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Referensi berikutnya"
-            disabled={last}
-            accessibilityState={{ disabled: last }}
-            onPress={(): void => setIndex(index + 1)}
-            style={[styles.referenceButton, last && styles.disabled]}
-          >
-            <GeaText variant="label16" color={colors.primary[900]}>Berikutnya</GeaText>
-          </Pressable>
-        </View>
-      )}
-    </View>
-  );
-}
-
 const INFO_TOP = 474;
+// Isi panel cokelat "Temukan gambar ini".
+const FIND_TOP = 616;
 
 const styles = StyleSheet.create({
   topBar: { position: "absolute", left: 16, top: 40 },
@@ -253,4 +253,7 @@ const styles = StyleSheet.create({
   galleryNav: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   referenceButton: { paddingVertical: spacing[8], paddingHorizontal: spacing[8] },
   disabled: { opacity: 0.4 },
+  find: { position: "absolute", left: 16, top: FIND_TOP, width: 358, gap: spacing[16] },
+  findText: { lineHeight: 24 },
+  findFill: { position: "absolute", left: 0, top: 860, width: 390, backgroundColor: colors.primary[800] },
 });

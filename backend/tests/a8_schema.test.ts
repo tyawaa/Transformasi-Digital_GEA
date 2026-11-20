@@ -1,4 +1,4 @@
-import { equal, ok, rejects } from "node:assert/strict";
+import { deepStrictEqual, equal, ok, rejects } from "node:assert/strict";
 import { PGlite } from "@electric-sql/pglite";
 
 Deno.test("A8: audit skema Supabase dan tabel Sprint 2", async (test): Promise<void> => {
@@ -69,14 +69,8 @@ Deno.test("A8: audit skema Supabase dan tabel Sprint 2", async (test): Promise<v
       equal(badges.rows.length, 15); // BD-01 s.d. BD-15
 
       const activeCodes = badges.rows.filter((b) => b.is_active).map((b) => b.kode_badge);
-      // Prioritas rendah (POI-12 s.d. POI-21) dan foto anak belum aktif.
-      for (const code of ["BD-05", "BD-08", "BD-09", "BD-14"]) {
-        ok(!activeCodes.includes(code), `${code} belum aktif`);
-      }
-      equal(activeCodes.length, 11, "11 lencana prioritas tinggi aktif");
-      ok(activeCodes.includes("BD-01"), "BD-01 Penjelajah Sayap Kiri harus ada");
-      ok(activeCodes.includes("BD-02"), "BD-02 Pemburu Foto harus ada");
-      ok(activeCodes.includes("BD-15"), "BD-15 Penjelajah Cilik harus ada");
+      // Sheet terbaru: fokus sayap kiri, hanya BD-01 s.d. BD-04 aktif; BD-05 s.d. BD-15 tetap ada (nonaktif).
+      deepStrictEqual(activeCodes, ["BD-01", "BD-02", "BD-03", "BD-04"]);
     });
 
     await test.step("unique key anti-poin ganda (session, POI, komponen) bekerja", async (): Promise<void> => {

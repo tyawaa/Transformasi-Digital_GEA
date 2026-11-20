@@ -1,4 +1,5 @@
 import type { BadgeId, VisitProgress } from "../../domain/contracts.ts";
+import { activityPoints } from "../../domain/points.ts";
 
 /** Status satu POI pada sesi ini. Disimpan di perangkat agar bertahan setelah app ditutup. */
 export type PoiProgress = {
@@ -22,6 +23,10 @@ export type PoiProgress = {
   readonly challengePoints?: number;
   /** Jumlah jawaban tantangan non-foto (1 = benar di percobaan pertama); 0 untuk quest foto. */
   readonly challengeAttempts?: number;
+  /** Tantangan dijawab benar (dipakai bonus percobaan pertama). */
+  readonly challengeSuccess?: boolean;
+  /** Sudah check-in di POI ini (GPS/QR terverifikasi). */
+  readonly checkedIn?: boolean;
 };
 
 /** Bagian progres yang hanya ada di perangkat (tantangan & foto koleksi). */
@@ -32,7 +37,14 @@ function localOnly(state: PoiProgress | undefined): Partial<PoiProgress> {
     ...(state.challengeDone !== undefined && { challengeDone: state.challengeDone }),
     ...(state.challengePoints !== undefined && { challengePoints: state.challengePoints }),
     ...(state.challengeAttempts !== undefined && { challengeAttempts: state.challengeAttempts }),
+    ...(state.challengeSuccess !== undefined && { challengeSuccess: state.challengeSuccess }),
+    ...(state.checkedIn !== undefined && { checkedIn: state.checkedIn }),
   };
+}
+
+/** Poin aktivitas semua POI (check-in, cerita, percobaan pertama, POI tuntas). */
+export function localActivityPoints(progress: ProgressMap): number {
+  return Object.values(progress).reduce((sum: number, state: PoiProgress): number => sum + activityPoints(state), 0);
 }
 
 /** Total poin tantangan lokal; belum dinilai server sehingga ditambahkan ke total resmi. */

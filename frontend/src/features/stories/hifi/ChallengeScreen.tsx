@@ -20,6 +20,8 @@ type Props = {
   readonly testMode?: boolean;
   /** Foto referensi POI dari backend, ditampilkan di layar foto. */
   readonly references?: PoiDetail["photoChallenges"] | undefined;
+  /** Foto koleksi untuk layar "Temukan gambar ini". */
+  readonly photoUrl?: string | undefined;
   /** null = dinilai lokal. */
   readonly grade?: ((answer: ChallengeAnswer) => Promise<ServerGrade> | null) | undefined;
 };
@@ -42,7 +44,7 @@ function normalize(text: string): string {
   return text.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, "").replace(/\s+/g, " ").trim();
 }
 
-export function ChallengeScreen({ challenge, onBack, onDone, testMode = false, references, grade }: Props): ReactElement {
+export function ChallengeScreen({ challenge, onBack, onDone, testMode = false, references, photoUrl, grade }: Props): ReactElement {
   const [outcome, setOutcome] = useState<boolean | null>(null);
   const [serverPoints, setServerPoints] = useState<number | null>(null);
   const [serverHint, setServerHint] = useState<string | null>(null);
@@ -78,6 +80,7 @@ export function ChallengeScreen({ challenge, onBack, onDone, testMode = false, r
         }}
         testMode={testMode}
         references={references}
+        photoUrl={photoUrl}
       />
     );
   }
