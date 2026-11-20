@@ -17,11 +17,12 @@ type Props = {
   readonly earned: readonly BadgeId[];
   /** Lencana yang berlaku untuk pengunjung ini (sheet Badge_Poin; lihat availableBadges). */
   readonly available?: readonly BadgeDef[];
+  readonly durationText?: string;
   readonly onBack: () => void;
   readonly onEndVisit: () => void;
 };
 
-export function ProgressScreen({ pois, progressOf, totalPoints, earned, available = badges, onBack, onEndVisit }: Props): ReactElement {
+export function ProgressScreen({ pois, progressOf, totalPoints, earned, available = badges, durationText, onBack, onEndVisit }: Props): ReactElement {
   const active: readonly MapPoi[] = pois.filter((poi: MapPoi): boolean => poi.id !== null);
   const done: number = active.filter((poi: MapPoi): boolean => poi.status === "selesai").length;
   const ratio: number = active.length === 0 ? 0 : done / active.length;
@@ -50,7 +51,9 @@ export function ProgressScreen({ pois, progressOf, totalPoints, earned, availabl
           <GeaText variant="label16" color={colors.primary[700]}>poin</GeaText>
         </View>
         <View style={styles.flex}>
-          <GeaText variant="bold16" color={colors.primary[900]}>{done} dari {active.length} koleksi selesai</GeaText>
+          <GeaText variant="bold16" color={colors.primary[900]}>
+            {done} dari {active.length} koleksi selesai{durationText != null ? ` · ${durationText}` : ""}
+          </GeaText>
           <View style={styles.bar}>
             <View style={[styles.barFill, { width: `${ratio * 100}%` }]} />
           </View>

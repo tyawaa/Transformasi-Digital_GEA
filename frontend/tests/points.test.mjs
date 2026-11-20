@@ -5,6 +5,7 @@ import {
   attemptsLeft,
   availableBadges,
   earnedBadges,
+  formatVisitDuration,
   isOutOfAttempts,
   poiStatus,
   quizPoints,
@@ -87,3 +88,40 @@ test("anak: POI quest foto jadi cerita saja; Penjelajah Cilik di 2 POI", () => {
   assert.deepEqual(ids, ["BD-01", "BD-04", "BD-06", "BD-15"]);
   assert.equal(earnedBadges(pois, states, { kid: true, questDays: 3 }).includes("BD-11"), true);
 });
+
+test("format durasi kunjungan (menit dan jam)", () => {
+  const now = 1700000000000;
+  // Fallback default bila belum ada start time
+  assert.equal(formatVisitDuration(null, now), "15 menit");
+  assert.equal(formatVisitDuration(undefined, now), "15 menit");
+  // Kurang dari 1 jam
+  assert.equal(formatVisitDuration(now - 10 * 60_000, now), "10 menit");
+  assert.equal(formatVisitDuration(now - 45 * 60_000, now), "45 menit");
+  // Pas 1 jam
+  assert.equal(formatVisitDuration(now - 60 * 60_000, now), "1 jam");
+  // Lebih dari 1 jam
+  assert.equal(formatVisitDuration(now - 75 * 60_000, now), "1 jam 15 menit");
+  assert.equal(formatVisitDuration(now - 120 * 60_000, now), "2 jam");
+});
+
+test("PB12 acceptance: aturan gating quest dan batas 3 percobaan", () => {
+  // Gating verifikasi: masa berlaku verifikasi (15 menit)
+  const now = 1700000000000;
+  const verifiedActive = { verifiedUntil: now + 10 * 60_000 };
+  const verifiedExpired = { verifiedUntil: now - 1 * 60_000 };
+  const unverified = { verifiedUntil: null };
+
+  const isVerifiedCheck = (state, atMs) => state.verifiedUntil !== null && state.verifiedUntil > atMs;
+
+  assert.equal(isVerifiedCheck(verifiedActive, now), true, "Quest terbuka saat di checkpoint aktif");
+  assert.equal(isVerifiedCheck(verifiedExpired, now), false, "Quest terkunci saat verifikasi kedaluwarsa");
+  assert.equal(isVerifiedCheck(unverified, now), false, "Quest terkunci di luar checkpoint");
+
+  // Percobaan & hint: percobaan 1-2 menghasilkan hint bila salah, percobaan 3 gagal permanen
+  assert.equal(attemptsLeft(s(false, false, 0)), 3);
+  assert.equal(attemptsLeft(s(false, false, 1)), 2);
+  assert.equal(attemptsLeft(s(false, false, 2)), 1);
+  assert.equal(attemptsLeft(s(false, false, 3)), 0);
+  assert.equal(isOutOfAttempts(3), true, "Percobaan ke-3 salah = kesempatan habis (failed)");
+});
+

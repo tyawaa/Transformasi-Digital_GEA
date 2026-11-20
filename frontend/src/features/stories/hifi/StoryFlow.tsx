@@ -481,6 +481,7 @@ export function StoryFlow(props: Props): ReactElement {
         conquered={hasQuiz ? progress.completed : challenge !== undefined ? challengeWon : progress.completed}
         score={score}
         reward={props.totalPoints}
+        allCompleted={props.allCompleted}
         explanation={hasQuiz && (progress.completed || progress.failed) ? poi.quest.penjelasan ?? local?.penjelasan : undefined}
         extra={[
           ...(props.nextStop != null ? [`Berikutnya di rutemu: ${props.nextStop}`] : []),

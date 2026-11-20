@@ -57,7 +57,11 @@ export function useVisitProgress(source: StoriesSource): VisitProgressState {
     async function load(): Promise<void> {
       const raw: string | null = await AsyncStorage.getItem(VISIT_KEY);
       if (raw === null) return;
-      const restoredVisit: Visit = visitSchema.parse(JSON.parse(raw));
+      const parsed = JSON.parse(raw) as Partial<Visit>;
+      const restoredVisit: Visit = visitSchema.parse({
+        ...parsed,
+        startedAt: parsed.startedAt ?? (parsed.start_time ? Date.parse(parsed.start_time) : Date.now()),
+      });
       const storedProgress: string | null = await AsyncStorage.getItem(progressKey(restoredVisit.id_sesi));
       let local: ProgressMap = storedProgress === null ? {} : (JSON.parse(storedProgress) as ProgressMap);
       // Migrasi cache demo lama yang belum menyimpan poin per jawaban.
@@ -102,10 +106,12 @@ export function useVisitProgress(source: StoriesSource): VisitProgressState {
   }
 
   function startVisit(next: Visit): void {
-    setVisit(next);
+    const startedAt: number = next.startedAt ?? (next.start_time ? Date.parse(next.start_time) : Date.now());
+    const withStart: Visit = { ...next, startedAt };
+    setVisit(withStart);
     setProgress({});
     setRewards({ totalPoints: 0, badges: [] });
-    AsyncStorage.setItem(VISIT_KEY, JSON.stringify(next)).catch((cause: unknown): void =>
+    AsyncStorage.setItem(VISIT_KEY, JSON.stringify(withStart)).catch((cause: unknown): void =>
       warn("gea_visit_save_failed", cause)
     );
   }

@@ -51,6 +51,7 @@ type Props = {
   readonly onCheckLocation: () => void;
   readonly onRetry: () => void;
   readonly onOpenProgress: () => void;
+  readonly onOpenSummary?: () => void;
   /** Membuka alur verifikasi geofence POI sebelum mengakses cerita. */
   readonly onOpenPoi: (id: string) => void;
   readonly userFix: Fix | null;
@@ -173,6 +174,11 @@ export function MapScreen(props: Props): ReactElement {
               {target !== null && target.id !== null && (
                 <View style={styles.flex}>
                   <MapButton label="Buka cerita" onPress={(): void => { if (target.id !== null) props.onOpenPoi(target.id); }} />
+                </View>
+              )}
+              {target === null && props.completedCount > 0 && props.onOpenSummary !== undefined && (
+                <View style={styles.flex}>
+                  <MapButton label="Lihat Ringkasan Akhir" onPress={props.onOpenSummary} />
                 </View>
               )}
               <Pressable accessibilityRole="button" accessibilityLabel="Lokasi belum sesuai? Pindai QR"

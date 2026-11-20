@@ -46,6 +46,21 @@ export function poiStatus(state: StoryState | undefined, verified: boolean): Poi
   return "belum";
 }
 
+/** Format durasi kunjungan (ms epoch) ke teks ramah pengguna (mis. "45 menit", "1 jam", "1 jam 15 menit"). */
+export function formatVisitDuration(startedAtMs: number | null | undefined, nowMs: number = Date.now()): string {
+  if (startedAtMs == null || !Number.isFinite(startedAtMs)) return "15 menit";
+  const diffMinutes = Math.max(1, Math.round((nowMs - startedAtMs) / 60_000));
+  if (diffMinutes < 60) {
+    return `${diffMinutes} menit`;
+  }
+  const hours = Math.floor(diffMinutes / 60);
+  const remainingMins = diffMinutes % 60;
+  if (remainingMins === 0) {
+    return `${hours} jam`;
+  }
+  return `${hours} jam ${remainingMins} menit`;
+}
+
 // Sprint 3: daftar lencana dari sheet Badge_Poin (workbook _Anak, 15 Nov 2026).
 // Kuning = prioritas tinggi (POI-01 s.d. POI-11). Oranye/merah = prioritas rendah (POI-12 s.d. POI-21):
 // BD-05, BD-08, BD-09 hanya tampil bila sayap kanan dibuka. BD-14 (foto anak) nonaktif karena anak tidak
