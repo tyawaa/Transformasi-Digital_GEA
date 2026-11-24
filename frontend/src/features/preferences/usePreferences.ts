@@ -18,10 +18,14 @@ export type PreferencesState = "loading" | "show" | "done";
 export function usePreferences(): {
   readonly state: PreferencesState;
   readonly preferences: Preferences | null;
+  readonly draft: Preferences;
+  readonly updateDraft: (value: Preferences) => void;
+  readonly reopen: () => void;
   readonly save: (value: Preferences) => void;
 } {
   const [state, setState] = useState<PreferencesState>("loading");
   const [preferences, setPreferences] = useState<Preferences | null>(null);
+  const [draft, setDraft] = useState<Preferences>({ age: "", duration: "", topics: [] });
 
   useEffect((): void => {
     if (alwaysShow) {
@@ -35,7 +39,9 @@ export function usePreferences(): {
           return;
         }
         try {
-          setPreferences(JSON.parse(value) as Preferences);
+          const stored: Preferences = JSON.parse(value) as Preferences;
+          setPreferences(stored);
+          setDraft(stored);
           setState("done");
         } catch {
           setState("show");
@@ -52,6 +58,7 @@ export function usePreferences(): {
 
   function save(value: Preferences): void {
     setPreferences(value);
+    setDraft(value);
     setState("done");
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(value)).catch((cause: unknown): void => {
       console.warn("gea_preferences_save_failed", {
@@ -60,5 +67,9 @@ export function usePreferences(): {
     });
   }
 
-  return { state, preferences, save };
+  function reopen(): void {
+    setState("show");
+  }
+
+  return { state, preferences, draft, updateDraft: setDraft, reopen, save };
 }

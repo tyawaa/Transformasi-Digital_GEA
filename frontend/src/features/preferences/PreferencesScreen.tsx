@@ -4,7 +4,7 @@ import { Toast } from "../../design/Toast";
 import { colors, componentColors, shadows, spacing } from "../../design/tokens";
 import { GeaText } from "../../design/typography";
 import { StoryBackground } from "../stories/hifi/backgrounds";
-import { FrameStage, StoryButton } from "../stories/hifi/parts";
+import { BackButton, FrameStage, StoryButton } from "../stories/hifi/parts";
 import { ageOptions, durationOptions, topics } from "./recommend";
 import type { Preferences } from "./usePreferences";
 
@@ -40,10 +40,19 @@ const questions: readonly [Question, Question, Question] = [
 
 /** Tiga layar preferensi setelah onboarding: usia → waktu → minat. */
 export function PreferencesScreen(
-  { onDone }: { readonly onDone: (value: Preferences) => void },
+  { value, onChange, onBack, onDone }: {
+    readonly value: Preferences;
+    readonly onChange: (value: Preferences) => void;
+    readonly onBack: () => void;
+    readonly onDone: (value: Preferences) => void;
+  },
 ): ReactElement {
   const [step, setStep] = useState<0 | 1 | 2>(0);
-  const [answers, setAnswers] = useState<readonly [readonly string[], readonly string[], readonly string[]]>([[], [], []]);
+  const answers: readonly [readonly string[], readonly string[], readonly string[]] = [
+    value.age === "" ? [] : [value.age],
+    value.duration === "" ? [] : [value.duration],
+    value.topics,
+  ];
   const question: Question = questions[step];
   const selected: readonly string[] = answers[step];
   const [warning, setWarning] = useState<boolean>(false);
@@ -58,11 +67,18 @@ export function PreferencesScreen(
       ? selected.includes(option) ? selected.filter((item: string): boolean => item !== option) : [...selected, option]
       : [option];
     setWarning(false);
-    setAnswers((current) => {
-      const copy = [...current] as [readonly string[], readonly string[], readonly string[]];
-      copy[step] = next;
-      return copy;
-    });
+    onChange(step === 0
+      ? { ...value, age: next[0] ?? "" }
+      : step === 1
+      ? { ...value, duration: next[0] ?? "" }
+      : { ...value, topics: next });
+  }
+
+  function back(): void {
+    setWarning(false);
+    if (step === 2) setStep(1);
+    else if (step === 1) setStep(0);
+    else onBack();
   }
 
   function next(): void {
@@ -75,7 +91,7 @@ export function PreferencesScreen(
       setStep((step + 1) as 1 | 2);
       return;
     }
-    onDone({ age: answers[0][0] ?? "", duration: answers[1][0] ?? "", topics: answers[2] });
+    onDone(value);
   }
 
   // Daftar dengan 5 pilihan dimulai sedikit lebih tinggi agar tetap di atas tombol.
@@ -92,6 +108,7 @@ export function PreferencesScreen(
           {question.hint}
         </GeaText>
       </View>
+      <BackButton onPress={back} label="Kembali" labelColor={colors.secondaryGreen[100]} />
       <View style={[styles.list, { top: listTop }]}>
         {question.options.map((option: string): ReactElement => {
           const checked: boolean = selected.includes(option);

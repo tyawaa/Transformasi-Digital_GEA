@@ -384,7 +384,14 @@ function Home(): ReactElement {
     return (
       <>
         <StatusBar style="light" />
-        <PreferencesScreen onDone={preferences.save} />
+        <PreferencesScreen
+          value={preferences.draft}
+          onChange={preferences.updateDraft}
+          onBack={(): void => {
+            setLocationSplash(visit === null ? "fail" : "ok");
+          }}
+          onDone={preferences.save}
+        />
       </>
     );
   }
@@ -490,6 +497,7 @@ function Home(): ReactElement {
     <>
       <StatusBar style="dark" />
       <MapScreen
+        onBack={preferences.reopen}
         routeToast={routeToast}
         onCloseRouteToast={(): void => setRouteToast(false)}
         wingsMode={wingsMode}
