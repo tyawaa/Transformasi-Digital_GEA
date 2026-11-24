@@ -5,6 +5,8 @@ import { Linking, Pressable, StyleSheet, View } from "react-native";
 import { Button } from "../../design/Button";
 import { colors, spacing } from "../../design/tokens";
 import { GeaText } from "../../design/typography";
+import type { AccessDecision, DecisionMessage } from "../../domain/contracts";
+import type { LocationSettingsAction } from "../../hooks/useVisitSession";
 import { FrameStage, StoryButton } from "../stories/hifi/parts";
 
 const okEllipse = require("../../../assets/design/loc-ok-ellipse.svg") as number;
@@ -41,7 +43,10 @@ export function LocationSuccessSplash({ onContinue }: { readonly onContinue: () 
 }
 
 export function LocationFailedSplash(
-  { onRecheck, onScanQr }: {
+  { message, decision, settingsAction, onRecheck, onScanQr }: {
+    readonly message: DecisionMessage;
+    readonly decision: AccessDecision | null;
+    readonly settingsAction: LocationSettingsAction | null;
     readonly onRecheck: () => void;
     readonly onScanQr: () => void;
   },
@@ -55,20 +60,25 @@ export function LocationFailedSplash(
       </View>
       <Image accessible={false} source={failTop} style={styles.failTop} contentFit="fill" />
       <View style={[styles.content, { top: 238 }]}>
-        <GeaText variant="display42" color={colors.secondaryGreen[100]} style={styles.title} accessibilityRole="header">
-          Kamu belum berada di area museum
+        <GeaText variant="heading28" color={colors.secondaryGreen[100]} style={styles.title} accessibilityRole="header">
+          {message.title}
         </GeaText>
         <View style={styles.body}>
           <GeaText variant="body16" color={colors.white} style={styles.text}>
-            Petualangan GEA dimulai di Museum Geologi Bandung. Yuk, datang dulu ke sana!
+            {message.description}
           </GeaText>
-          <Button
+          {decision?.status === "outside" && <Button
             appearance="fill"
             tone="danger"
             label="Yuk lihat arah ke museum!"
             onPress={(): void => void Linking.openURL(MUSEUM_DIRECTIONS)}
             style={styles.stretch}
-          />
+          />}
+          {settingsAction !== null && <StoryButton
+            label={settingsAction.label}
+            onPress={(): void => void settingsAction.onPress()}
+            style={styles.stretch}
+          />}
           <Pressable
             accessibilityRole="button"
             onPress={onRecheck}

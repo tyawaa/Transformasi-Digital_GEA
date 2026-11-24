@@ -37,7 +37,9 @@ function resetDemo() {
   if (!confirmed) return;
   reset.disabled = true;
   try {
-    const keys = Object.keys(window.localStorage).filter((key) => key.startsWith("gea."));
+    const keys = Object.keys(window.localStorage).filter((key) =>
+      key.startsWith("gea.") && key !== "gea.visit.v2:api" && !key.startsWith("gea.progress.v2:api:")
+    );
     for (const key of keys) window.localStorage.removeItem(key);
     window.location.reload();
   } catch (cause) {

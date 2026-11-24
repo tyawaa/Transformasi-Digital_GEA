@@ -21,7 +21,7 @@ type Props = {
   /** Kalimat bantuan di bawah kamera. */
   readonly helper?: string;
   /** Hasil QR yang sudah divalidasi offline (format + kode di dataset lokal). */
-  readonly onResult: (result: ParsedQr) => void;
+  readonly onResult: (result: ParsedQr) => Promise<void>;
   readonly onRetry: () => void;
   /** Kembali ke peta. */
   readonly onBack: () => void;
@@ -52,12 +52,29 @@ export function ScanQrScreen(
   const [permission, requestPermission] = useCameraPermissions();
   const [testsOpen, setTestsOpen] = useState<boolean>(false);
   const handled = useRef<boolean>(false);
-  if (state === "scanning") handled.current = false;
+  const lastPayload = useRef<string | null>(null);
 
   function onBarcode(result: BarcodeScanningResult): void {
+    void scanPayload(result.data);
+  }
+
+  async function scanPayload(raw: string): Promise<void> {
     if (handled.current || state !== "scanning") return;
+    const payload: string = raw.trim();
+    if (payload === lastPayload.current) return;
     handled.current = true;
-    onResult(parseQr(result.data));
+    lastPayload.current = payload;
+    try {
+      await onResult(parseQr(payload));
+    } finally {
+      handled.current = false;
+    }
+  }
+
+  function retryScan(): void {
+    lastPayload.current = null;
+    handled.current = false;
+    onRetry();
   }
 
   return (
@@ -133,7 +150,7 @@ export function ScanQrScreen(
           <Pressable
             accessibilityRole="button"
             accessibilityLiveRegion="assertive"
-            onPress={onRetry}
+            onPress={retryScan}
             style={[styles.status, styles.failed]}
           >
             <GeaText variant="label16" color={componentColors.textWhite} style={styles.center}>
@@ -168,8 +185,7 @@ export function ScanQrScreen(
               disabled={state === "detected"}
               onPress={(): void => {
                 setTestsOpen(false);
-                handled.current = true;
-                onResult(parseQr(dummy.payload));
+                void scanPayload(dummy.payload);
               }}
               style={({ pressed }) => [styles.testItem, pressed && styles.pillPressed]}
             >

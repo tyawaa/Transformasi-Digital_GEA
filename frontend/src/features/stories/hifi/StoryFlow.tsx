@@ -276,7 +276,7 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
     return (): void => clearTimeout(timer);
   }, [toast]);
 
-  function onScan(result: ParsedQr): void {
+  async function onScan(result: ParsedQr): Promise<void> {
     if (!result.ok) {
       setScanMessage(qrErrorMessage(result.reason));
       setScanState("failed");
@@ -287,7 +287,7 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
       setScanState("failed");
       return;
     }
-    void verify(result.token);
+    await verify(result.token);
   }
 
   async function verify(token: string): Promise<void> {
@@ -309,6 +309,9 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
   }
 
   function acceptVerification(result: PoiVerification): void {
+    if (quizPending.current && result.idPoi !== poiId) {
+      throw new GeaServiceError(403, "WRONG_POI_QR", "QR ini untuk koleksi lain. Pindai QR koleksi yang kuisnya sedang kamu lanjutkan.");
+    }
     const until: number = Date.parse(result.expiresAt);
     if (!Number.isFinite(until)) throw new Error("Masa berlaku verifikasi koleksi tidak valid.");
     onProgress(result.idPoi, { verifiedUntil: until, checkedIn: true });
@@ -709,6 +712,7 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
           onError={(cause: unknown): void => {
             if (cause instanceof GeaServiceError && cause.code === "CHECKPOINT_VERIFICATION_REQUIRED") {
               onProgress(poiId, { verifiedUntil: null });
+              quizPending.current = true;
               setError(null);
               setStep("gps");
               return;

@@ -134,6 +134,7 @@ function Home(): ReactElement {
   const [scanState, setScanState] = useState<ScanState>("scanning");
   const [scanMessage, setScanMessage] = useState<string | null>(null);
   const [scanNotice, setScanNotice] = useState<string | null>(null);
+  const scanPending = useRef<boolean>(false);
   const [qrZoneIntro, setQrZoneIntro] = useState<ZoneInfo | null>(null);
 
   async function loadPois(): Promise<void> {
@@ -258,16 +259,22 @@ function Home(): ReactElement {
   }
 
   async function handleScan(result: ParsedQr): Promise<void> {
+    if (scanPending.current) return;
     if (!result.ok) {
       failScan(qrErrorMessage(result.reason));
       return;
     }
+    scanPending.current = true;
     setScanState("detected");
     try {
       // QR pintu masuk / zona: kunjungan dimulai, tetap di layar scan untuk QR koleksi berikutnya.
       if (result.kind === "entrance" || (result.kind === null && visit === null)) {
-        await beginVisit(result.token);
-        setScanNotice("Kunjungan dimulai! Kembali ke peta, pilih koleksi dan tekan Buka cerita untuk memeriksa GPS, atau scan QR koleksi di sini.");
+        if (visit === null) {
+          await beginVisit(result.token);
+          setScanNotice("Kunjungan dimulai! Kembali ke peta atau scan QR koleksi di sini.");
+        } else {
+          setScanNotice("Kunjunganmu masih aktif. Kembali ke peta atau scan QR koleksi untuk melanjutkan.");
+        }
         return;
       }
       if (result.kind === "zone") {
@@ -294,6 +301,7 @@ function Home(): ReactElement {
     } catch (cause: unknown) {
       failScan(readableError(cause));
     } finally {
+      scanPending.current = false;
       setScanState((current: ScanState): ScanState => (current === "detected" ? "scanning" : current));
     }
   }
@@ -336,6 +344,14 @@ function Home(): ReactElement {
       <>
         <StatusBar style="light" />
         <LocationFailedSplash
+          message={operationError !== null
+            ? { title: "Lokasi belum dapat diperiksa", description: operationError }
+            : session.notice ?? {
+              title: "Lokasi belum dapat diperiksa",
+              description: "Periksa izin dan layanan lokasi, lalu coba lagi atau pindai QR pintu masuk.",
+            }}
+          decision={operationError === null ? session.decision : null}
+          settingsAction={session.locationSettingsAction}
           onRecheck={(): void => {
             void session.checkLocation();
           }}
@@ -412,7 +428,7 @@ function Home(): ReactElement {
           state={scanState}
           failMessage={scanMessage}
           notice={scanNotice}
-          onResult={(result: ParsedQr): void => void handleScan(result)}
+          onResult={handleScan}
           onRetry={(): void => setScanState("scanning")}
           onBack={(): void => setScreen({ name: "map" })}
           dummies={mapDummies}

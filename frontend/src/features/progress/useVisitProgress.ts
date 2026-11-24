@@ -19,8 +19,9 @@ import {
   type VisitRewards,
 } from "../stories/progress";
 
-const VISIT_KEY = "gea.visit.v1";
-const progressKey = (idSesi: string): string => `gea.progress.v1:${idSesi}`;
+// Sesi demo tidak boleh dipulihkan lewat API, atau sebaliknya.
+const visitKey = (source: StoriesSource["kind"]): string => `gea.visit.v2:${source}`;
+const progressKey = (source: StoriesSource["kind"], idSesi: string): string => `gea.progress.v2:${source}:${idSesi}`;
 
 export type VisitProgressState = {
   readonly ready: boolean;
@@ -55,14 +56,21 @@ export function useVisitProgress(source: StoriesSource): VisitProgressState {
   useEffect((): (() => void) => {
     let active = true;
     async function load(): Promise<void> {
-      const raw: string | null = await AsyncStorage.getItem(VISIT_KEY);
+      const scopedRaw: string | null = await AsyncStorage.getItem(visitKey(source.kind));
+      const raw: string | null = scopedRaw ?? await AsyncStorage.getItem("gea.visit.v1");
       if (raw === null) return;
       const parsed = JSON.parse(raw) as Partial<Visit>;
       const restoredVisit: Visit = visitSchema.parse({
         ...parsed,
         startedAt: parsed.startedAt ?? (parsed.start_time ? Date.parse(parsed.start_time) : Date.now()),
       });
-      const storedProgress: string | null = await AsyncStorage.getItem(progressKey(restoredVisit.id_sesi));
+      // Migrasi v1: hanya sesi API yang memiliki start_time dari database.
+      const legacy: boolean = scopedRaw === null;
+      const storedSource: StoriesSource["kind"] = restoredVisit.start_time === undefined ? "mock" : "api";
+      if (legacy && storedSource !== source.kind) return;
+      const storedProgress: string | null = await AsyncStorage.getItem(
+        legacy ? `gea.progress.v1:${restoredVisit.id_sesi}` : progressKey(source.kind, restoredVisit.id_sesi),
+      );
       let local: ProgressMap = storedProgress === null ? {} : (JSON.parse(storedProgress) as ProgressMap);
       // Migrasi cache demo lama yang belum menyimpan poin per jawaban.
       if (source.kind === "mock") {
@@ -77,7 +85,13 @@ export function useVisitProgress(source: StoriesSource): VisitProgressState {
       if (server !== null) {
         local = mergeServerProgress(local, server.progress);
         setRewards(server.rewards);
-        await AsyncStorage.setItem(progressKey(restoredVisit.id_sesi), JSON.stringify(local));
+      }
+      if (server !== null || legacy) {
+        await AsyncStorage.setItem(progressKey(source.kind, restoredVisit.id_sesi), JSON.stringify(local));
+      }
+      if (legacy) {
+        await AsyncStorage.setItem(visitKey(source.kind), JSON.stringify(restoredVisit));
+        await AsyncStorage.removeItem("gea.visit.v1");
       }
       if (!active) return;
       setProgress(local);
@@ -100,7 +114,7 @@ export function useVisitProgress(source: StoriesSource): VisitProgressState {
   }
 
   function persist(idSesi: string, next: ProgressMap): void {
-    AsyncStorage.setItem(progressKey(idSesi), JSON.stringify(next)).catch((cause: unknown): void =>
+    AsyncStorage.setItem(progressKey(source.kind, idSesi), JSON.stringify(next)).catch((cause: unknown): void =>
       warn("gea_progress_save_failed", cause)
     );
   }
@@ -111,7 +125,7 @@ export function useVisitProgress(source: StoriesSource): VisitProgressState {
     setVisit(withStart);
     setProgress({});
     setRewards({ totalPoints: 0, badges: [] });
-    AsyncStorage.setItem(VISIT_KEY, JSON.stringify(withStart)).catch((cause: unknown): void =>
+    AsyncStorage.setItem(visitKey(source.kind), JSON.stringify(withStart)).catch((cause: unknown): void =>
       warn("gea_visit_save_failed", cause)
     );
   }
@@ -144,14 +158,14 @@ export function useVisitProgress(source: StoriesSource): VisitProgressState {
   function endVisit(): void {
     setError(null);
     if (visit !== null) {
-      AsyncStorage.removeItem(progressKey(visit.id_sesi)).catch((cause: unknown): void =>
+      AsyncStorage.removeItem(progressKey(source.kind, visit.id_sesi)).catch((cause: unknown): void =>
         warn("gea_progress_clear_failed", cause)
       );
     }
     setVisit(null);
     setProgress({});
     setRewards({ totalPoints: 0, badges: [] });
-    AsyncStorage.removeItem(VISIT_KEY).catch((cause: unknown): void => warn("gea_visit_clear_failed", cause));
+    AsyncStorage.removeItem(visitKey(source.kind)).catch((cause: unknown): void => warn("gea_visit_clear_failed", cause));
   }
 
   return {

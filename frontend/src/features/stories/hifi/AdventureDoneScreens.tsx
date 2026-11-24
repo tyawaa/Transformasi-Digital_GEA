@@ -31,7 +31,7 @@ export type AdventureSummary = {
   /** null = belum ada lencana. */
   readonly badgeName: string | null;
   /** Durasi kunjungan dalam teks (mis. "45 menit" atau "1 jam 15 menit"). */
-  readonly durationText?: string;
+  readonly durationText: string;
   readonly durationMinutes?: number;
 };
 
@@ -454,7 +454,7 @@ const done = StyleSheet.create({
     alignItems: "center",
     gap: spacing[12],
     paddingHorizontal: spacing[16],
-    paddingVertical: spacing[20],
+    paddingVertical: spacing[16] + spacing[4],
     borderRadius: 16,
     backgroundColor: colors.white,
   },

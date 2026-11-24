@@ -73,7 +73,7 @@ export function useVisitSession(
   api: GeaApi,
   runOperation: RunOperation,
   /** Kategori pengunjung dari preferensi usia (anak / dewasa = Umum). */
-  profile: Profile = "dewasa",
+  profile: Profile,
 ): VisitSessionState {
   const [notice, setNotice] = useState<DecisionMessage | null>(null);
   const [decision, setDecision] = useState<AccessDecision | null>(null);
@@ -85,14 +85,14 @@ export function useVisitSession(
   const [currentLocation, setCurrentLocation] = useState<DeviceLocation | null>(null);
 
   async function openAppSettings(): Promise<void> {
-    await runOperation("location", async (): Promise<void> => {
+    await runOperation("connection", async (): Promise<void> => {
       setLocationLabel("Membuka pengaturan izin...");
       await Linking.openSettings();
     });
   }
 
   async function openGpsSettings(): Promise<void> {
-    await runOperation("location", async (): Promise<void> => {
+    await runOperation("connection", async (): Promise<void> => {
       setLocationLabel("Membuka pengaturan lokasi...");
       await openLocationServicesSettings();
     });
