@@ -1,6 +1,6 @@
 // Aturan poin, progres, dan lencana (Sprint 2 E11/A7; lencana Sprint 3 dari sheet Badge_Poin).
 // Perhitungan lokal hanya untuk mode mock; mode API memakai hasil resmi Supabase.
-import type { BadgeId } from "./contracts.ts";
+import type { BadgeId, QuestType } from "./contracts.ts";
 
 export type { BadgeId } from "./contracts.ts";
 
@@ -16,7 +16,14 @@ export type QuestState = {
   readonly attempts: number;
 };
 
+export type QuestProgress = QuestState & {
+  readonly type: QuestType;
+  readonly pointsAwarded: number;
+};
+
 export type StoryState = QuestState & {
+  readonly pointsAwarded?: number;
+  readonly quests?: { readonly [questId: string]: QuestProgress };
   readonly closed: boolean;
   /** Poin tantangan (foto / benar-salah / isian) dari sheet Quest, dinilai di aplikasi. */
   readonly challengePoints?: number;
@@ -104,6 +111,7 @@ export const badges: readonly BadgeDef[] = [
  * "foto" = tantangan foto, null = tidak ada quest (POI selesai setelah cerita).
  */
 export type PoiRef = {
+  readonly quests?: readonly { readonly idQuest: string; readonly type: QuestType; readonly requiredForBadge?: boolean | undefined }[];
   readonly id: string;
   readonly wing: "left" | "right" | null;
   readonly code?: string;
@@ -147,6 +155,7 @@ function questOf(poi: PoiRef): "quiz" | "kuis" | "foto" | null {
 /** Quest POI ini sudah dikerjakan (benar atau kesempatan habis); POI tanpa quest = cerita selesai. */
 function questFinished(poi: PoiRef, state: BadgeState | undefined): boolean {
   if (state === undefined) return false;
+  if (state.quests !== undefined) return done(state);
   const quest = questOf(poi);
   if (quest === "quiz" || quest === null) return done(state);
   return state.challengeDone === true;
@@ -155,6 +164,14 @@ function questFinished(poi: PoiRef, state: BadgeState | undefined): boolean {
 /** Quest kuis (Mini Quiz atau benar-salah/isian) dijawab benar di percobaan pertama. */
 function firstTry(poi: PoiRef, state: BadgeState | undefined): boolean {
   if (state === undefined) return false;
+  if (poi.quests !== undefined) {
+    const quizzes = poi.quests.filter((quest): boolean => quest.type !== "foto" && quest.requiredForBadge !== false);
+    return quizzes.length > 0 && quizzes.every((quest): boolean => state.quests?.[quest.idQuest]?.completed === true && state.quests[quest.idQuest]?.attempts === 1);
+  }
+  if (state.quests !== undefined) {
+    const quizzes: readonly QuestProgress[] = Object.values(state.quests).filter((quest: QuestProgress): boolean => quest.type !== "foto");
+    return quizzes.length > 0 && quizzes.every((quest: QuestProgress): boolean => quest.completed && quest.attempts === 1);
+  }
   const quest = questOf(poi);
   if (quest === "quiz") return state.completed && state.attempts === 1;
   if (quest === "kuis") return state.challengeDone === true && state.challengeAttempts === 1 && (state.challengePoints ?? 0) > 0;
@@ -186,7 +203,9 @@ export function earnedBadges(
     return inWing.length > 0 && inWing.every((poi: PoiRef): boolean => visited(states[poi.id]));
   };
   const withQuest = (kind: "foto" | "kuiz"): readonly PoiRef[] =>
-    pois.filter((poi: PoiRef): boolean => kind === "foto" ? questOf(poi) === "foto" : questOf(poi) === "quiz" || questOf(poi) === "kuis");
+    pois.filter((poi: PoiRef): boolean => poi.quests !== undefined
+      ? poi.quests.some((quest): boolean => quest.requiredForBadge !== false && (kind === "foto" ? quest.type === "foto" : quest.type !== "foto"))
+      : kind === "foto" ? questOf(poi) === "foto" : questOf(poi) === "quiz" || questOf(poi) === "kuis");
   const photos = withQuest("foto");
   const quizzes = withQuest("kuiz");
   const scope: readonly PoiRef[] = ctx.rightWing === true ? pois : pois.filter((poi: PoiRef): boolean => poi.wing !== "right");
@@ -194,7 +213,9 @@ export function earnedBadges(
 
   const earned: { readonly [id in BadgeId]?: boolean } = {
     "BD-01": wingVisited("left"),
-    "BD-02": photos.length > 0 && photos.every(finished),
+    "BD-02": photos.length > 0 && photos.every((poi: PoiRef): boolean => poi.quests === undefined ? finished(poi)
+      : poi.quests.filter((quest): boolean => quest.type === "foto" && quest.requiredForBadge !== false)
+        .every((quest): boolean => states[poi.id]?.quests?.[quest.idQuest]?.completed === true)),
     "BD-03": quizzes.length > 0 && quizzes.every((poi: PoiRef): boolean => firstTry(poi, states[poi.id])),
     // Selama sayap kanan belum dibuka, "semua POI" = semua POI sayap kiri.
     "BD-04": scope.length > 0 && scope.every((poi: PoiRef): boolean => done(states[poi.id])),
@@ -221,7 +242,7 @@ export function totalPoints(
 ): number {
   const quests: number = pois.reduce((sum: number, poi: PoiRef): number => {
     const state: StoryState | undefined = states[poi.id];
-    return sum + (state === undefined ? 0 : quizPoints(state) + (state.challengePoints ?? 0));
+    return sum + (state === undefined ? 0 : (state.quests !== undefined ? state.pointsAwarded ?? 0 : quizPoints(state)) + (state.challengePoints ?? 0));
   }, 0);
   return quests + badgeBonus(earnedBadges(pois, states, ctx));
 }
@@ -246,6 +267,7 @@ export const ACTIVITIES: { readonly [id in ActivityId]: { readonly points: numbe
 };
 
 export type ActivityState = QuestState & {
+  readonly quests?: { readonly [questId: string]: QuestProgress };
   readonly closed: boolean;
   readonly checkedIn?: boolean;
   readonly challengeAttempts?: number;
@@ -258,7 +280,8 @@ export function activitiesDone(state: ActivityState | undefined): readonly Activ
   const done: ActivityId[] = [];
   if (state.checkedIn === true) done.push("checkIn");
   if (state.closed) done.push("story");
-  if ((state.completed && state.attempts === 1) || (state.challengeSuccess === true && state.challengeAttempts === 1)) {
+  if ((state.quests !== undefined && Object.values(state.quests).some((quest: QuestProgress): boolean => quest.type !== "foto" && quest.completed && quest.attempts === 1)) ||
+    (state.quests === undefined && ((state.completed && state.attempts === 1) || (state.challengeSuccess === true && state.challengeAttempts === 1)))) {
     done.push("firstTry");
   }
   if (state.completed || state.failed) done.push("poiDone");

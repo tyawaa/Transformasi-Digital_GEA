@@ -3,12 +3,13 @@
 // Foto editorial memakai URL Storage dari manifest; audio mock masih file dummy.
 // Bentuk setiap objek mengikuti respons API backend (lihat backend/README.md).
 import {
-  type OptionLabel,
   type PoiDetail,
   type PoiSummary,
   type Profile,
+  type Quest,
 } from "../domain/contracts";
-import { activePois, type MuseumPoi, poiIdFor, questIdFor } from "../data/museum";
+import { activePois, type MuseumPoi, poiIdFor } from "../data/museum";
+import { questsForPoi } from "../data/quests";
 import { poiPhotoChallenges, poiStoryPhoto } from "../data/poiMedia";
 import { wrapQr } from "../features/qr/qrPayload";
 import { mockMediaUrl } from "../services/media";
@@ -33,7 +34,7 @@ function withContent(poi: MuseumPoi): poi is MuseumPoi & { content: NonNullable<
   return poi.content !== null;
 }
 
-const pois = activePois.filter(withContent);
+const pois = activePois.filter(withContent).filter((poi: MuseumPoi): boolean => poi.number <= 11);
 
 /** Gambar nomor 1 selalu dipakai untuk ringkasan dan foto cerita pertama. */
 function mainPhoto(poi: MuseumPoi): string {
@@ -71,40 +72,32 @@ export const mockPoiDetails: readonly PoiDetail[] = pois.map((poi, index: number
     { type: "audio", audioUrl: mockMediaUrl("/narasi.wav"), durationSeconds: 30 },
   ],
   photoChallenges: poiPhotoChallenges(poi.idPoi),
-  quest: {
-    idQuest: questIdFor(poi.number),
-    type: "pilgan",
-    instruksi: poi.content.instruksi,
-    pertanyaan: poi.content.pertanyaan,
-    options: (["A", "B", "C", "D"] as const).map((label: OptionLabel, i: number) => ({
-      label_opsi: label,
-      teks_opsi: poi.content.opsi[i] ?? "",
-    })),
-  },
+  quest: firstQuest(poi.idPoi),
+  quests: [...questsForPoi(poi.idPoi, "dewasa")],
 }));
+
+function firstQuest(poiId: string): Quest {
+  const quest: Quest | undefined = questsForPoi(poiId, "dewasa")[0];
+  if (quest === undefined) throw new Error(`Quest untuk POI ${poiId} belum tersedia.`);
+  return quest;
+}
 
 /**
  * Teks cerita anak (ceritaAnak, dari Konten_Cerita_Anak). Seperti backend, bila belum ada teks anak
  * dipakai versi Umum (dewasa).
  */
 export function mockPoiForProfile(detail: PoiDetail, profile: Profile): PoiDetail {
-  if (profile === "dewasa") return detail;
+  const quests: readonly Quest[] = questsForPoi(detail.id_poi, profile);
+  const profiled: PoiDetail = { ...detail, profile, quests: [...quests] };
+  if (profile === "dewasa") return profiled;
   const content = pois.find((poi): boolean => poiIdFor(poi.number) === detail.id_poi)?.content;
   const text: string | undefined = profile === "anak" ? content?.ceritaAnak : undefined;
-  if (text === undefined) return detail;
+  if (text === undefined) return profiled;
   const [description, audio] = detail.cards;
-  return { ...detail, profile, cards: [{ ...description, text }, audio] };
+  return { ...profiled, cards: [{ ...description, text }, audio] };
 }
 
 /** Token koleksi → POI. Hanya dipakai sumber data mock untuk meniru backend. */
 export const mockTokenToPoi: ReadonlyMap<string, string> = new Map(
   pois.map((poi) => [mockPoiToken(poi.number), poiIdFor(poi.number)]),
-);
-
-/** Hanya dipakai sumber data mock untuk menilai jawaban, meniru server. Tidak dikirim ke layar. */
-export const mockAnswerKeys: ReadonlyMap<
-  string,
-  { readonly kunci: OptionLabel; readonly hint: string }
-> = new Map(
-  pois.map((poi) => [questIdFor(poi.number), { kunci: poi.content.kunci, hint: poi.content.hint }]),
 );

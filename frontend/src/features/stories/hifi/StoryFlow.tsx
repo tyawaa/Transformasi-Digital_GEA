@@ -1,8 +1,7 @@
-import { randomUUID } from "expo-crypto";
 import { Image } from "expo-image";
 import { type ReactElement, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, useWindowDimensions, View } from "react-native";
-import { Toast, type ToastTone } from "../../../design/Toast";
+import { Toast } from "../../../design/Toast";
 import { colors, componentColors, radius, shadows, spacing } from "../../../design/tokens";
 import { GeaText } from "../../../design/typography";
 import type {
@@ -10,26 +9,22 @@ import type {
   OptionLabel,
   PoiDetail,
   PoiVerification,
-  Profile,
-  QuestOption,
+  Quest,
   Visit,
 } from "../../../domain/contracts";
 import {
   ACTIVITIES,
   activitiesDone,
-  activityPoints,
   type ActivityId,
-  attemptsLeft,
   type BadgeDef,
   badges,
   type BadgeId,
-  MAX_ATTEMPTS,
 } from "../../../domain/points";
 import { GeaServiceError, readableError } from "../../../services/api";
 import { readVisitorLocation, type LocationReading } from "../../../services/location";
 import { type Fix, stepGeofence } from "../../../domain/geofence";
-import { type StoriesSource, storiesMockEnabled } from "../../../services/stories";
-import { museumPoiById, type StoryContent, type Tantangan } from "../../../data/museum";
+import { type StoriesSource } from "../../../services/stories";
+import { museumPoiById, type StoryContent } from "../../../data/museum";
 import { SceneLayer } from "../../onboarding/scene";
 import { type ParsedQr, qrErrorMessage } from "../../qr/qrPayload";
 import type { PoiProgress } from "../progress";
@@ -37,14 +32,13 @@ import { isiPanelLayer, StoryBackground } from "./backgrounds";
 import { BackButton, FRAME_H, FrameStage, PhotoFrame, StoryButton } from "./parts";
 import { type DummyScan, ScanQrScreen, type ScanState } from "./ScanQrScreen";
 import { StoryAudio } from "./StoryAudio";
-import { type ChallengeAnswer, ChallengeScreen, type ServerGrade } from "./ChallengeScreen";
-import { PhotoTaskScreen } from "./PhotoTaskScreen";
-import { type QuestPlan, questPlan } from "../questPlan";
-import { ChallengeDoneScreen, ExplorerResultScreen, StoryFinishedScreen } from "./StoryEndScreens";
+import { QuestListScreen, QuestTaskScreen } from "./QuestScreens";
+import { ExplorerResultScreen, StoryFinishedScreen } from "./StoryEndScreens";
 import { type AdventureSummary, ShareResultScreen, WellDoneScreen } from "./AdventureDoneScreens";
 
-// Alur per koleksi (revisi 12 Nov 2026): Scan QR / GPS koleksi → Summary → Isi 1 → Isi 2 (kartu koleksi; ketuk = cari & foto)
-// → Kisah Selesai → Tantangan (sheet Quest) → Yeay! → Mini Quiz → Selamat Penjelajah!
+const speakerIcon = require("../../../../assets/design/icon-speaker.svg") as number;
+
+// Scan QR / GPS → cerita dan ilustrasi → Kisah Selesai → daftar quest per POI → hasil.
 type Step =
   | "gps"
   | "scan"
@@ -53,11 +47,9 @@ type Step =
   | "story"
   | "story2"
   | "narration"
-  | "photo"
   | "storyDone"
-  | "challenge"
-  | "challengeDone"
-  | "quiz"
+  | "quests"
+  | "quest"
   | "result"
   | "final"
   | "share";
@@ -67,11 +59,6 @@ type Step =
 const ISI_TOP = 592;
 const ISI_BOTTOM = 52;
 const ISI_FILL_TOP = 860;
-// Kuis: kartu mulai paling tinggi di y=110 (di bawah tombol Keluar).
-const CARD_TOP = 124;
-const QUIZ_BOTTOM = 48;
-
-type ToastMessage ={ readonly tone: ToastTone; readonly title: string; readonly description: string };
 
 type Props = {
   readonly source: StoriesSource;
@@ -100,16 +87,13 @@ function isVerified(progress: PoiProgress): boolean {
 }
 
 /** Langkah saat koleksi dibuka lagi, sesuai progres yang tersimpan. */
-function resumeStep(state: PoiProgress, plan: QuestPlan): Step {
-  if (state.completed || state.failed) return "result";
-  if (state.challengeDone === true) return plan.hasQuiz ? "challengeDone" : "result";
-  return state.closed ? "storyDone" : "summary";
+function resumeStep(state: PoiProgress): Step {
+  return state.closed ? "quests" : "summary";
 }
 
 /**
- * Alur Story: Scan QR / GPS koleksi → Summary → Isi 1 → Isi 2 (cari & foto koleksi) → Kisah Selesai
- * → Tantangan → Yeay! → Mini Quiz → Selamat Penjelajah. GPS memverifikasi radius koleksi (QR sebagai
- * alternatif); verifikasi berlaku 15 menit. Mini Quiz dinilai backend (maks. 3 percobaan, 20/10/5/0).
+ * Cerita diselesaikan sebelum daftar quest dibuka. Jawaban dan kesempatan disimpan per quest;
+ * backend menentukan poin sesuai sheet. Aktivitas kamera terpisah dari cerita.
  */
 type Reward = { readonly points: number; readonly labels: readonly string[] };
 
@@ -193,23 +177,20 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
   );
   const [scanState, setScanState] = useState<ScanState>(props.initialToken != null ? "detected" : "scanning");
   const [scanMessage, setScanMessage] = useState<string | null>(null);
-  const [toast, setToast] = useState<ToastMessage | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [gpsAttempt, setGpsAttempt] = useState<number>(0);
   const [gpsLabel, setGpsLabel] = useState<string>("Memeriksa lokasi koleksi...");
   const checkpoint = museumPoiById(poiId);
   const gpsInsidePoi: boolean = checkpoint !== undefined && props.gpsFix !== null &&
     stepGeofence([], props.gpsFix, [{ ...checkpoint, id: poiId }]).inside.includes(poiId);
-  // true = pengguna menuju Mini Quiz tetapi verifikasi QR sudah habis; setelah scan langsung ke kuis.
-  const quizPending = useRef<boolean>(false);
+  // Kembali ke daftar quest setelah verifikasi lokasi diperbarui.
+  const questPending = useRef<boolean>(false);
   const [narrationFrom, setNarrationFrom] = useState<"story" | "story2">("story");
   // Tinggi isi cerita (judul + teks + tombol); menentukan apakah halaman perlu digulir.
   const [isiHeight, setIsiHeight] = useState<number>(0);
   const isiStep: boolean = step === "story" || step === "story2" || step === "narration";
-  // Tinggi kartu kuis; halaman digulir bila tidak muat di 844.
-  const [quizHeight, setQuizHeight] = useState<number>(0);
-  // Kartu koleksi (Story Isi 2) yang sedang dicari & difoto.
-  const [photoIndex, setPhotoIndex] = useState<number | null>(null);
+  // Quest yang dibuka dari daftar setelah cerita.
+  const [selectedQuestId, setSelectedQuestId] = useState<string | null>(null);
 
   // Muat ulang cerita yang sudah selesai atau masih terverifikasi.
   useEffect((): (() => void) | undefined => {
@@ -220,7 +201,7 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
         if (!active) return;
         setPoi(detail);
         const state: PoiProgress = progressOf(poiId);
-        setStep(resumeStep(state, questPlan(poiId, visit.profil)));
+        setStep(resumeStep(state));
       },
       (cause: unknown): void => {
         if (active) setError(readableError(cause));
@@ -270,12 +251,6 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gpsInsidePoi]);
 
-  useEffect((): (() => void) | undefined => {
-    if (toast === null) return undefined;
-    const timer = setTimeout((): void => setToast(null), 5000);
-    return (): void => clearTimeout(timer);
-  }, [toast]);
-
   async function onScan(result: ParsedQr): Promise<void> {
     if (!result.ok) {
       setScanMessage(qrErrorMessage(result.reason));
@@ -309,8 +284,8 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
   }
 
   function acceptVerification(result: PoiVerification): void {
-    if (quizPending.current && result.idPoi !== poiId) {
-      throw new GeaServiceError(403, "WRONG_POI_QR", "QR ini untuk koleksi lain. Pindai QR koleksi yang kuisnya sedang kamu lanjutkan.");
+    if (questPending.current && result.idPoi !== poiId) {
+      throw new GeaServiceError(403, "WRONG_POI_QR", "QR ini untuk koleksi lain. Pindai QR koleksi yang questnya sedang kamu lanjutkan.");
     }
     const until: number = Date.parse(result.expiresAt);
     if (!Number.isFinite(until)) throw new Error("Masa berlaku verifikasi koleksi tidak valid.");
@@ -319,9 +294,9 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
     setPoiId(result.idPoi);
     setPoi(result.poi);
     setError(null);
-    // Verifikasi ulang sebelum Mini Quiz (masa berlaku habis) → langsung ke kuis.
-    setStep(quizPending.current ? "quiz" : resumeStep(state, questPlan(result.idPoi, visit.profil)));
-    quizPending.current = false;
+    // Verifikasi ulang sebelum menjawab quest mengembalikan pengguna ke daftar.
+    setStep(questPending.current ? "quests" : resumeStep(state));
+    questPending.current = false;
   }
 
   async function finishStory(): Promise<void> {
@@ -389,147 +364,62 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
   const local: StoryContent | null = source.kind === "mock" ? museumPoi?.content ?? null : null;
   const secondPhoto: string = description.secondPhotoUrl;
   // Halaman ke-2 isi cerita ("Story Isi 2"): kartu koleksi yang disorot + fakta menarik.
-  const highlights: readonly string[] = splitHighlights(description.highlights ?? undefined).slice(0, 4);
+  const highlights: readonly string[] = splitHighlights(description.highlights ?? undefined);
   const pageCount: number = highlights.length > 0 ? 2 : 1;
   // Anak: judul dan fakta dari Konten_Cerita_Anak (teks cerita anak datang dari sumber data sesuai profil).
   const kid: boolean = visit.profil === "anak";
   const judul: string | undefined = (kid ? local?.judulAnak : undefined) ?? description.title ?? local?.judul;
   const fakta: string | undefined = (kid ? local?.faktaAnak : undefined) ?? description.fact ?? local?.fakta;
   const pageTwoTitle: string = fakta !== undefined ? "Fakta Menarik" : "Cari di Ruangan Ini";
-  // Anak tidak memotret: kartu koleksi hanya untuk dilihat dan dicari di ruangan.
-  const pageTwoText: string = `${fakta !== undefined ? `${fakta}\n\n` : ""}${kid
-    ? "Yuk, cari koleksi di atas di ruangan ini!"
-    : "Ketuk kartu koleksi di atas, cari koleksinya di ruangan ini, lalu foto."}`;
-  const photos: readonly number[] = progress.photos ?? [];
-  const plan: QuestPlan = questPlan(poiId, visit.profil);
-  const challenge: Tantangan | undefined = plan.challenge;
-  const hasQuiz: boolean = plan.hasQuiz &&
-    (poi.quest.type === "pilgan" || poi.quest.type === "cocokkan") &&
-    poi.quest.isDisabled !== true;
+  const pageTwoText: string = [fakta, highlights.length > 0 ? `Koleksi di ruangan ini: ${highlights.join(", ")}.` : undefined].filter((value: string | undefined): boolean => value !== undefined).join("\n\n");
+  const quests: readonly Quest[] = poi.quests.filter((quest: Quest): boolean => quest.isDisabled !== true);
+  const selectedQuest: Quest | undefined = quests.find((quest: Quest): boolean => quest.idQuest === selectedQuestId);
 
-  // Tantangan dinilai backend kalau tipe quest-nya sama.
-  const serverQuest = poi.quest;
-  const gradeOnServer = source.kind === "api" && !hasQuiz && challenge !== undefined && serverQuest.isDisabled !== true &&
-      serverTypeMatches(challenge, serverQuest.type)
-    ? (answer: ChallengeAnswer): Promise<ServerGrade> | null => {
-      let label: OptionLabel | null = null;
-      if (answer.kind === "choice") {
-        const option: QuestOption | undefined = serverQuest.options.find((item: QuestOption): boolean =>
-          item.teks_opsi.trim().toLowerCase() === answer.choice.trim().toLowerCase()
-        );
-        if (option === undefined) return null;
-        label = option.label_opsi;
-      }
-      return source.answerQuest(
-        visit.id_sesi,
-        serverQuest.idQuest,
-        randomUUID(),
-        label,
-        answer.kind === "photo" ? { photoTaken: true } : answer.kind === "text" ? { jawabanTeks: answer.text } : {},
-      ).then((result: AnswerResult): ServerGrade => {
-        props.onAnswer(result);
-        return {
-          correct: result.completed,
-          failed: result.failed,
-          attempts: result.attemptCount,
-          points: result.pointsAwarded,
-          hint: result.hint ?? null,
-        };
-      });
-    }
-    : undefined;
-
-  /** POI tanpa Mini Quiz selesai setelah tantangan (atau setelah cerita bila tidak ada quest). */
-  function finish(): void {
-    onProgress(poiId, { completed: true });
+  function showResult(): void {
+    if (quests.length === 0) onProgress(poiId, { completed: true });
     setStep("result");
   }
 
-  /** Ke Mini Quiz; bila verifikasi QR koleksi sudah habis, scan ulang dulu. */
-  function goQuiz(): void {
-    if (isVerified(progressOf(poiId))) {
-      setStep("quiz");
-      return;
-    }
-    quizPending.current = true;
-    setError(null);
-    setStep("gps");
-  }
   function openNarration(from: "story" | "story2"): void {
     setNarrationFrom(from);
     setStep("narration");
   }
 
-  if (step === "photo" && photoIndex !== null) {
-    const item: string = highlights[photoIndex] ?? "";
-    return (
-      <PhotoTaskScreen
-        title="Cari & foto koleksi ini"
-        instruction={`Cari ${item} di ruangan ini, lalu foto bersama labelnya.`}
-        photoUrl={description.photoUrl}
-        onBack={(): void => setStep("story2")}
-        onDone={(): void => {
-          onProgress(poiId, { photos: [...new Set([...photos, photoIndex])] });
-          setStep("story2");
-        }}
-        testMode={storiesMockEnabled}
-      />
-    );
-  }
-
   if (step === "storyDone") {
-    return (
-      <StoryFinishedScreen
-        poiName={poi.nama}
-        hasActivity={challenge !== undefined || hasQuiz}
-        actionLabel={challenge !== undefined ? "Lakukan Tantangan" : hasQuiz ? "Lanjut ke Mini Quiz" : "Lihat Hasil"}
-        onAction={(): void => {
-          if (challenge !== undefined && progress.challengeDone !== true) setStep("challenge");
-          else if (hasQuiz) {
-            if (challenge !== undefined) setStep("challengeDone");
-            else goQuiz();
-          } else finish();
-        }}
-        onSkip={(): void => {
-          if (hasQuiz) goQuiz();
-          else finish();
-        }}
-      />
-    );
+    return <StoryFinishedScreen poiName={poi.nama} hasActivity={quests.length > 0}
+      actionLabel={quests.length > 0 ? "Lihat Daftar Quest" : "Lihat Hasil"}
+      onAction={(): void => { if (quests.length > 0) setStep("quests"); else showResult(); }}
+      onSkip={(): void => setStep("quests")} />;
   }
 
-  if (step === "challenge" && challenge !== undefined) {
-    return (
-      <ChallengeScreen
-        challenge={challenge}
-        references={poi.photoChallenges}
-        photoUrl={description.photoUrl}
-        grade={gradeOnServer}
-        onBack={(): void => setStep("storyDone")}
-        onDone={({ success, points, attempts }): void => {
-          onProgress(poiId, {
-            challengeDone: true,
-            challengePoints: points,
-            challengeAttempts: attempts,
-            challengeSuccess: success,
-            ...(hasQuiz ? {} : { completed: true }),
-          });
-          setStep(hasQuiz ? "challengeDone" : "result");
-        }}
-        testMode={storiesMockEnabled}
-      />
-    );
+  if (step === "quests") {
+    return <QuestListScreen poiName={poi.nama} quests={quests} results={progress.quests ?? {}}
+      onPick={(quest: Quest): void => { setSelectedQuestId(quest.idQuest); setStep("quest"); }}
+      onResult={showResult} onBack={props.onExit} />;
   }
 
-  if (step === "challengeDone") {
-    return (
-      <ChallengeDoneScreen
-        poiName={poi.nama}
-        success={challenge === undefined || (progress.challengePoints ?? 0) > 0}
-        onQuiz={goQuiz}
-        onSkip={(): void => setStep("result")}
-      />
-    );
+  if (step === "quest" && selectedQuest !== undefined) {
+    return <QuestTaskScreen key={selectedQuest.idQuest} quest={selectedQuest} result={progress.quests?.[selectedQuest.idQuest]}
+      onBack={(): void => setStep("quests")}
+      submit={async (requestId: string, label: OptionLabel | null, text: string | null): Promise<AnswerResult> => {
+        if (!isVerified(progressOf(poiId))) {
+          questPending.current = true;
+          setStep("gps");
+          throw new GeaServiceError(403, "CHECKPOINT_VERIFICATION_REQUIRED", "Verifikasi lokasi koleksi diperlukan sebelum menjawab.");
+        }
+        try {
+          const answer: AnswerResult = await source.answerQuest(visit.id_sesi, selectedQuest.idQuest, requestId, label, text === null ? {} : { jawabanTeks: text });
+          props.onAnswer(answer);
+          return answer;
+        } catch (cause: unknown) {
+          if (cause instanceof GeaServiceError && cause.code === "CHECKPOINT_VERIFICATION_REQUIRED") {
+            onProgress(poiId, { verifiedUntil: null });
+            questPending.current = true;
+            setStep("gps");
+          }
+          throw cause;
+        }
+      }} />;
   }
 
   if (step === "final") {
@@ -541,23 +431,17 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
 
 
   if (step === "result") {
-    // Bintang: Mini Quiz benar di percobaan 1/2/3 = 3/2/1. Tanpa kuis: tantangan berhasil = 3, kesempatan
-    // habis = 1. Tanpa quest sama sekali (mis. anak di POI tanpa quest foto): cerita selesai = 3.
-    const challengeWon: boolean = progress.challengeSuccess ?? (progress.challengePoints ?? 0) > 0;
-    const stars: number = hasQuiz
-      ? progress.completed ? Math.max(1, 4 - progress.attempts) : 0
-      : challenge !== undefined
-      ? progress.challengeDone === true ? (challengeWon ? 3 : 1) : 0
-      : progress.completed ? 3 : 0;
+    const completedCount: number = quests.filter((quest: Quest): boolean => progress.quests?.[quest.idQuest]?.completed === true).length;
+    const stars: number = quests.length === 0 ? (progress.completed ? 3 : 0) : Math.round(3 * completedCount / quests.length);
     return (
       <ExplorerResultScreen
         poiName={poi.nama}
         stars={stars}
-        conquered={hasQuiz ? progress.completed : challenge !== undefined ? challengeWon : progress.completed}
+        conquered={progress.completed}
         score={progress.pointsAwarded + (progress.challengePoints ?? 0)}
         reward={props.totalPoints}
         allCompleted={props.allCompleted}
-        explanation={hasQuiz && (progress.completed || progress.failed) ? poi.quest.penjelasan ?? local?.penjelasan : undefined}
+        explanation={quests.length > 0 ? `${completedCount} dari ${quests.length} quest berhasil. Quest yang belum selesai bisa dilanjutkan dari daftar quest.` : undefined}
         onHome={(): void => {
           if (props.allCompleted) setStep("final");
           else props.onExit();
@@ -571,8 +455,6 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
       background={colors.primary[300]}
       frameHeight={isiStep
         ? ISI_TOP + isiHeight + ISI_BOTTOM
-        : step === "quiz"
-        ? CARD_TOP + quizHeight + QUIZ_BOTTOM
         : FRAME_H}
       scrollKey={step}
     >
@@ -600,24 +482,8 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
       {(step === "story" || step === "story2" || step === "narration") && (
         <>
           <BackButton onPress={props.onExit} />
-          {step === "story2" && highlights.length > 0
-            ? (
-              <HighlightCards
-                items={highlights}
-                done={photos}
-                photoEnabled={!kid}
-                onPick={(index: number): void => {
-                  setPhotoIndex(index);
-                  setStep("photo");
-                }}
-              />
-            )
-            : (
-              <>
-                <PhotoFrame photoUrl={description.photoUrl} label={poi.nama} left={-21} top={86} box={301.076} size={{ width: 267.756, height: 267.756 }} border={12.551} rotate={-7.66} />
-                <PhotoFrame photoUrl={secondPhoto} label={poi.nama} left={136} top={229} box={272.526} size={{ width: 267.756, height: 267.756 }} border={12.551} rotate={1.03} />
-              </>
-            )}
+          <PhotoFrame photoUrl={description.photoUrl} label={poi.nama} left={-21} top={86} box={301.076} size={{ width: 267.756, height: 267.756 }} border={12.551} rotate={-7.66} />
+          <PhotoFrame photoUrl={secondPhoto} label={poi.nama} left={136} top={229} box={272.526} size={{ width: 267.756, height: 267.756 }} border={12.551} rotate={1.03} />
           <SceneLayer layer={isiPanelLayer} />
           {/* Panel cokelat diperpanjang ke bawah saat cerita panjang dan halaman digulir. */}
           <View style={[styles.isiFill, { height: Math.max(0, ISI_TOP + isiHeight + ISI_BOTTOM - ISI_FILL_TOP) }]} />
@@ -684,178 +550,10 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
         </>
       )}
 
-      {step === "quiz" && (
-        <Quiz
-          poi={poi}
-          attemptsUsed={progress.attempts}
-          submit={async (requestId: string, label: OptionLabel): Promise<AnswerResult> => {
-            const answer: AnswerResult = await source.answerQuest(visit.id_sesi, poi.quest.idQuest, requestId, label);
-            props.onAnswer(answer);
-            return answer;
-          }}
-          onWrong={(answer: AnswerResult): void => {
-            if (answer.failed) {
-              setToast(null);
-              setStep("result");
-              return;
-            }
-            setToast({
-              tone: "danger",
-              title: `Belum tepat · sisa ${MAX_ATTEMPTS - answer.attemptCount} kesempatan`,
-              description: answer.hint ?? "Coba amati koleksinya lagi.",
-            });
-          }}
-          onCorrect={(): void => {
-            setToast(null);
-            setStep("result");
-          }}
-          onError={(cause: unknown): void => {
-            if (cause instanceof GeaServiceError && cause.code === "CHECKPOINT_VERIFICATION_REQUIRED") {
-              onProgress(poiId, { verifiedUntil: null });
-              quizPending.current = true;
-              setError(null);
-              setStep("gps");
-              return;
-            }
-            if (cause instanceof GeaServiceError && cause.code === "QUEST_ALREADY_COMPLETED") {
-              onProgress(poiId, { completed: true });
-              setStep("result");
-              return;
-            }
-            if (cause instanceof GeaServiceError && cause.code === "QUEST_ATTEMPTS_EXHAUSTED") {
-              onProgress(poiId, { failed: true, attempts: Math.max(progress.attempts, MAX_ATTEMPTS) });
-              setStep("result");
-              return;
-            }
-            setToast({ tone: "danger", title: "Jawaban belum terkirim", description: readableError(cause) });
-          }}
-          // Kembali ke layar sebelum kuis: "Yeay" bila ada tantangan, selain itu "Kisah Selesai".
-          onBack={(): void => setStep(challenge !== undefined ? "challengeDone" : "storyDone")}
-          onHeight={setQuizHeight}
-        />
-      )}
-
-      {toast !== null && (
-        <View style={styles.toast}>
-          <Toast tone={toast.tone} title={toast.title} description={toast.description} onClose={(): void => setToast(null)} />
-        </View>
-      )}
     </FrameStage>
   );
 }
 
-/** SEMENTARA: frame "Story - Mini quiz" (D4) belum final. Maksimal 3 percobaan, hint setelah salah. */
-function Quiz(
-  { poi, attemptsUsed, submit, onWrong, onCorrect, onError, onBack, onHeight }: {
-    readonly poi: PoiDetail;
-    readonly attemptsUsed: number;
-    readonly submit: (requestId: string, label: OptionLabel) => Promise<AnswerResult>;
-    readonly onWrong: (answer: AnswerResult) => void;
-    readonly onCorrect: (answer: AnswerResult) => void;
-    readonly onError: (cause: unknown) => void;
-    readonly onBack: () => void;
-    /** Tinggi kartu kuis, agar halaman bisa digulir bila soal/petunjuk panjang. */
-    readonly onHeight: (height: number) => void;
-  },
-): ReactElement {
-  const [selected, setSelected] = useState<OptionLabel | null>(null);
-  const [busy, setBusy] = useState<boolean>(false);
-  const [hint, setHint] = useState<string | null>(null);
-  const [wrong, setWrong] = useState<readonly OptionLabel[]>([]);
-  // Percobaan yang gagal karena jaringan dikirim ulang dengan requestId yang sama.
-  const pending = useRef<{ label: OptionLabel; requestId: string } | null>(null);
-  const left: number = attemptsLeft({ completed: false, failed: false, attempts: attemptsUsed });
-
-  async function send(): Promise<void> {
-    if (selected === null) return;
-    const attempt = pending.current !== null && pending.current.label === selected
-      ? pending.current
-      : { label: selected, requestId: randomUUID() };
-    pending.current = attempt;
-    setBusy(true);
-    try {
-      const answer: AnswerResult = await submit(attempt.requestId, attempt.label);
-      pending.current = null;
-      if (answer.completed) onCorrect(answer);
-      else {
-        setWrong((current) => [...current, attempt.label]);
-        setSelected(null);
-        setHint(answer.hint);
-        onWrong(answer);
-      }
-    } catch (cause: unknown) {
-      if (cause instanceof GeaServiceError) pending.current = null;
-      onError(cause);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  // Figma "Story - Mini quiz": progres percobaan, kartu soal, pilihan berkotak centang, Submit.
-  const attempt: number = Math.min(MAX_ATTEMPTS, attemptsUsed + 1);
-  return (
-    <>
-      <BackButton onPress={onBack} />
-      <View
-        accessibilityRole="progressbar"
-        accessibilityLabel={`Percobaan ${attempt} dari ${MAX_ATTEMPTS}, sisa ${left} kesempatan`}
-        style={styles.quizProgress}
-      >
-        <View style={[styles.quizProgressFill, { width: `${(attempt / MAX_ATTEMPTS) * 100}%` }]} />
-      </View>
-      <View style={styles.quizBody} onLayout={(event): void => onHeight(event.nativeEvent.layout.height)}>
-        <View style={styles.quizQuestion}>
-          <GeaText variant="label16" color={colors.black} style={styles.quizQuestionText}>{poi.quest.pertanyaan}</GeaText>
-        </View>
-        <View accessibilityRole="radiogroup" style={styles.options}>
-          {poi.quest.options.map((option: QuestOption): ReactElement => {
-            const active: boolean = selected === option.label_opsi;
-            const crossed: boolean = wrong.includes(option.label_opsi);
-            return (
-              <Pressable
-                key={option.label_opsi}
-                accessibilityRole="radio"
-                accessibilityState={{ checked: active, disabled: busy || crossed }}
-                disabled={busy || crossed}
-                onPress={(): void => setSelected(option.label_opsi)}
-                style={({ pressed }) => [
-                  styles.option,
-                  active && styles.optionActive,
-                  crossed && styles.optionCrossed,
-                  pressed && styles.optionPressed,
-                ]}
-              >
-                <GeaText variant="label16" color={componentColors.bodyDark} style={[styles.flex, crossed && styles.strike]}>
-                  {option.teks_opsi}
-                </GeaText>
-                <View style={[styles.checkbox, active && styles.checkboxOn]}>
-                  {active && <GeaText variant="bold16" color={colors.secondaryGreen[900]}>✓</GeaText>}
-                </View>
-              </Pressable>
-            );
-          })}
-        </View>
-        {hint !== null && (
-          <View accessibilityLiveRegion="polite" style={styles.hint}>
-            <GeaText variant="bold16" color={colors.warning[500]}>Petunjuk</GeaText>
-            <GeaText variant="body14" color={componentColors.bodyDark}>{hint}</GeaText>
-          </View>
-        )}
-        <StoryButton
-          label={busy ? "Memeriksa..." : "Submit"}
-          disabled={selected === null || busy}
-          onPress={(): void => void send()}
-          style={styles.quizSubmit}
-        />
-      </View>
-    </>
-  );
-}
-
-const speakerIcon = require("../../../../assets/design/icon-speaker.svg") as number;
-const cameraIcon = require("../../../../assets/design/icon-camera.svg") as number;
-
-/** Tombol speaker bulat krem dari desain ("Aktifkan Mode Audio" dan panel isi cerita). */
 function AudioCircle({ active = false }: { readonly active?: boolean }): ReactElement {
   return (
     <View style={[styles.audioIcon, active && styles.audioIconActive]}>
@@ -884,84 +582,11 @@ function splitHighlights(text: string | undefined): string[] {
     .map((item: string): string => item.charAt(0).toUpperCase() + item.slice(1));
 }
 
-// Posisi kartu bertumpuk seperti frame "Story - Story Isi 2".
-// Posisi & ikon kartu sesuai frame "Story Isi 2" (komponen Cards).
-const CARD_SPOTS: readonly { left: number; top: number; rotate: number; icon: number }[] = [
-  { left: 33, top: 140, rotate: -2.5, icon: require("../../../../assets/design/card-discover.svg") as number },
-  { left: 79, top: 215, rotate: 2.5, icon: require("../../../../assets/design/card-search-zoom.svg") as number },
-  { left: 25, top: 314, rotate: -2.5, icon: require("../../../../assets/design/card-tree.svg") as number },
-  { left: 87, top: 390, rotate: 2.5, icon: require("../../../../assets/design/card-search.svg") as number },
-];
-
-/**
- * "Story Isi 2": kartu koleksi bertumpuk. Ketuk kartu → layar cari & foto koleksi itu.
- * Kotak centang di tepi kanan kartu terisi setelah koleksinya difoto.
- */
-function HighlightCards(
-  { items, done, photoEnabled, onPick }: {
-    readonly items: readonly string[];
-    /** Indeks kartu yang sudah difoto. */
-    readonly done: readonly number[];
-    /** false = anak: kartu hanya ditampilkan, tanpa kamera dan kotak centang. */
-    readonly photoEnabled: boolean;
-    readonly onPick: (index: number) => void;
-  },
-): ReactElement {
-  return (
-    <>
-      {items.map((item: string, i: number): ReactElement => {
-        const spot = CARD_SPOTS[i] ?? { left: 33, top: 140, rotate: 0, icon: cameraIcon };
-        const checked: boolean = done.includes(i);
-        return (
-          <Pressable
-            key={item}
-            accessibilityRole={photoEnabled ? "button" : "text"}
-            accessibilityLabel={photoEnabled ? `Cari dan foto ${item}${checked ? ", sudah difoto" : ""}` : `Koleksi: ${item}`}
-            disabled={!photoEnabled}
-            onPress={(): void => onPick(i)}
-            style={({ pressed }) => [
-              styles.highlightCard,
-              { left: spot.left, top: spot.top, transform: [{ rotate: `${spot.rotate}deg` }] },
-              pressed && styles.pressed,
-            ]}
-          >
-            <Image accessible={false} source={spot.icon} style={styles.cardIcon} />
-            <View style={styles.cardContent}>
-              <GeaText variant="heading20" color={colors.secondaryGreen[900]}>{photoEnabled ? "CARI & FOTO" : "KOLEKSI"}</GeaText>
-              <GeaText variant="body16" color={componentColors.bodyDark} numberOfLines={2}>{item}</GeaText>
-            </View>
-            {photoEnabled && (
-              <View style={[styles.cardCheck, checked && styles.cardCheckDone]}>
-                {checked && <GeaText variant="bold16" color={colors.secondaryGreen[900]}>✓</GeaText>}
-              </View>
-            )}
-          </Pressable>
-        );
-      })}
-    </>
-  );
-}
-
 const styles = StyleSheet.create({
   flowRoot: { flex: 1 },
   rewardWrap: { position: "absolute", left: 0, right: 0, alignItems: "center", zIndex: 50, transformOrigin: "top" },
   rewardToast: { width: 360 },
   pressed: { opacity: 0.8 },
-  // Kotak centang menjorok keluar di tepi kanan kartu, seperti frame "Story Isi 2".
-  cardCheck: {
-    position: "absolute",
-    right: -12,
-    top: "50%",
-    marginTop: -12,
-    width: 24,
-    height: 24,
-    borderWidth: 2,
-    borderColor: colors.primary[600],
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.secondaryYellow[0],
-  },
-  cardCheckDone: { backgroundColor: colors.secondaryGreen[100] },
   centerBox: { position: "absolute", left: 24, right: 24, top: 380, alignItems: "center" },
   center: { textAlign: "center" },
   summaryCard: {
@@ -992,25 +617,6 @@ const styles = StyleSheet.create({
   audioIconActive: { backgroundColor: colors.secondaryGreen[300] },
   icon24: { width: 24, height: 24 },
   icon28: { width: 28, height: 28 },
-  highlightCard: {
-    position: "absolute",
-    width: 287,
-    minHeight: 92,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing[8],
-    padding: spacing[12],
-    paddingRight: spacing[24],
-    borderWidth: 2,
-    borderColor: colors.primary[500],
-    borderRadius: 8,
-    backgroundColor: colors.primary[0],
-    boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.12)",
-  },
-  cardIcon: { width: 32, height: 32 },
-  cardContent: { flex: 1, gap: spacing[4] },
-  texts: { alignSelf: "stretch", gap: spacing[12] },
-  // Isi cerita mengikuti panjang teks; minimal setinggi frame 844 (tombol tetap di bawah).
   isiContent: {
     position: "absolute",
     left: 16,
@@ -1031,61 +637,4 @@ const styles = StyleSheet.create({
   isiNav: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   flex: { flex: 1 },
   link: { textDecorationLine: "underline" },
-  quizProgress: {
-    position: "absolute",
-    left: 15,
-    top: 105,
-    width: 360,
-    height: 6,
-    borderRadius: 100,
-    overflow: "hidden",
-    backgroundColor: colors.primary[0],
-  },
-  quizProgressFill: { height: 6, backgroundColor: colors.tertiary[300] },
-  quizBody: { position: "absolute", left: 16, top: CARD_TOP, width: 358, gap: spacing[8] },
-  quizQuestion: {
-    marginBottom: 56,
-    minHeight: 140,
-    justifyContent: "center",
-    padding: spacing[16],
-    borderRadius: 8,
-    backgroundColor: colors.white,
-  },
-  quizQuestionText: { fontSize: 18, lineHeight: 27, textAlign: "center" },
-  options: { gap: spacing[8] },
-  option: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing[16],
-    padding: spacing[16],
-    borderWidth: 2,
-    borderColor: colors.primary[500],
-    borderRadius: 8,
-    backgroundColor: colors.primary[0],
-    boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.12)",
-  },
-  optionActive: { borderColor: colors.tertiary[200] },
-  optionPressed: { opacity: 0.85 },
-  optionCrossed: { opacity: 0.45 },
-  strike: { textDecorationLine: "line-through" },
-  checkbox: {
-    width: 24,
-    height: 24,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: colors.primary[600],
-    backgroundColor: colors.secondaryYellow[0],
-  },
-  checkboxOn: { backgroundColor: colors.secondaryGreen[100] },
-  quizSubmit: { marginTop: 48, boxShadow: shadows.drop },
-  hint: { gap: spacing[4], padding: spacing[12], borderRadius: radius.control, backgroundColor: colors.warning[0] },
-  toast: { position: "absolute", left: 15, top: 47, width: 360 },
 });
-
-/** Tipe tantangan sheet ↔ tipe quest backend (tabel quest.tipe_quest). */
-function serverTypeMatches(challenge: Tantangan, type: string): boolean {
-  if (challenge.tipe === "foto" || challenge.tipe === "cariObjek") return type === "foto";
-  if (challenge.tipe === "isian") return type === "isian_singkat";
-  return type === "benar_salah";
-}

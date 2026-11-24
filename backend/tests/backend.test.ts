@@ -287,7 +287,7 @@ Deno.test("integrasi SQL: migrasi, enam POI, hak akses, QR, jawaban, idempotensi
           profil: "dewasa",
           count: 11,
         }]);
-        equal((await database.query("select * from public.quest")).rows.length, 11);
+        equal((await database.query("select * from public.quest")).rows.length, 14);
         const adult = await database.query(
           "select teks_cerita,fakta_menarik,koleksi_sorotan from public.konten where id_poi='30000000-0000-4000-8000-000000000003' and profil='dewasa'",
         );

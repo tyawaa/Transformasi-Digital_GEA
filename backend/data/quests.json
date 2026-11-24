@@ -1,0 +1,380 @@
+[
+  {
+    "idQuest": "40000000-0000-4000-8000-000000000001",
+    "code": "Q-001",
+    "poiCode": "POI-01",
+    "idPoi": "30000000-0000-4000-8000-000000000001",
+    "type": "foto",
+    "title": "Berburu Cangkang Kura-Kura Raksasa",
+    "question": "Di antara fosil-fosil di sini, ada cangkang Megalochelys, si kura-kura raksasa. Temukan fosilnya, lalu foto bersama label namanya!",
+    "options": [],
+    "answer": "",
+    "acceptedAnswers": [],
+    "photoTarget": "Fosil Megalochelys sp. (cangkang kura-kura raksasa) terlihat jelas, dan label nama ikut terbaca",
+    "hint": "Cari fosil yang bentuknya seperti cangkang besar.",
+    "explanation": "Megalochelys adalah kura-kura raksasa purba. Fosilnya menjadi salah satu bukti beragamnya fauna purba Indonesia.",
+    "points": 10,
+    "difficulty": "Mudah",
+    "maxAttempts": 2,
+    "requiredForBadge": true,
+    "status": "Draft",
+    "photoCriteria": "Lolos jika foto menampilkan fosil kura-kura raksasa (Megalochelys sp.), berupa cangkang atau serpihan cangkang di etalase museum, bersama label namanya. Tolak jika foto buram atau gelap, objek terpotong, objek lain yang difoto, atau foto layar/gambar dari internet."
+  },
+  {
+    "idQuest": "40000000-0000-4000-8000-000000000024",
+    "code": "Q-003",
+    "poiCode": "POI-02",
+    "idPoi": "30000000-0000-4000-8000-000000000002",
+    "type": "foto",
+    "title": "Berburu Karang Berbentuk Kepala",
+    "question": "Di sini ada beberapa jenis karang. Ada yang bercabang, ada yang pipih, dan ada yang membulat. Temukan karang yang bentuknya membulat seperti kepala, yang disebut head coral. Foto karangnya bersama label namanya!",
+    "options": [],
+    "answer": "",
+    "acceptedAnswers": [],
+    "photoTarget": "Head coral (karang membulat seperti kepala) terlihat jelas, dan label nama ikut terbaca",
+    "hint": "Abaikan karang yang bercabang atau pipih. Cari yang bentuknya bulat dan padat.",
+    "explanation": "Head coral adalah jenis karang dengan koloni membulat seperti kepala, dan menjadi salah satu koleksi terumbu karang di POI ini.",
+    "points": 20,
+    "difficulty": "Sedang",
+    "maxAttempts": 3,
+    "requiredForBadge": true,
+    "status": "Draft",
+    "photoCriteria": "Lolos jika foto menampilkan karang berbentuk membulat seperti kepala (head coral), bukan karang bercabang (branching) atau pipih (plate), bersama label namanya. Tolak jika foto buram atau gelap, objek terpotong, objek lain yang difoto, atau foto layar/gambar dari internet."
+  },
+  {
+    "idQuest": "40000000-0000-4000-8000-000000000003",
+    "code": "Q-005",
+    "poiCode": "POI-03",
+    "idPoi": "30000000-0000-4000-8000-000000000003",
+    "type": "foto",
+    "title": "Berburu Kaca dari Gunung Api",
+    "question": "Saat lava dari gunung api membeku dengan sangat cepat, ia bisa berubah menjadi batuan hitam mengilap seperti kaca. Temukan obsidian di antara koleksi gunung api, lalu foto bersama label namanya!",
+    "options": [],
+    "answer": "",
+    "acceptedAnswers": [],
+    "photoTarget": "Obsidian (batuan hitam mengilap seperti kaca) terlihat jelas, dan label nama ikut terbaca",
+    "hint": "Cari batu yang hitam, licin, dan mengilap seperti kaca.",
+    "explanation": "Obsidian terbentuk ketika lava membeku sangat cepat, sehingga tidak sempat membentuk kristal dan tampak seperti kaca.",
+    "points": 20,
+    "difficulty": "Sedang",
+    "maxAttempts": 3,
+    "requiredForBadge": true,
+    "status": "Draft",
+    "photoCriteria": "Lolos jika foto menampilkan obsidian (kaca vulkanik berwarna hitam, permukaan mengilap) bersama label namanya. Tolak jika foto buram atau gelap, objek terpotong, objek lain yang difoto, atau foto layar/gambar dari internet."
+  },
+  {
+    "idQuest": "40000000-0000-4000-8000-000000000004",
+    "code": "Q-006",
+    "poiCode": "POI-04",
+    "idPoi": "30000000-0000-4000-8000-000000000004",
+    "type": "benar_salah",
+    "title": "Lipatan atau Sesar?",
+    "question": "Amati contoh struktur geologi di POI ini, lalu jawab: benar atau salah? Batuan yang melengkung tanpa terpecah akibat tekanan disebut sesar.",
+    "options": [
+      {
+        "label_opsi": "A",
+        "teks_opsi": "Benar"
+      },
+      {
+        "label_opsi": "B",
+        "teks_opsi": "Salah"
+      }
+    ],
+    "answer": "B",
+    "acceptedAnswers": [],
+    "photoTarget": null,
+    "hint": "Sesar itu patahan. Struktur yang melengkung punya nama lain.",
+    "explanation": "Salah. Batuan yang melengkung tanpa terpecah disebut lipatan, sedangkan sesar terbentuk ketika batuan patah dan bergeser.",
+    "points": 10,
+    "difficulty": "Mudah",
+    "maxAttempts": 2,
+    "requiredForBadge": true,
+    "status": "Draft",
+    "photoCriteria": null
+  },
+  {
+    "idQuest": "40000000-0000-4000-8000-000000000005",
+    "code": "Q-007",
+    "poiCode": "POI-05",
+    "idPoi": "30000000-0000-4000-8000-000000000005",
+    "type": "isian_singkat",
+    "title": "Menonton Kelahiran Nusantara",
+    "question": "Tonton animasi terbentuknya Kepulauan Indonesia sampai selesai. Lalu lengkapi kalimat ini dengan satu kata. Pergerakan lempeng, titik-titik, bersama aktivitas gunung api, membentuk ribuan pulau di Indonesia.",
+    "options": [],
+    "answer": "tektonik",
+    "acceptedAnswers": [
+      "tektonik",
+      "lempeng tektonik",
+      "Tektonik"
+    ],
+    "photoTarget": null,
+    "hint": "Dengarkan narasi tentang lempeng bumi yang terus bergerak.",
+    "explanation": "Pergerakan lempeng tektonik, aktivitas gunung api, dan proses geologi selama jutaan tahun membentuk Kepulauan Indonesia, dan bentuknya masih terus berubah hingga kini.",
+    "points": 10,
+    "difficulty": "Mudah",
+    "maxAttempts": 2,
+    "requiredForBadge": true,
+    "status": "Draft",
+    "photoCriteria": null
+  },
+  {
+    "idQuest": "40000000-0000-4000-8000-000000000006",
+    "code": "Q-008",
+    "poiCode": "POI-06",
+    "idPoi": "30000000-0000-4000-8000-000000000006",
+    "type": "cocokkan",
+    "title": "Trio Pembentuk Lanskap",
+    "question": "Tiga proses bekerja mengubah wajah bumi: satu, pelapukan. Dua, erosi. Tiga, pengendapan. Peran mereka: A, memindahkan material lewat air, angin, atau es. B, menumpuk material di tempat baru. C, menghancurkan batuan. Pilih pasangan yang tepat!",
+    "options": [
+      {
+        "label_opsi": "A",
+        "teks_opsi": "1 dengan C, 2 dengan A, 3 dengan B"
+      },
+      {
+        "label_opsi": "B",
+        "teks_opsi": "1 dengan A, 2 dengan B, 3 dengan C"
+      },
+      {
+        "label_opsi": "C",
+        "teks_opsi": "1 dengan B, 2 dengan C, 3 dengan A"
+      },
+      {
+        "label_opsi": "D",
+        "teks_opsi": "1 dengan C, 2 dengan B, 3 dengan A"
+      }
+    ],
+    "answer": "A",
+    "acceptedAnswers": [],
+    "photoTarget": null,
+    "hint": "Urutan kerjanya: batuan hancur dulu, lalu berpindah, lalu menetap.",
+    "explanation": "Pelapukan menghancurkan batuan, erosi memindahkan material hasil pelapukan lewat air, angin, atau es, dan pengendapan menumpuknya di tempat baru.",
+    "points": 30,
+    "difficulty": "Sulit",
+    "maxAttempts": 3,
+    "requiredForBadge": false,
+    "status": "Draft",
+    "photoCriteria": null
+  },
+  {
+    "idQuest": "40000000-0000-4000-8000-000000000007",
+    "code": "Q-009",
+    "poiCode": "POI-07",
+    "idPoi": "30000000-0000-4000-8000-000000000007",
+    "type": "foto",
+    "title": "Berburu Batu Dasit",
+    "question": "Di antara koleksi batuan beku, ada batu bernama dasit. Dasit terbentuk dari lava gunung api yang membeku. Temukan dasit, lalu foto bersama label namanya!",
+    "options": [],
+    "answer": "",
+    "acceptedAnswers": [],
+    "photoTarget": "Batuan dasit terlihat jelas, dan label nama Dasit terbaca",
+    "hint": "Cari label yang bertuliskan Dasit di antara koleksi batuan.",
+    "explanation": "Dasit adalah batuan beku vulkanik, yang terbentuk dari lava gunung api yang membeku.",
+    "points": 20,
+    "difficulty": "Sedang",
+    "maxAttempts": 3,
+    "requiredForBadge": true,
+    "status": "Draft",
+    "photoCriteria": "Lolos jika foto menampilkan batuan dasit (batuan beku vulkanik) dan label bertuliskan Dasit terbaca jelas. Label wajib terbaca karena dasit sulit dibedakan dari batuan beku lain hanya dari tampilannya. Tolak jika foto buram atau gelap, objek terpotong, objek lain yang difoto, atau foto layar/gambar dari internet."
+  },
+  {
+    "idQuest": "40000000-0000-4000-8000-000000000008",
+    "code": "Q-010",
+    "poiCode": "POI-08",
+    "idPoi": "30000000-0000-4000-8000-000000000008",
+    "type": "isian_singkat",
+    "title": "Penghuni Mantel Bumi",
+    "question": "Tenaga tektonik berasal dari pergerakan lempeng bumi. Di antara sekis mika, peridotit, dan lava basal, batuan manakah yang banyak menyusun bagian mantel atas bumi?",
+    "options": [],
+    "answer": "Peridotit",
+    "acceptedAnswers": [
+      "peridotit",
+      "batuan peridotit"
+    ],
+    "photoTarget": null,
+    "hint": "Ia berasal dari lapisan di bawah kerak bumi. Cek label koleksinya!",
+    "explanation": "Peridotit merupakan batuan yang banyak menyusun bagian mantel atas bumi.",
+    "points": 20,
+    "difficulty": "Sedang",
+    "maxAttempts": 3,
+    "requiredForBadge": true,
+    "status": "Draft",
+    "photoCriteria": null
+  },
+  {
+    "idQuest": "40000000-0000-4000-8000-000000000025",
+    "code": "Q-011",
+    "poiCode": "POI-09",
+    "idPoi": "30000000-0000-4000-8000-000000000009",
+    "type": "foto",
+    "title": "Berburu Batu dari Luar Angkasa",
+    "question": "Di POI ini ada batu yang datang dari luar angkasa, yaitu meteorit dari Namibia. Temukan meteoritnya, lalu foto bersama label namanya!",
+    "options": [],
+    "answer": "",
+    "acceptedAnswers": [],
+    "photoTarget": "Meteorit dari Namibia terlihat jelas, dan label nama ikut terbaca",
+    "hint": "Cari label yang bertuliskan Meteorit Namibia.",
+    "explanation": "Meteorit adalah benda dari luar angkasa yang jatuh sampai ke permukaan Bumi. Koleksi ini membantu para ilmuwan mempelajari asal-usul tata surya dan planet Bumi.",
+    "points": 10,
+    "difficulty": "Mudah",
+    "maxAttempts": 2,
+    "requiredForBadge": true,
+    "status": "Draft",
+    "photoCriteria": "Lolos jika foto menampilkan meteorit dari Namibia dan label yang menyebut Meteorit atau Namibia terbaca jelas. Tolak jika foto buram atau gelap, objek terpotong, objek lain yang difoto, atau foto layar/gambar dari internet."
+  },
+  {
+    "idQuest": "40000000-0000-4000-8000-000000000010",
+    "code": "Q-012",
+    "poiCode": "POI-10",
+    "idPoi": "30000000-0000-4000-8000-000000000010",
+    "type": "foto",
+    "title": "Berburu Si Batu Rijang",
+    "question": "Rijang adalah batuan yang sangat keras, dan terbentuk dari silika. Temukan rijang di antara koleksi batuan, lalu foto bersama label namanya!",
+    "options": [],
+    "answer": "",
+    "acceptedAnswers": [],
+    "photoTarget": "Batu rijang terlihat jelas, dan label nama Rijang terbaca",
+    "hint": "Rijang berbutir sangat halus. Cari label yang bertuliskan Rijang.",
+    "explanation": "Rijang adalah batuan sedimen yang tersusun dari silika, bertekstur halus, dan sangat keras. Ia menjadi salah satu ragam batuan di Indonesia.",
+    "points": 30,
+    "difficulty": "Sulit",
+    "maxAttempts": 3,
+    "requiredForBadge": false,
+    "status": "Draft",
+    "photoCriteria": "Lolos jika foto menampilkan batu rijang (batuan silika yang keras dengan butir sangat halus) dan label bertuliskan Rijang terbaca jelas. Label wajib terbaca karena rijang sulit dibedakan dari batuan lain hanya dari tampilannya. Tolak jika foto buram atau gelap, objek terpotong, objek lain yang difoto, atau foto layar/gambar dari internet."
+  },
+  {
+    "idQuest": "40000000-0000-4000-8000-000000000026",
+    "code": "Q-013",
+    "poiCode": "POI-11",
+    "idPoi": "30000000-0000-4000-8000-000000000011",
+    "type": "foto",
+    "title": "Berburu Si Nikel",
+    "question": "Indonesia dikenal sebagai salah satu penghasil nikel terbesar di dunia. Nikel adalah logam yang dipakai untuk membuat baja tahan karat dan baterai. Temukan koleksi nikel, lalu foto bersama label namanya!",
+    "options": [],
+    "answer": "",
+    "acceptedAnswers": [],
+    "photoTarget": "Koleksi nikel terlihat jelas, dan label nama Nikel terbaca",
+    "hint": "Cari label yang bertuliskan Nikel di antara koleksi mineral logam.",
+    "explanation": "Nikel adalah logam yang banyak dipakai untuk baja tahan karat dan baterai, dan Indonesia termasuk penghasil nikel terbesar di dunia.",
+    "points": 20,
+    "difficulty": "Sedang",
+    "maxAttempts": 3,
+    "requiredForBadge": true,
+    "status": "Draft",
+    "photoCriteria": "Lolos jika foto menampilkan koleksi nikel (bijih atau logam nikel) dan label bertuliskan Nikel terbaca jelas. Label wajib terbaca karena nikel sulit dikenali hanya dari bentuknya. Tolak jika foto buram atau gelap, objek terpotong, objek lain yang difoto, atau foto layar/gambar dari internet."
+  },
+  {
+    "idQuest": "40000000-0000-4000-8000-000000000002",
+    "code": "Q-024",
+    "poiCode": "POI-02",
+    "idPoi": "30000000-0000-4000-8000-000000000002",
+    "type": "pilgan",
+    "title": "Tetesan dari Langit-Langit Gua",
+    "question": "Di gua karst, tetesan air kaya kalsit perlahan membentuk hiasan batu yang menjuntai dari langit-langit gua. Perhatikan koleksi di POI ini, lalu pilih: apa nama hiasan batu tersebut?",
+    "options": [
+      {
+        "label_opsi": "A",
+        "teks_opsi": "Stalagmit"
+      },
+      {
+        "label_opsi": "B",
+        "teks_opsi": "Stalaktit"
+      },
+      {
+        "label_opsi": "C",
+        "teks_opsi": "Rijang"
+      },
+      {
+        "label_opsi": "D",
+        "teks_opsi": "Geode"
+      }
+    ],
+    "answer": "B",
+    "acceptedAnswers": [],
+    "photoTarget": null,
+    "hint": "Ia tumbuh ke bawah dari langit-langit gua, bukan naik dari lantai.",
+    "explanation": "Stalaktit terbentuk dari endapan mineral kalsit yang menumpuk perlahan dari tetesan air di langit-langit gua.",
+    "points": 10,
+    "difficulty": "Mudah",
+    "maxAttempts": 2,
+    "requiredForBadge": true,
+    "status": "Draft",
+    "photoCriteria": null
+  },
+  {
+    "idQuest": "40000000-0000-4000-8000-000000000009",
+    "code": "Q-025",
+    "poiCode": "POI-09",
+    "idPoi": "30000000-0000-4000-8000-000000000009",
+    "type": "pilgan",
+    "title": "Menembus Lapisan Bumi",
+    "question": "Bumi punya empat lapisan utama. Perhatikan ilustrasi penampang struktur Bumi, lalu pilih urutan lapisan dari yang paling luar sampai paling dalam.",
+    "options": [
+      {
+        "label_opsi": "A",
+        "teks_opsi": "Kerak, mantel, inti luar, inti dalam"
+      },
+      {
+        "label_opsi": "B",
+        "teks_opsi": "Mantel, kerak, inti dalam, inti luar"
+      },
+      {
+        "label_opsi": "C",
+        "teks_opsi": "Kerak, inti luar, mantel, inti dalam"
+      },
+      {
+        "label_opsi": "D",
+        "teks_opsi": "Inti dalam, inti luar, mantel, kerak"
+      }
+    ],
+    "answer": "A",
+    "acceptedAnswers": [],
+    "photoTarget": null,
+    "hint": "Kerak adalah kulit bumi tempat kita berpijak.",
+    "explanation": "Bumi memiliki empat lapisan utama, yaitu kerak, mantel, inti luar, dan inti dalam.",
+    "points": 10,
+    "difficulty": "Mudah",
+    "maxAttempts": 2,
+    "requiredForBadge": true,
+    "status": "Draft",
+    "photoCriteria": null
+  },
+  {
+    "idQuest": "40000000-0000-4000-8000-000000000011",
+    "code": "Q-026",
+    "poiCode": "POI-11",
+    "idPoi": "30000000-0000-4000-8000-000000000011",
+    "type": "pilgan",
+    "title": "Ametis dari Tanah Minang",
+    "question": "Indonesia kaya sumber daya geologi, termasuk batu mulia berwarna ungu. Berdasarkan cerita pameran, ametis berasal dari daerah mana?",
+    "options": [
+      {
+        "label_opsi": "A",
+        "teks_opsi": "Solok, Sumatera Barat"
+      },
+      {
+        "label_opsi": "B",
+        "teks_opsi": "Martapura, Kalimantan Selatan"
+      },
+      {
+        "label_opsi": "C",
+        "teks_opsi": "Cilacap, Jawa Tengah"
+      },
+      {
+        "label_opsi": "D",
+        "teks_opsi": "Ternate, Maluku Utara"
+      }
+    ],
+    "answer": "A",
+    "acceptedAnswers": [],
+    "photoTarget": null,
+    "hint": "Daerah asalnya berada di Pulau Sumatra.",
+    "explanation": "Ametis adalah batu mulia yang berasal dari Solok, Sumatera Barat, bagian dari kekayaan geologi Indonesia.",
+    "points": 10,
+    "difficulty": "Mudah",
+    "maxAttempts": 2,
+    "requiredForBadge": true,
+    "status": "Draft",
+    "photoCriteria": null
+  }
+]
