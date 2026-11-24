@@ -796,7 +796,7 @@ Deno.test("integrasi SQL: migrasi, enam POI, hak akses, QR, jawaban, idempotensi
         /IDEMPOTENCY_CONFLICT/,
       );
     });
-    await test.step("sesi anak tanpa teks anak memakai hint versi dewasa", async (): Promise<void> => {
+    await test.step("sesi anak tidak dapat mengerjakan quest selain foto (Quest_Anak)", async (): Promise<void> => {
       const studentVisitId: string = "50000000-0000-4000-8000-000000000002";
       const visit: JsonObject = await resultObject(
         database,
@@ -809,13 +809,15 @@ Deno.test("integrasi SQL: migrasi, enam POI, hak akses, QR, jawaban, idempotensi
         studentVisitId,
         "1".repeat(64),
       ]);
-      const wrong: JsonObject = await resultObject(
-        database,
-        "select public.jawab_quest($1,$2,$3,'B',$4) as result",
-        [otherUserId, studentVisitId, questId, crypto.randomUUID()],
+      await rejects(
+        database.query("select public.jawab_quest($1,$2,$3,'B',$4)", [
+          otherUserId,
+          studentVisitId,
+          questId,
+          crypto.randomUUID(),
+        ]),
+        /QUEST_NOT_FOR_PROFILE/,
       );
-      equal(wrong.answerCorrect, false);
-      equal(wrong.hint, "Petunjuk simulasi.");
     });
     await test.step("jawaban benar menyelesaikan quest; percobaan berikutnya ditolak", async (): Promise<void> => {
       const correct: JsonObject = await resultObject(

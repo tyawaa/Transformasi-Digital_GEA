@@ -8,7 +8,13 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "audio",
+          "location"
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -23,7 +29,11 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "GEA menggunakan lokasi untuk memeriksa apakah kamu berada di area museum."
+          "locationWhenInUsePermission": "GEA menggunakan lokasi untuk memeriksa apakah kamu berada di area museum.",
+          "locationAlwaysAndWhenInUsePermission": "GEA memakai lokasi saat layar terkunci agar petunjuk arah mode tanpa layar tetap dibacakan.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
         }
       ],
       [
@@ -34,7 +44,14 @@
           "microphonePermission": false
         }
       ],
-      "expo-audio",
+      [
+        "expo-audio",
+        {
+          "enableBackgroundPlayback": true,
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ],
       "expo-asset",
       "expo-image",
       "expo-font"

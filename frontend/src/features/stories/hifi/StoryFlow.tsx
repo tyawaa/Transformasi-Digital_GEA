@@ -26,6 +26,8 @@ import { readVisitorLocation, type LocationReading } from "../../../services/loc
 import { type Fix, stepGeofence } from "../../../domain/geofence";
 import { type StoriesSource } from "../../../services/stories";
 import { museumPoiById, type StoryContent } from "../../../data/museum";
+import { storyRecording } from "../../../data/poiAudio";
+import { audioSource } from "../../../services/media";
 import { SceneLayer } from "../../onboarding/scene";
 import { type ParsedQr, qrErrorMessage } from "../../qr/qrPayload";
 import type { PoiProgress } from "../progress";
@@ -365,6 +367,11 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
   const pageCount: number = highlights.length > 0 ? 2 : 1;
   // Anak: judul dan fakta dari Konten_Cerita_Anak (teks cerita anak datang dari sumber data sesuai profil).
   const kid: boolean = visit.profil === "anak";
+  // Rekaman voice over kelompok didahulukan; audio dari sumber data hanya cadangan.
+  const recording: number | undefined = museumPoi === undefined ? undefined : storyRecording(museumPoi.code, visit.profil);
+  const narration: { readonly key: string; readonly source: number | { readonly uri: string }; readonly seconds: number } | null =
+    recording !== undefined ? { key: `vo-${museumPoi?.code ?? poiId}-${visit.profil}`, source: recording, seconds: 30 }
+      : audio !== null ? { key: audio.audioUrl, source: audioSource(audio.audioUrl), seconds: audio.durationSeconds } : null;
   const judul: string | undefined = (kid ? local?.judulAnak : undefined) ?? description.title ?? local?.judul;
   const fakta: string | undefined = (kid ? local?.faktaAnak : undefined) ?? description.fact ?? local?.fakta;
   const pageTwoTitle: string = fakta !== undefined ? "Fakta Menarik" : "Cari di Ruangan Ini";
@@ -396,7 +403,7 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
   }
 
   if (step === "quest" && selectedQuest !== undefined) {
-    return <QuestTaskScreen key={selectedQuest.idQuest} quest={selectedQuest} result={progress.quests?.[selectedQuest.idQuest]}
+    return <QuestTaskScreen key={selectedQuest.idQuest} quest={selectedQuest} profile={visit.profil} result={progress.quests?.[selectedQuest.idQuest]}
       onBack={(): void => setStep("quests")}
       submit={async (requestId: string, label: OptionLabel | null, text: string | null): Promise<AnswerResult> => {
         if (!isVerified(progressOf(poiId))) {
@@ -469,7 +476,7 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
             <GeaText variant="body16Tight" color={componentColors.cardBody} numberOfLines={3}>{description.text}</GeaText>
             <StoryButton label="Mulai Cerita" onPress={(): void => setStep("story")} style={styles.summaryButton} />
           </View>
-          {audio !== null && <Pressable accessibilityRole="button" hitSlop={8} style={styles.audioMode} onPress={(): void => openNarration("story")}>
+          {narration !== null && <Pressable accessibilityRole="button" hitSlop={8} style={styles.audioMode} onPress={(): void => openNarration("story")}>
             <GeaText variant="body16" color={colors.primary[800]}>Aktifkan Mode Audio</GeaText>
             <AudioCircle />
           </Pressable>}
@@ -484,7 +491,7 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
           <SceneLayer layer={isiPanelLayer} />
           {/* Panel cokelat diperpanjang ke bawah saat cerita panjang dan halaman digulir. */}
           <View style={[styles.isiFill, { height: Math.max(0, ISI_TOP + isiHeight + ISI_BOTTOM - ISI_FILL_TOP) }]} />
-          {audio !== null && <Pressable
+          {narration !== null && <Pressable
             accessibilityRole="button"
             accessibilityLabel={step === "narration" ? "Tutup narasi" : "Dengarkan narasi"}
             hitSlop={8}
@@ -504,8 +511,8 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
               <GeaText variant="heading28" color={colors.secondaryYellow[100]} numberOfLines={2}>
                 {step === "narration" ? "Dengarkan Narasi" : step === "story2" ? pageTwoTitle : judul ?? poi.nama}
               </GeaText>
-              {step === "narration" && audio !== null
-                ? <StoryAudio key={audio.audioUrl} audioUrl={audio.audioUrl} durationSeconds={audio.durationSeconds} />
+              {step === "narration" && narration !== null
+                ? <StoryAudio key={narration.key} source={narration.source} durationSeconds={narration.seconds} />
                 : (
                   <View>
                     <GeaText variant="body16Tight" color={colors.secondaryYellow[0]}>

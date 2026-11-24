@@ -3,7 +3,6 @@ import { type ReactElement, useEffect, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { colors } from "../../../design/tokens";
 import { GeaText } from "../../../design/typography";
-import { audioSource } from "../../../services/media";
 import { StoryButton } from "./parts";
 
 function clock(seconds: number): string {
@@ -16,9 +15,9 @@ function clock(seconds: number): string {
  * jadi memakai warna panel dan tombol Story yang sudah ada. Kontrol: putar, jeda, ulang.
  */
 export function StoryAudio(
-  { audioUrl, durationSeconds }: { readonly audioUrl: string; readonly durationSeconds: number },
+  { source, durationSeconds }: { readonly source: number | { readonly uri: string }; readonly durationSeconds: number },
 ): ReactElement {
-  const player = useAudioPlayer(audioSource(audioUrl));
+  const player = useAudioPlayer(source);
   const status = useAudioPlayerStatus(player);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,7 +45,7 @@ export function StoryAudio(
     } catch (cause: unknown) {
       setError("Narasi belum bisa diputar. Coba lagi.");
       console.error("gea_audio_failed", {
-        url: audioUrl,
+        source,
         error: cause instanceof Error ? cause.message : String(cause),
       });
     }
