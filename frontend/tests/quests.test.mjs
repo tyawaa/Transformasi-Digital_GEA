@@ -34,10 +34,13 @@ test("menyelesaikan PG mempertahankan foto belum selesai dan retry tidak menamba
   assert.equal(earnedBadges(refs, { [poiId]: next }, {}).includes("BD-03"), true);
 });
 
-test("profil anak dapat menyelesaikan PG di POI gabungan tanpa quest foto", () => {
+test("profil anak hanya mendapat quest foto versi anak (Quest_Anak)", () => {
   const childPlan = questsForPoi(poiId, "anak").filter((quest) => !quest.isDisabled);
-  assert.equal(childPlan.length, 1);
-  assert.equal(recordQuestAnswer({ ...emptyProgress, closed: true }, response, childPlan).completed, true);
+  assert.deepEqual(childPlan.map((quest) => quest.type), ["foto"]);
+  assert.equal(childPlan[0].title, "Cari Karang yang Bulat Seperti Kepala!");
+  assert.notEqual(childPlan[0].pertanyaan, questsForPoi(poiId, "dewasa")[0].pertanyaan);
+  // POI tanpa quest foto (mis. POI-04 benar/salah) tidak punya quest untuk anak.
+  assert.equal(questsForPoi("30000000-0000-4000-8000-000000000004", "anak").every((quest) => quest.isDisabled), true);
 });
 
 test("progres server mengembalikan centang quest dan poin setelah aplikasi dibuka ulang", () => {

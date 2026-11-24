@@ -613,6 +613,7 @@ function Home(): ReactElement {
         onOpenPoi={(poiId: string): void => setScreen({ name: "story", poiId, token: null })}
         userFix={geofence.fix}
         route={route}
+        profile={visit?.profil ?? profile}
       />
     </>
   );

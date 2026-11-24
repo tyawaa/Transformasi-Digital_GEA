@@ -1,10 +1,13 @@
 import { type ReactElement, useMemo, useState } from "react";
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Image } from "expo-image";
 import { Toast } from "../../design/Toast";
 import { AnimatedNotification } from "../../design/AnimatedNotification";
 import { colors, shadows, spacing } from "../../design/tokens";
 import { GeaText } from "../../design/typography";
 import type { MuseumPoi, ZoneInfo } from "../../data/museum";
+import { storyRecording } from "../../data/poiAudio";
+import type { Profile } from "../../domain/contracts";
 import type { Fix } from "../../domain/geofence";
 import type { PoiStatus } from "../../domain/points";
 import type { GeofenceStatus } from "../../hooks/useGeofence";
@@ -16,6 +19,10 @@ import { FrameStage } from "../stories/hifi/parts";
 import { ENTRANCE, PLAN_PINS, locateOnPlan, routeLegs, type LocationAnchor, type PlanPin, type PlanPoint, type RouteLeg } from "./navigation";
 import { PlanViewport } from "./PlanViewport";
 import { StartMap } from "./StartMap";
+import { SearchPanel } from "../search/SearchPanel";
+import type { EyesFreeTarget } from "../eyesfree/engine";
+import { useEyesFree } from "../eyesfree/useEyesFree";
+import type { BackgroundResult } from "../eyesfree/background";
 
 export type MapPoi = {
   readonly museum: MuseumPoi;
@@ -64,6 +71,8 @@ type Props = {
   readonly onOpenPoi: (id: string) => void;
   readonly userFix: Fix | null;
   readonly route: Route | null;
+  /** Profil pengunjung, untuk memilih rekaman cerita umum/anak di mode tanpa layar. */
+  readonly profile: Profile;
 };
 
 const CARD_TOP: number = 600;
@@ -75,6 +84,8 @@ export function MapScreen(props: Props): ReactElement {
   const [testsOpen, setTestsOpen] = useState<boolean>(false);
   const [routeOpen, setRouteOpen] = useState<boolean>(false);
   const [expiryDismissed, setExpiryDismissed] = useState<boolean>(false);
+  const [searchOpen, setSearchOpen] = useState<boolean>(false);
+  const [eyesFreeToast, setEyesFreeToast] = useState<boolean>(false);
   const anchors: readonly LocationAnchor[] = useMemo((): readonly LocationAnchor[] => props.pois.map((poi: MapPoi): LocationAnchor => ({
     code: poi.museum.code, latitude: poi.museum.latitude, longitude: poi.museum.longitude,
   })), [props.pois]);
@@ -92,6 +103,26 @@ export function MapScreen(props: Props): ReactElement {
     const codes: readonly string[] = remaining.map((poi: MapPoi): string => poi.museum.code);
     return target === null || target.id === null ? codes : [target.museum.code, ...codes.filter((code: string): boolean => code !== target.museum.code)];
   }, [remaining, target]);
+  const eyesFreeStop = (poi: MapPoi): EyesFreeTarget => ({
+    code: poi.museum.code, name: poi.museum.name, latitude: poi.museum.latitude, longitude: poi.museum.longitude,
+    radiusMeters: poi.museum.radiusMeters, recording: storyRecording(poi.museum.code, props.profile),
+  });
+  const eyesFreeStops: readonly EyesFreeTarget[] = useMemo((): readonly EyesFreeTarget[] => props.pois
+    .filter((poi: MapPoi): boolean => poi.id !== null && (props.wingsMode === "both" || poi.museum.wing === "left"))
+    .map(eyesFreeStop),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [props.pois, props.wingsMode, props.profile]);
+  const eyesFreeTargets: readonly EyesFreeTarget[] = useMemo((): readonly EyesFreeTarget[] => destinationCodes.flatMap((code: string): readonly EyesFreeTarget[] => {
+    const poi: MapPoi | undefined = props.pois.find((item: MapPoi): boolean => item.museum.code === code);
+    return poi === undefined ? [] : [eyesFreeStop(poi)];
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [destinationCodes, props.pois, props.profile]);
+  const eyesFree = useEyesFree({
+    visitId: props.hasVisit ? "visit" : null, stops: eyesFreeStops, targets: eyesFreeTargets, fix: props.userFix,
+  });
+  const searchPois: readonly MuseumPoi[] = useMemo((): readonly MuseumPoi[] => props.pois
+    .map((poi: MapPoi): MuseumPoi => poi.museum)
+    .filter((poi: MuseumPoi): boolean => props.wingsMode === "both" || poi.wing === "left"), [props.pois, props.wingsMode]);
   const legs: readonly RouteLeg[] = useMemo((): readonly RouteLeg[] => routeLegs(location ?? ENTRANCE, destinationCodes), [location, destinationCodes]);
 
   const routeCount: number = props.route?.codes.length ?? 0;
@@ -143,6 +174,19 @@ export function MapScreen(props: Props): ReactElement {
           </GeaText>
         </View>
       </View>
+      {props.hasVisit && <View style={styles.tools}>
+        <Pressable accessibilityRole="search" accessibilityLabel="Cari ruang atau koleksi" onPress={(): void => setSearchOpen(true)}
+          style={({ pressed }) => [styles.searchBar, pressed && styles.dim]}>
+          <GeaText variant="body14" color={colors.primary[700]} style={styles.flex} numberOfLines={1}>Cari ruang atau koleksi…</GeaText>
+          <Image accessible={false} source={searchIcon} style={styles.toolIcon} />
+        </Pressable>
+        <Pressable accessibilityRole="switch" accessibilityState={{ checked: eyesFree.enabled }}
+          accessibilityLabel="Mode tanpa layar: getar saat mendekat, rekaman cerita diputar saat tiba"
+          onPress={(): void => { eyesFree.toggle(); setEyesFreeToast(!eyesFree.enabled); }}
+          style={({ pressed }) => [styles.eyesFree, eyesFree.enabled && styles.eyesFreeOn, pressed && styles.dim]}>
+          <Image accessible={false} source={speakerIcon} style={styles.toolIcon} tintColor={eyesFree.enabled ? colors.white : colors.primary[800]} />
+        </Pressable>
+      </View>}
       {locationNeedsAttention && <View style={styles.signal}>
         <Pressable accessibilityRole="button" accessibilityLabel={`${signal}. Periksa lokasi`}
           onPress={props.onCheckLocation} disabled={props.checkingLocation} style={styles.signalContent}>
@@ -237,8 +281,14 @@ export function MapScreen(props: Props): ReactElement {
           </View>
         </FrameStage>
       </Modal>
+      <AnimatedNotification style={styles.toast}>
+        {eyesFreeToast && eyesFree.enabled ? (
+          <Toast tone="success" title="Mode tanpa layar aktif" description={eyesFreeNote(eyesFree.background)}
+            countdown={{ id: "eyes-free", durationMs: 5000 }} onClose={(): void => setEyesFreeToast(false)} />
+        ) : null}
+      </AnimatedNotification>
       <AnimatedNotification style={[styles.toast, styles.expiryPosition]}>
-        {timeExpired && !expiryDismissed ? (
+        {!eyesFreeToast && timeExpired && !expiryDismissed ? (
           <View style={styles.expiryToast} accessibilityRole="alert" accessibilityLiveRegion="polite">
             <View style={styles.flex}>
               <GeaText variant="bold16" color={colors.primary[900]}>Waktu rencanamu selesai</GeaText>
@@ -252,7 +302,7 @@ export function MapScreen(props: Props): ReactElement {
         ) : null}
       </AnimatedNotification>
       <AnimatedNotification style={styles.toast}>
-        {(!timeExpired || expiryDismissed) && showRouteToast ? (
+        {!eyesFreeToast && (!timeExpired || expiryDismissed) && showRouteToast ? (
           <Toast
             tone="success"
             title="Rute Untuk Anda"
@@ -262,6 +312,13 @@ export function MapScreen(props: Props): ReactElement {
           />
         ) : null}
       </AnimatedNotification>
+      <Modal visible={searchOpen} transparent animationType="slide" onRequestClose={(): void => setSearchOpen(false)}>
+        <FrameStage background="rgba(31, 26, 22, 0.45)">
+          <Pressable accessibilityRole="button" accessibilityLabel="Tutup pencarian" style={StyleSheet.absoluteFill} onPress={(): void => setSearchOpen(false)} />
+          <SearchPanel pois={searchPois} onClose={(): void => setSearchOpen(false)}
+            onPick={(code: string): void => { choosePoi(code); setSearchOpen(false); }} />
+        </FrameStage>
+      </Modal>
       {testsOpen && props.hasVisit && props.gpsTests.length > 0 && (
         <View style={styles.testMenu}>
           <ScrollView>
@@ -291,6 +348,15 @@ export function MapScreen(props: Props): ReactElement {
   );
 }
 
+const searchIcon = require("../../../assets/design/search-normal.svg") as number;
+const speakerIcon = require("../../../assets/design/icon-speaker.svg") as number;
+
+function eyesFreeNote(background: BackgroundResult | null): string {
+  if (background === "running") return "Rekaman cerita diputar saat tiba, layar boleh dikunci";
+  if (background === "denied") return "Izinkan lokasi \"Selalu\" agar jalan saat layar terkunci";
+  return "Rekaman cerita diputar saat tiba selama app terbuka";
+}
+
 function MapButton({ label, onPress }: { readonly label: string; readonly onPress: () => void }): ReactElement {
   return <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.button, pressed && styles.dim]}><GeaText variant="bold16" color={colors.white}>{label}</GeaText></Pressable>;
 }
@@ -301,7 +367,12 @@ const styles = StyleSheet.create({
   backButton: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: colors.secondaryYellow[0], boxShadow: shadows.drop },
   statPill: { flex: 1, minHeight: 52, justifyContent: "center", alignItems: "center", paddingHorizontal: 10, borderRadius: 26, backgroundColor: colors.secondaryYellow[0], boxShadow: shadows.drop },
   timeExpired: { backgroundColor: colors.warning[100], borderColor: colors.tertiary[100] },
-  signal: { position: "absolute", left: 16, right: 16, top: 100, minHeight: 44, borderRadius: 12, paddingHorizontal: 12, backgroundColor: colors.secondaryYellow[0], boxShadow: shadows.drop },
+  tools: { position: "absolute", left: 16, right: 16, top: 96, height: 48, flexDirection: "row", alignItems: "center", gap: 8 },
+  searchBar: { flex: 1, height: 44, flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 16, borderRadius: 12, borderWidth: 1, borderColor: colors.primary[400], backgroundColor: colors.secondaryYellow[0], boxShadow: shadows.drop },
+  toolIcon: { width: 22, height: 22 },
+  eyesFree: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: colors.secondaryYellow[0], boxShadow: shadows.drop },
+  eyesFreeOn: { backgroundColor: colors.primary[800] },
+  signal: { position: "absolute", left: 16, right: 16, top: 152, minHeight: 44, borderRadius: 12, paddingHorizontal: 12, backgroundColor: colors.secondaryYellow[0], boxShadow: shadows.drop },
   signalContent: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8, minHeight: 44 },
   card: { position: "absolute", top: CARD_TOP, bottom: 24, left: 16, width: 358, borderRadius: 20, overflow: "hidden", backgroundColor: colors.secondaryYellow[0], boxShadow: shadows.drop },
   cardContent: { padding: spacing[16], gap: 8 },
@@ -314,7 +385,7 @@ const styles = StyleSheet.create({
   actions: { flexDirection: "row", alignItems: "center", gap: 8 },
   qrButton: { minHeight: 48, alignItems: "center", justifyContent: "center", paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: colors.primary[200] },
   routeLink: { minHeight: 44, flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 },
-  expiryPosition: { top: 100 },
+  expiryPosition: { top: 152 },
   expiryToast: { padding: 16, borderRadius: 20, flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1, borderColor: colors.primary[600], backgroundColor: colors.secondaryYellow[0], boxShadow: shadows.drop },
   routeSheet: { position: "absolute", left: 16, bottom: 16, width: 358, maxHeight: 632, borderRadius: 24, padding: 20, gap: 12, backgroundColor: colors.white },
   sheetClose: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: colors.primary[0] },
@@ -322,7 +393,7 @@ const styles = StyleSheet.create({
   routeStop: { flexDirection: "row", alignItems: "center", gap: 12, padding: 12, minHeight: 72, borderRadius: 16, borderWidth: 1, borderColor: colors.primary[100] },
   routeStopActive: { backgroundColor: colors.secondaryGreen[100], borderColor: colors.secondaryGreen[700] },
   zone: { padding: 8, borderRadius: 10, backgroundColor: colors.secondaryGreen[100] },
-  testMenu: { position: "absolute", right: 16, top: 112, width: 300, maxHeight: 460, padding: 12, borderRadius: 16, backgroundColor: colors.white, boxShadow: shadows.drop, zIndex: 10 },
+  testMenu: { position: "absolute", right: 16, top: 160, width: 300, maxHeight: 460, padding: 12, borderRadius: 16, backgroundColor: colors.white, boxShadow: shadows.drop, zIndex: 10 },
   testItem: { paddingHorizontal: 8, paddingVertical: 12 },
   testHeading: { paddingHorizontal: 8, paddingVertical: 10 },
   toast: { position: "absolute", left: 15, top: 47, width: 360, zIndex: 20 },
