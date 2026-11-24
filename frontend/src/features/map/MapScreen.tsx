@@ -30,6 +30,7 @@ const headingTests: readonly HeadingTest[] = [
   { label: "Hadap barat", degrees: 270 },
 ];
 type Props = {
+  readonly onBack: () => void;
   /** Tampilkan toast "Rute Untuk Anda" (baru masuk dari peta awal). */
   readonly routeToast?: boolean;
   readonly onCloseRouteToast?: () => void;
@@ -118,8 +119,12 @@ export function MapScreen(props: Props): ReactElement {
         routeCodes={props.route?.codes ?? []} legs={legs} location={location} leftOnly={props.wingsMode === "left"}
         onSelect={choosePoi} onLocate={props.onCheckLocation} orientation={orientation} planBearing={planBearing} />
       <View style={styles.header}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Kembali ke personalisasi"
+          onPress={props.onBack} hitSlop={8} style={({ pressed }) => [styles.backButton, pressed && styles.dim]}>
+          <GeaText variant="heading28" color={colors.primary[900]}>‹</GeaText>
+        </Pressable>
         <View style={styles.flex}>
-          <GeaText variant="heading24" color={colors.primary[900]}>Peta petualangan</GeaText>
+          <GeaText variant="heading20" color={colors.primary[900]}>Peta petualangan</GeaText>
           <GeaText variant="caption12" color={colors.primary[800]}>Lantai 1 · Museum Geologi</GeaText>
         </View>
         <Pressable accessibilityRole="button" accessibilityLabel="Lihat progres dan lencana" onPress={props.onOpenProgress} style={styles.points}>
@@ -254,7 +259,8 @@ function MapButton({ label, onPress }: { readonly label: string; readonly onPres
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  header: { position: "absolute", left: 20, right: 20, top: 28, height: 56, flexDirection: "row", alignItems: "center", gap: 12 },
+  header: { position: "absolute", left: 16, right: 16, top: 28, height: 56, flexDirection: "row", alignItems: "center", gap: 8 },
+  backButton: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: colors.secondaryYellow[100] },
   points: { minWidth: 76, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 10, alignItems: "center", backgroundColor: colors.white },
   signal: { position: "absolute", left: 16, right: 16, top: 104, height: 34, borderRadius: 12, paddingHorizontal: 10, backgroundColor: colors.primary[100], flexDirection: "row", alignItems: "center", gap: 8 },
   signalContent: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8, minHeight: 34 },
