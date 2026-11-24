@@ -1,7 +1,10 @@
 import { equal } from "node:assert/strict";
 import vertices from "../data/museum-polygon.json" with { type: "json" };
 import { handleRequest } from "../supabase/functions/gea-api/app.ts";
-import { type BackendConfig, museumAreaFromEnvironment } from "../supabase/functions/gea-api/config.ts";
+import {
+  type BackendConfig,
+  museumAreaFromEnvironment,
+} from "../supabase/functions/gea-api/config.ts";
 
 // Test-only IDs. No requests are sent to Supabase.
 const zoneId = "20000000-0000-4000-8000-000000000001";
@@ -26,7 +29,10 @@ Deno.test("deployed API: health/auth, polygon gating, session verification, QR r
     if (url.endsWith("/auth/v1/user")) {
       return Promise.resolve(Response.json({ id: "10000000-0000-4000-8000-000000000001" }));
     }
-    if (url.endsWith("/rpc/buat_sesi_gps") || url.endsWith("/rpc/buat_sesi_qr")) {
+    if (
+      url.endsWith("/rpc/buat_sesi_gps") || url.endsWith("/rpc/buat_sesi_qr") ||
+      url.endsWith("/rpc/simpan_personalisasi")
+    ) {
       calls.push({ url, body: JSON.parse(String(init?.body)) });
       return Promise.resolve(Response.json({ id_sesi: "test-session" }));
     }
@@ -84,6 +90,26 @@ Deno.test("deployed API: health/auth, polygon gating, session verification, QR r
     equal((await post("/sessions/qr", { ...session, token: "a".repeat(64) })).status, 201);
     equal(calls[1]!.url.endsWith("/rpc/buat_sesi_qr"), true);
     equal(typeof calls[1]!.body.p_token_hash, "string");
+    const preferences = {
+      age: "18-24 Tahun",
+      duration: "< 30 menit",
+      topics: ["Gunung Api & Gempa"],
+    };
+    equal(
+      (await post(`/sessions/${session.idSesi}/personalization`, { preferences, wings: "both" }))
+        .status,
+      200,
+    );
+    equal(calls[2]!.body.p_id_sesi, session.idSesi);
+    equal(JSON.stringify(calls[2]!.body.p_preferences), JSON.stringify(preferences));
+    equal(calls[2]!.body.p_wings, "both");
+    equal(
+      (await post(`/sessions/${session.idSesi}/personalization`, {
+        preferences: null,
+        wings: "both",
+      })).status,
+      400,
+    );
   } finally {
     globalThis.fetch = originalFetch;
   }

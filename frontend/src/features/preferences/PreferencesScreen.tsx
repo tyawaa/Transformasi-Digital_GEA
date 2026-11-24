@@ -5,7 +5,8 @@ import { colors, componentColors, shadows, spacing } from "../../design/tokens";
 import { GeaText } from "../../design/typography";
 import { StoryBackground } from "../stories/hifi/backgrounds";
 import { BackButton, FrameStage, StoryButton } from "../stories/hifi/parts";
-import { ageOptions, durationOptions, topics } from "./recommend";
+import { ageOptions, topics } from "./recommend";
+import { durationOptions } from "./visitTiming";
 import type { Preferences } from "./usePreferences";
 
 // Figma "Preferensi - Usia / Waktu / Minat".
@@ -40,11 +41,14 @@ const questions: readonly [Question, Question, Question] = [
 
 /** Tiga layar preferensi setelah onboarding: usia → waktu → minat. */
 export function PreferencesScreen(
-  { value, onChange, onBack, onDone }: {
+  { value, onChange, onBack, onDone, saving, error, onDismissError }: {
     readonly value: Preferences;
     readonly onChange: (value: Preferences) => void;
     readonly onBack: () => void;
     readonly onDone: (value: Preferences) => void;
+    readonly saving: boolean;
+    readonly error: string | null;
+    readonly onDismissError: () => void;
   },
 ): ReactElement {
   const [step, setStep] = useState<0 | 1 | 2>(0);
@@ -130,7 +134,10 @@ export function PreferencesScreen(
           );
         })}
       </View>
-      <StoryButton label="Lanjut" onPress={next} style={styles.button} />
+      <StoryButton label={saving ? "Menyimpan…" : "Lanjut"} disabled={saving} onPress={next} style={styles.button} />
+      {error !== null && <View style={styles.toast}>
+        <Toast tone="danger" title="Personalisasi belum tersimpan" description={error} onClose={onDismissError} />
+      </View>}
       {warning && (
         <View style={styles.toast}>
           <Toast

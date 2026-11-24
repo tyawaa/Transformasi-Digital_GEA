@@ -31,8 +31,11 @@ import {
 const floor: number = require("../../../assets/design/startmap-floor.svg") as number;
 const pinImage: number = require("../../../assets/design/map-pin.svg") as number;
 const pinShadow: number = require("../../../assets/design/map-pin-shadow.svg") as number;
-const VIEW_WIDTH: number = 358;
-const VIEW_HEIGHT: number = 416;
+const VIEW_WIDTH: number = 390;
+const VIEW_HEIGHT: number = 844;
+const MAP_TOP: number = 100;
+const MAP_HEIGHT: number = 500;
+const MAP_CENTER_Y: number = MAP_TOP + MAP_HEIGHT / 2;
 const MIN_ZOOM: number = 0.18;
 const MAX_ZOOM: number = 1.8;
 const webTouchStyle: ViewStyle & { readonly touchAction: "none"; readonly userSelect: "none" } = {
@@ -59,6 +62,7 @@ type Props = {
   readonly onLocate: () => void;
   readonly orientation: MapHeading;
   readonly planBearing: number | null;
+  readonly onOpenTests: (() => void) | null;
 };
 
 function shouldPan(event: GestureResponderEvent, gesture: PanResponderGestureState): boolean {
@@ -66,11 +70,11 @@ function shouldPan(event: GestureResponderEvent, gesture: PanResponderGestureSta
 }
 
 function centeredCamera(point: PlanPoint, zoom: number): Camera {
-  return boundCamera({ x: VIEW_WIDTH / 2 - point.x * zoom, y: VIEW_HEIGHT * 0.55 - point.y * zoom, zoom });
+  return boundCamera({ x: VIEW_WIDTH / 2 - point.x * zoom, y: MAP_CENTER_Y - point.y * zoom, zoom });
 }
 
 function headingCamera(point: PlanPoint, zoom: number): Camera {
-  return { x: VIEW_WIDTH / 2 - point.x * zoom, y: VIEW_HEIGHT * 0.58 - point.y * zoom, zoom };
+  return { x: VIEW_WIDTH / 2 - point.x * zoom, y: MAP_TOP + MAP_HEIGHT * 0.65 - point.y * zoom, zoom };
 }
 
 function boundCamera(camera: Camera): Camera {
@@ -78,7 +82,7 @@ function boundCamera(camera: Camera): Camera {
     size <= viewport ? (viewport - size) / 2 : Math.max(viewport - size - 20, Math.min(20, value));
   return {
     x: bound(camera.x, PLAN_WIDTH * camera.zoom, VIEW_WIDTH),
-    y: bound(camera.y, PLAN_HEIGHT * camera.zoom, VIEW_HEIGHT),
+    y: MAP_TOP + bound(camera.y - MAP_TOP, PLAN_HEIGHT * camera.zoom, MAP_HEIGHT),
     zoom: camera.zoom,
   };
 }
@@ -91,7 +95,7 @@ function boundDraggedCamera(camera: Camera): Camera {
   };
   return {
     x: bound(camera.x, PLAN_WIDTH * camera.zoom, VIEW_WIDTH),
-    y: bound(camera.y, PLAN_HEIGHT * camera.zoom, VIEW_HEIGHT),
+    y: MAP_TOP + bound(camera.y - MAP_TOP, PLAN_HEIGHT * camera.zoom, MAP_HEIGHT),
     zoom: camera.zoom,
   };
 }
@@ -131,6 +135,7 @@ export function PlanViewport(props: Props): ReactElement {
   const screenScale: number = Math.min(width / 390, height / 844);
   const [camera, setCamera] = useState<Camera>(centeredCamera(props.location ?? ENTRANCE, 0.65));
   const [following, setFollowing] = useState<boolean>(true);
+  const [toolsOpen, setToolsOpen] = useState<boolean>(false);
   const rotation = useRef<Animated.Value>(new Animated.Value(0)).current;
   const rotationTarget = useRef<number>(0);
   const rotationAnchor = useRef<PlanPoint | null>(props.location);
@@ -203,7 +208,7 @@ export function PlanViewport(props: Props): ReactElement {
         const ratio: number = zoom / start.camera.zoom;
         setCamera(boundDraggedCamera({
           x: VIEW_WIDTH / 2 - (VIEW_WIDTH / 2 - start.camera.x) * ratio + (span.midpoint.x - start.span.midpoint.x) / screenScale,
-          y: VIEW_HEIGHT / 2 - (VIEW_HEIGHT / 2 - start.camera.y) * ratio + (span.midpoint.y - start.span.midpoint.y) / screenScale,
+          y: MAP_CENTER_Y - (MAP_CENTER_Y - start.camera.y) * ratio + (span.midpoint.y - start.span.midpoint.y) / screenScale,
           zoom,
         }));
         return;
@@ -225,7 +230,7 @@ export function PlanViewport(props: Props): ReactElement {
       const ratio: number = zoom / current.zoom;
       return boundDraggedCamera({
         x: VIEW_WIDTH / 2 - (VIEW_WIDTH / 2 - current.x) * ratio,
-        y: VIEW_HEIGHT / 2 - (VIEW_HEIGHT / 2 - current.y) * ratio,
+        y: MAP_CENTER_Y - (MAP_CENTER_Y - current.y) * ratio,
         zoom,
       });
     });
@@ -236,7 +241,7 @@ export function PlanViewport(props: Props): ReactElement {
     const planWidth: number = props.leftOnly ? 1145 : PLAN_WIDTH;
     const zoom: number = (VIEW_WIDTH - 32) / planWidth;
     setFollowing(false);
-    setCamera({ x: 16, y: (VIEW_HEIGHT - PLAN_HEIGHT * zoom) / 2, zoom });
+    setCamera({ x: 16, y: MAP_CENTER_Y - PLAN_HEIGHT * zoom / 2, zoom });
   }
 
   function showRoute(): void {
@@ -249,7 +254,7 @@ export function PlanViewport(props: Props): ReactElement {
     const maxX: number = Math.max(...points.map((point: PlanPoint): number => point.x));
     const minY: number = Math.min(...points.map((point: PlanPoint): number => point.y));
     const maxY: number = Math.max(...points.map((point: PlanPoint): number => point.y));
-    const zoom: number = Math.max(MIN_ZOOM, Math.min(0.8, (VIEW_WIDTH - 80) / Math.max(1, maxX - minX), (VIEW_HEIGHT - 120) / Math.max(1, maxY - minY)));
+    const zoom: number = Math.max(MIN_ZOOM, Math.min(0.8, (VIEW_WIDTH - 80) / Math.max(1, maxX - minX), (MAP_HEIGHT - 80) / Math.max(1, maxY - minY)));
     setFollowing(false);
     setCamera(centeredCamera({ x: (minX + maxX) / 2, y: (minY + maxY) / 2 }, zoom));
   }
@@ -339,34 +344,31 @@ export function PlanViewport(props: Props): ReactElement {
           )}
         </View>
         </Animated.View>
-        <Pressable accessibilityRole="button" accessibilityLabel={props.legs.length === 0 ? "Lihat seluruh denah" : "Lihat jalur menuju tujuan"}
-          onPress={props.legs.length === 0 ? showPlan : showRoute} style={styles.routeButton}>
-          <View style={styles.routeIndicator} />
-          <GeaText variant="body14" color={colors.primary[900]}>
-            {props.legs[0] === undefined ? "Denah lantai 1" : `${props.location === null ? "Dari pintu masuk →" : "Menuju"} ${props.legs[0].code}`}
-          </GeaText>
-          <GeaText variant="body14" color={colors.primary[700]}>↗</GeaText>
-        </Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel={compassActive ? "Kembali ke orientasi denah" : "Aktifkan peta mengikuti arah hadap HP"}
-          accessibilityState={{ selected: compassActive, disabled: props.location === null || props.planBearing === null }}
-          disabled={props.location === null || props.planBearing === null} onPress={toggleHeading}
-          style={[styles.compass, compassActive && styles.controlActive, (props.location === null || props.planBearing === null) && styles.unavailable]}>
-          <GeaText variant="bold16" color={compassActive ? colors.white : colors.primary[800]}>↑</GeaText>
-          <GeaText variant="chip10" color={compassActive ? colors.white : colors.primary[800]}>POV</GeaText>
-        </Pressable>
         <View style={styles.controls}>
-          <View style={styles.zoomGroup}>
-            <MapControl label="Perbesar peta" text="+" onPress={(): void => zoomBy(1.3)} active={false} />
-            <View style={styles.controlDivider} />
-            <MapControl label="Perkecil peta" text="−" onPress={(): void => zoomBy(1 / 1.3)} active={false} />
-          </View>
-          <MapControl label="Lihat seluruh denah" text="▣" onPress={showPlan} active={false} />
+          {toolsOpen && <View style={styles.toolsTray}>
+            <View style={styles.zoomGroup}>
+              <MapControl label="Perbesar peta" text="+" onPress={(): void => zoomBy(1.3)} active={false} />
+              <View style={styles.controlDivider} />
+              <MapControl label="Perkecil peta" text="−" onPress={(): void => zoomBy(1 / 1.3)} active={false} />
+            </View>
+            <MapControl label="Lihat seluruh denah" text="▣" onPress={showPlan} active={false} />
+            <MapControl label={props.legs.length === 0 ? "Lihat denah lantai 1" : "Lihat jalur menuju tujuan"}
+              text="↗" onPress={props.legs.length === 0 ? showPlan : showRoute} active={false} />
+            <Pressable accessibilityRole="button" accessibilityLabel={compassActive ? "Kembali ke orientasi denah" : "Aktifkan peta mengikuti arah hadap HP"}
+              accessibilityState={{ selected: compassActive, disabled: props.location === null || props.planBearing === null }}
+              disabled={props.location === null || props.planBearing === null} onPress={toggleHeading}
+              style={[styles.control, compassActive && styles.controlActive, (props.location === null || props.planBearing === null) && styles.unavailable]}>
+              <GeaText variant="bold16" color={compassActive ? colors.white : colors.primary[800]}>↑</GeaText>
+            </Pressable>
+            {props.onOpenTests !== null && <MapControl label="Buka mode uji GPS" text="T"
+              onPress={(): void => { setToolsOpen(false); props.onOpenTests?.(); }} active={false} />}
+            <View style={styles.toolsHint} pointerEvents="none">
+              <GeaText variant="caption12" color={colors.primary[800]}>{props.orientation.state.message ?? headingHint}</GeaText>
+            </View>
+          </View>}
           <MapControl label={following ? "Mengikuti lokasimu" : "Ikuti lokasi saya"} text="◎" onPress={locate} active={following} />
-        </View>
-        <View pointerEvents="none" style={styles.hint}>
-          <GeaText variant="caption12" color={colors.primary[800]}>
-            {headingHint}
-          </GeaText>
+          <MapControl label={toolsOpen ? "Tutup kontrol peta" : "Buka kontrol peta"} text="⋯"
+            onPress={(): void => setToolsOpen(!toolsOpen)} active={toolsOpen} />
         </View>
       </View>
     </>
@@ -387,7 +389,7 @@ function MapControl({ label, text, onPress, active }: {
 }
 
 const styles = StyleSheet.create({
-  viewport: { position: "absolute", left: 16, top: 152, width: VIEW_WIDTH, height: VIEW_HEIGHT, overflow: "hidden", borderRadius: 22, backgroundColor: colors.primary[100], borderWidth: 1, borderColor: colors.primary[300] },
+  viewport: { position: "absolute", left: 0, top: 0, width: VIEW_WIDTH, height: VIEW_HEIGHT, overflow: "hidden", backgroundColor: colors.primary[0] },
   plan: { position: "absolute", left: 0, top: 0, width: PLAN_WIDTH, height: PLAN_HEIGHT, transformOrigin: "top left" },
   floor: { position: "absolute", left: 0.29, top: 7.86, width: 1917.16, height: 516.851, transform: [{ rotate: "0.62deg" }] },
   route: { position: "absolute", left: 0, top: 0, width: PLAN_WIDTH, height: PLAN_HEIGHT },
@@ -406,15 +408,13 @@ const styles = StyleSheet.create({
   youHalo: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.secondaryGreen[200], alignItems: "center", justifyContent: "center" },
   youDot: { width: 19, height: 19, borderRadius: 10, borderWidth: 3, borderColor: colors.white, backgroundColor: colors.secondaryGreen[700] },
   youLabel: { backgroundColor: colors.primary[800], borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
-  controls: { position: "absolute", right: 12, bottom: 16, gap: 8 },
+  controls: { position: "absolute", right: 16, bottom: 260, gap: 8 },
+  toolsTray: { gap: 8 },
+  toolsHint: { position: "absolute", right: 56, top: 0, width: 180, padding: 12, borderRadius: 12, backgroundColor: colors.secondaryYellow[0], boxShadow: shadows.drop },
   zoomGroup: { borderRadius: 12, overflow: "hidden", backgroundColor: colors.white },
-  control: { width: 40, height: 40, borderRadius: 12, backgroundColor: colors.white, alignItems: "center", justifyContent: "center" },
+  control: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.secondaryYellow[0], alignItems: "center", justifyContent: "center", boxShadow: shadows.drop },
   controlText: { fontSize: 23, lineHeight: 27 },
   controlDivider: { height: 1, marginHorizontal: 10, backgroundColor: colors.primary[100] },
   controlActive: { backgroundColor: colors.primary[700] },
-  hint: { position: "absolute", left: 12, bottom: 14, maxWidth: 278, borderRadius: 10, paddingHorizontal: 9, paddingVertical: 5, backgroundColor: colors.primary[0] },
-  routeButton: { position: "absolute", left: 12, top: 12, maxWidth: 278, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingVertical: 9, borderRadius: 12, backgroundColor: colors.white, boxShadow: shadows.drop },
-  compass: { position: "absolute", right: 12, top: 12, width: 40, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: colors.white },
-  routeIndicator: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.primary[700] },
   pressed: { opacity: 0.7 },
 });

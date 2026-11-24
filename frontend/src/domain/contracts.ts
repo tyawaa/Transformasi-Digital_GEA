@@ -41,14 +41,25 @@ const storedProfileSchema = z
   .enum(["anak", "remaja", "dewasa", "umum", "pelajar"])
   .transform((value): Profile => (value === "anak" || value === "pelajar" ? "anak" : "dewasa"));
 
+export const preferencesSchema = z.object({
+  age: z.enum(["7-12 Tahun", "13-17 Tahun", "18-24 Tahun", ">24 Tahun"]),
+  duration: z.enum(["< 30 menit", "30-45 Menit", "45 menit-1.5 Jam", "> 1.5 jam"]),
+  topics: z.array(z.enum(["Gunung Api & Gempa", "Batuan & Mineral", "Bentang Alam & Gua", "Asal-usul Bumi", "Fosil & Hewan Purba"])).min(1).max(5),
+});
+
 export const visitSchema = z.object({
   id_sesi: z.uuid(),
   bahasa: z.enum(["id", "en"]),
   profil: storedProfileSchema,
   verification_method: z.enum(["gps", "entrance_qr"]),
   status: z.literal("aktif"),
-  start_time: z.string().optional(),
+  start_time: z.iso.datetime({ offset: true }).optional(),
   startedAt: z.number().optional(),
+  personalization: preferencesSchema.nullable().optional(),
+  route_codes: z.array(z.string().regex(/^P(0[1-9]|1[0-9]|20)$/)).nullable().optional(),
+  route_minutes: z.number().int().nonnegative().nullable().optional(),
+  planned_end_at: z.iso.datetime({ offset: true }).nullable().optional(),
+  closing_limited: z.boolean().nullable().optional(),
 });
 export type Visit = z.infer<typeof visitSchema>;
 
