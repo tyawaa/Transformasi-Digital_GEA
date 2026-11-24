@@ -1,5 +1,6 @@
 import { equal, ok, rejects } from "node:assert/strict";
 import { PGlite } from "@electric-sql/pglite";
+import { prepareQuests } from "../scripts/prepare-quests.ts";
 
 type QuestAnswer = {
   readonly answerCorrect: boolean;
@@ -62,7 +63,10 @@ Deno.test("Quest Types: pilgan, foto, isian_singkat, benar_salah, dan profil ana
     const questIsianId = "40000000-0000-4000-8000-000000000003";
 
     // Siapkan akun & sesi dewasa dan anak
-    await database.query("insert into auth.users(id) values ($1), ($2) on conflict do nothing", [userIdAdult, userIdChild]);
+    await database.query("insert into auth.users(id) values ($1), ($2) on conflict do nothing", [
+      userIdAdult,
+      userIdChild,
+    ]);
     await database.query(
       `insert into public.sesi_kunjungan(id_sesi, user_id, id_zona, bahasa, profil, verification_method)
        values ($1, $2, $3, 'id', 'dewasa', 'entrance_qr'),
@@ -71,14 +75,19 @@ Deno.test("Quest Types: pilgan, foto, isian_singkat, benar_salah, dan profil ana
     );
 
     // Setup Quest 2 menjadi tipe 'foto'
-    await database.query("update public.quest set tipe_quest = 'foto' where id_quest = $1", [questFotoId]);
+    await database.query("update public.quest set tipe_quest = 'foto' where id_quest = $1", [
+      questFotoId,
+    ]);
     await database.query(
       "update public.quest_teks set target_foto = 'Foto cangkang kura-kura raksasa' where id_quest = $1",
       [questFotoId],
     );
 
     // Setup Quest 3 menjadi tipe 'isian_singkat'
-    await database.query("update public.quest set tipe_quest = 'isian_singkat' where id_quest = $1", [questIsianId]);
+    await database.query(
+      "update public.quest set tipe_quest = 'isian_singkat' where id_quest = $1",
+      [questIsianId],
+    );
     await database.query(
       `update public.quest_teks set 
          kunci_isian = 'tektonik', 
@@ -99,13 +108,20 @@ Deno.test("Quest Types: pilgan, foto, isian_singkat, benar_salah, dan profil ana
     await test.step("validasi check constraint tipe_quest", async (): Promise<void> => {
       // Tipe valid diterima
       for (const valid of ["pilgan", "foto", "isian_singkat", "benar_salah", "cocokkan"]) {
-        await database.query("update public.quest set tipe_quest = $1 where id_quest = $2", [valid, questPilganId]);
+        await database.query("update public.quest set tipe_quest = $1 where id_quest = $2", [
+          valid,
+          questPilganId,
+        ]);
       }
-      await database.query("update public.quest set tipe_quest = 'pilgan' where id_quest = $1", [questPilganId]);
+      await database.query("update public.quest set tipe_quest = 'pilgan' where id_quest = $1", [
+        questPilganId,
+      ]);
 
       // Tipe invalid ditolak
       await rejects(
-        database.query("update public.quest set tipe_quest = 'tebak_gambar' where id_quest = $1", [questPilganId]),
+        database.query("update public.quest set tipe_quest = 'tebak_gambar' where id_quest = $1", [
+          questPilganId,
+        ]),
         /check constraint/,
       );
     });
@@ -133,27 +149,29 @@ Deno.test("Quest Types: pilgan, foto, isian_singkat, benar_salah, dan profil ana
       equal(correct.pointsAwarded, 10); // Percobaan ke-2 = 10 poin
     });
 
-    await test.step("foto: menyelesaikan quest dan mendapatkan poin", async (): Promise<void> => {
-      const resFoto = await database.query<{ result: QuestAnswer }>(
-        "select public.jawab_quest($1, $2, $3, null, $4, null, true) as result",
-        [userIdAdult, visitIdAdult, questFotoId, crypto.randomUUID()],
+    await test.step("foto ditunda: penanda photoTaken tidak menyelesaikan quest atau memberikan poin", async (): Promise<void> => {
+      await rejects(
+        database.query(
+          "select public.jawab_quest($1, $2, $3, null, $4, null, true) as result",
+          [userIdAdult, visitIdAdult, questFotoId, crypto.randomUUID()],
+        ),
+        /PHOTO_QUEST_NOT_AVAILABLE/,
       );
-      const foto = resFoto.rows[0]!.result;
-      equal(foto.answerCorrect, true);
-      equal(foto.completed, true);
-      equal(foto.pointsAwarded, 10);
+      equal(
+        (await database.query("select * from public.mengerjakan where id_quest=$1", [questFotoId]))
+          .rows.length,
+        0,
+      );
     });
 
-    await test.step("aturan profil anak: quest foto aktif dan dapat diselesaikan", async (): Promise<void> => {
-      // Anak mengerjakan quest FOTO -> BERHASIL
-      const resChildFoto = await database.query<{ result: QuestAnswer }>(
-        "select public.jawab_quest($1, $2, $3, null, $4, null, true) as result",
-        [userIdChild, visitIdChild, questFotoId, crypto.randomUUID()],
+    await test.step("foto yang ditunda juga tidak dapat diselesaikan profil anak", async (): Promise<void> => {
+      await rejects(
+        database.query(
+          "select public.jawab_quest($1, $2, $3, null, $4, null, true) as result",
+          [userIdChild, visitIdChild, questFotoId, crypto.randomUUID()],
+        ),
+        /PHOTO_QUEST_NOT_AVAILABLE/,
       );
-      const childFoto = resChildFoto.rows[0]!.result;
-      equal(childFoto.answerCorrect, true);
-      equal(childFoto.completed, true);
-      equal(childFoto.pointsAwarded, 10);
     });
 
     await test.step("progres_kunjungan menyertakan totalPoints, badges, dan poiProgress", async (): Promise<void> => {
@@ -162,9 +180,150 @@ Deno.test("Quest Types: pilgan, foto, isian_singkat, benar_salah, dan profil ana
         [userIdAdult, visitIdAdult],
       );
       const prog = resProg.rows[0]!.result;
-      ok(prog.totalPoints >= 20, "Total poin harus terakumulasi");
+      equal(prog.totalPoints, 10, "Hanya poin isian yang masuk; foto belum mendapat poin");
       ok(Array.isArray(prog.poiProgress), "poiProgress harus berupa array");
       ok(Array.isArray(prog.badges), "badges harus berupa array");
+    });
+
+    await test.step("sheet terbaru: beberapa quest per POI, PG, isian, batas percobaan dan progres tersimpan", async (): Promise<void> => {
+      await database.exec(prepareQuests());
+      await database.exec(prepareQuests());
+      equal(
+        (await database.query("select * from public.quest where id_poi=$1", [poiFotoId])).rows
+          .length,
+        2,
+      );
+      const session: string = "50000000-0000-4000-8000-000000000003";
+      await database.query(
+        "insert into public.sesi_kunjungan(id_sesi,user_id,id_zona,bahasa,profil,verification_method) values($1,$2,$3,'id','dewasa','entrance_qr')",
+        [session, userIdAdult, zoneId],
+      );
+      await database.query(
+        "insert into private.poi_verification(id_sesi,id_poi,expires_at) select $1,id_poi,now()+interval '15 minutes' from public.poi",
+        [session],
+      );
+      const pg: string = "40000000-0000-4000-8000-000000000002";
+      await rejects(
+        database.query("select public.jawab_quest($1,$2,$3,'B',$4)", [
+          userIdAdult,
+          session,
+          pg,
+          crypto.randomUUID(),
+        ]),
+        /STORY_COMPLETION_REQUIRED/,
+      );
+      await database.query(
+        "insert into public.menampilkan_kartu(id_sesi,id_poi,status_kartu) select $1,id_poi,'ditutup' from public.poi",
+        [session],
+      );
+      const request: string = crypto.randomUUID();
+      type SheetAnswer = QuestAnswer & {
+        readonly poiCompleted: boolean;
+        readonly poiPoints: number;
+      };
+      const correct = await database.query<{ result: SheetAnswer }>(
+        "select public.jawab_quest($1,$2,$3,'B',$4) as result",
+        [userIdAdult, session, pg, request],
+      );
+      equal(correct.rows[0]!.result.pointsAwarded, 10);
+      equal(
+        correct.rows[0]!.result.poiCompleted,
+        false,
+        "PG selesai, quest foto POI-02 tetap belum selesai",
+      );
+      const retry = await database.query<{ result: SheetAnswer }>(
+        "select public.jawab_quest($1,$2,$3,'B',$4) as result",
+        [userIdAdult, session, pg, request],
+      );
+      equal(retry.rows[0]!.result.attemptCount, 1);
+      const isian: string = "40000000-0000-4000-8000-000000000005";
+      const wrongRequest: string = crypto.randomUUID();
+      const wrong = await database.query<{ result: SheetAnswer }>(
+        "select public.jawab_quest($1,$2,$3,null,$4,'magma',false) as result",
+        [userIdAdult, session, isian, wrongRequest],
+      );
+      equal(wrong.rows[0]!.result.completed, false);
+      await rejects(
+        database.query("select public.jawab_quest($1,$2,$3,null,$4,'tektonik',false)", [
+          userIdAdult,
+          session,
+          isian,
+          wrongRequest,
+        ]),
+        /IDEMPOTENCY_CONFLICT/,
+      );
+      const accepted = await database.query<{ result: SheetAnswer }>(
+        "select public.jawab_quest($1,$2,$3,null,$4,'  LEMPENG TEKTONIK  ',false) as result",
+        [userIdAdult, session, isian, crypto.randomUUID()],
+      );
+      equal(accepted.rows[0]!.result.pointsAwarded, 10, "Poin sheet tetap 10 pada percobaan kedua");
+      equal(accepted.rows[0]!.result.poiCompleted, true);
+      const tf: string = "40000000-0000-4000-8000-000000000004";
+      for (let attempt: number = 1; attempt <= 2; attempt += 1) {
+        const result = await database.query<{ result: SheetAnswer & { readonly failed: boolean } }>(
+          "select public.jawab_quest($1,$2,$3,'A',$4) as result",
+          [userIdAdult, session, tf, crypto.randomUUID()],
+        );
+        equal(result.rows[0]!.result.failed, attempt === 2);
+      }
+      await rejects(
+        database.query("select public.jawab_quest($1,$2,$3,'B',$4)", [
+          userIdAdult,
+          session,
+          tf,
+          crypto.randomUUID(),
+        ]),
+        /QUEST_ATTEMPTS_EXCEEDED/,
+      );
+      const matching: string = "40000000-0000-4000-8000-000000000006";
+      const matched = await database.query<{ result: SheetAnswer }>(
+        "select public.jawab_quest($1,$2,$3,'A',$4) as result",
+        [userIdAdult, session, matching, crypto.randomUUID()],
+      );
+      equal(matched.rows[0]!.result.pointsAwarded, 30);
+      const restored = await database.query<
+        {
+          result: {
+            readonly quests: readonly {
+              readonly id_quest: string;
+              readonly pointsAwarded: number;
+            }[];
+            readonly totalPoints: number;
+          };
+        }
+      >("select public.progres_kunjungan($1,$2) as result", [userIdAdult, session]);
+      equal(restored.rows[0]!.result.quests.length, 4);
+      equal(
+        restored.rows[0]!.result.quests.find((quest): boolean => quest.id_quest === matching)
+          ?.pointsAwarded,
+        30,
+      );
+      equal(
+        (await database.query<{ count: number }>(
+          "select count(*)::int as count from private.quest_scores where id_sesi=$1",
+          [session],
+        )).rows[0]!.count,
+        3,
+      );
+      await database.query(
+        "insert into public.menampilkan_kartu(id_sesi,id_poi,status_kartu) values($1,$2,'sedang_tampil')",
+        [visitIdChild, poiPilganId],
+      );
+      await database.query("select public.tutup_kartu($1,$2,$3)", [
+        userIdChild,
+        visitIdChild,
+        poiPilganId,
+      ]);
+      const childStory = await database.query<{ kartu_ditutup: boolean; kuis_selesai: boolean }>(
+        "select kartu_ditutup,kuis_selesai from public.poi_progress where id_sesi=$1 and id_poi=$2",
+        [visitIdChild, poiPilganId],
+      );
+      equal(childStory.rows[0]!.kartu_ditutup, true);
+      equal(
+        childStory.rows[0]!.kuis_selesai,
+        true,
+        "POI anak tanpa quest aktif tuntas setelah cerita",
+      );
     });
   } finally {
     await database.close();

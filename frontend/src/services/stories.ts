@@ -17,13 +17,12 @@ import {
   type Profile,
   type Visit,
 } from "../domain/contracts";
-import { isOutOfAttempts, quizPoints } from "../domain/points";
 import { stepGeofence } from "../domain/geofence";
+import { questCatalog } from "../data/quests";
 import { museumPoiById } from "../data/museum";
 import { type RestoredVisit, restoreServerVisit } from "../features/stories/progress";
 import {
   MOCK_ENTRANCE_TOKEN,
-  mockAnswerKeys,
   mockPoiDetails,
   mockPoiForProfile,
   mockPoiSummaries,
@@ -71,6 +70,8 @@ type MockState = {
   completed: Record<string, true>;
   failed: Record<string, true>;
   responses: Record<string, AnswerResult>;
+  closed: Record<string, true>;
+  payloads: Record<string, { readonly questId: string; readonly label: OptionLabel | null; readonly text: string | null }>;
 };
 
 /**
@@ -128,54 +129,62 @@ export class MockStoriesSource implements StoriesSource {
     return poiVerificationSchema.parse({ idPoi, verified: true, expiresAt: new Date(expiresAt).toISOString(), poi: mockPoiForProfile(this.findPoi(idPoi), profile) });
   }
 
-  // Mock hanya menilai pilihan (A–D); tantangan foto/isian dinilai lokal di mode mock.
-  async answerQuest(idSesi: string, idQuest: string, requestId: string, labelOpsi: OptionLabel | null): Promise<AnswerResult> {
+  /** Penilaian mock mengikuti kunci, variasi jawaban, poin dan batas percobaan sheet. */
+  async answerQuest(idSesi: string, idQuest: string, requestId: string, labelOpsi: OptionLabel | null, extra?: QuestAnswerExtra): Promise<AnswerResult> {
     await delay();
     const state: MockState = await this.load();
-    const repeated: AnswerResult | undefined = state.responses[`${idSesi}:${requestId}`];
-    if (repeated !== undefined) return repeated;
-    const poi: PoiDetail | undefined = mockPoiDetails.find(
-      (item: PoiDetail): boolean => item.quest.idQuest === idQuest,
-    );
-    const key = mockAnswerKeys.get(idQuest);
-    if (poi === undefined || key === undefined) {
-      throw new GeaServiceError(404, "QUEST_NOT_FOUND", "Quest tidak ditemukan.");
+    const responseKey: string = `${idSesi}:${requestId}`;
+    const text: string | null = extra?.jawabanTeks ?? null;
+    const repeated: AnswerResult | undefined = state.responses[responseKey];
+    if (repeated !== undefined) {
+      const payload = state.payloads[responseKey];
+      if (payload?.questId !== idQuest || payload.label !== labelOpsi || payload.text !== text) {
+        throw new GeaServiceError(409, "IDEMPOTENCY_CONFLICT", "Permintaan ini sudah dipakai untuk jawaban berbeda.");
+      }
+      return repeated;
     }
-    const until: number | undefined = state.verifiedUntil[`${idSesi}:${poi.id_poi}`];
+    const quest = questCatalog.find((item): boolean => item.idQuest === idQuest);
+    if (quest === undefined) throw new GeaServiceError(404, "QUEST_NOT_FOUND", "Quest tidak ditemukan.");
+    if (state.closed[`${idSesi}:${quest.idPoi}`] !== true) {
+      throw new GeaServiceError(403, "STORY_COMPLETION_REQUIRED", "Selesaikan cerita sebelum mengerjakan quest.");
+    }
+    if (quest.type === "foto") throw new GeaServiceError(503, "PHOTO_QUEST_NOT_AVAILABLE", "Fitur foto akan tersedia nanti.");
+    const until: number | undefined = state.verifiedUntil[`${idSesi}:${quest.idPoi}`];
     if (until === undefined || until < Date.now()) {
       throw new GeaServiceError(403, "CHECKPOINT_VERIFICATION_REQUIRED", "Periksa GPS atau scan QR koleksi sebelum menjawab.");
     }
     const questKey: string = `${idSesi}:${idQuest}`;
-    if (state.completed[questKey] === true) {
-      throw new GeaServiceError(409, "QUEST_ALREADY_COMPLETED", "Quest sudah selesai.");
+    if (state.completed[questKey] === true) throw new GeaServiceError(409, "QUEST_ALREADY_COMPLETED", "Quest sudah selesai.");
+    if (state.failed[questKey] === true) throw new GeaServiceError(409, "QUEST_ATTEMPTS_EXHAUSTED", "Kesempatan menjawab sudah habis.");
+    if (quest.type === "isian_singkat" ? text === null || text.trim() === "" : !quest.options.some((option): boolean => option.label_opsi === labelOpsi)) {
+      throw new GeaServiceError(400, "ANSWER_REQUIRED", "Isi jawaban sesuai tipe quest.");
     }
-    if (state.failed[questKey] === true) {
-      throw new GeaServiceError(409, "QUEST_ATTEMPTS_EXHAUSTED", "Kesempatan menjawab sudah habis.");
-    }
+    const normalize = (value: string): string => value.trim().toLowerCase();
+    const correct: boolean = quest.type === "isian_singkat"
+      ? [quest.answer, ...quest.acceptedAnswers].some((answer: string): boolean => normalize(answer) === normalize(text ?? ""))
+      : labelOpsi === quest.answer;
     const attemptCount: number = (state.attempts[questKey] ?? 0) + 1;
     state.attempts[questKey] = attemptCount;
-    const correct: boolean = labelOpsi === key.kunci;
-    const failed: boolean = !correct && isOutOfAttempts(attemptCount);
+    const failed: boolean = !correct && attemptCount >= quest.maxAttempts;
     if (correct) state.completed[questKey] = true;
     if (failed) state.failed[questKey] = true;
     const result: AnswerResult = answerResultSchema.parse({
-      idQuest,
-      idPoi: poi.id_poi,
-      answerCorrect: correct,
-      attemptCount,
-      completed: correct,
-      hint: correct ? null : key.hint,
-      failed,
-      pointsAwarded: quizPoints({ completed: correct, failed, attempts: attemptCount }),
+      idQuest, idPoi: quest.idPoi, answerCorrect: correct, attemptCount,
+      completed: correct, hint: correct || failed ? null : quest.hint, failed,
+      pointsAwarded: correct ? quest.points : 0,
     });
-    state.responses[`${idSesi}:${requestId}`] = result;
+    state.responses[responseKey] = result;
+    state.payloads[responseKey] = { questId: idQuest, label: labelOpsi, text };
     await this.save();
     return result;
   }
 
-  async closeCard(_idSesi: string, idPoi: string): Promise<ClosedCard> {
+  async closeCard(idSesi: string, idPoi: string): Promise<ClosedCard> {
     await delay();
     this.findPoi(idPoi);
+    const state: MockState = await this.load();
+    state.closed[`${idSesi}:${idPoi}`] = true;
+    await this.save();
     return closedCardSchema.parse({ idPoi, statusKartu: "ditutup" });
   }
 
@@ -185,7 +194,7 @@ export class MockStoriesSource implements StoriesSource {
 
   private async load(): Promise<MockState> {
     if (this.state !== null) return this.state;
-    const empty: MockState = { verifiedUntil: {}, attempts: {}, completed: {}, failed: {}, responses: {} };
+    const empty: MockState = { verifiedUntil: {}, attempts: {}, completed: {}, failed: {}, responses: {}, closed: {}, payloads: {} };
     try {
       const raw: string | null = await AsyncStorage.getItem(MOCK_STATE_KEY);
       this.state = raw === null ? empty : { ...empty, ...(JSON.parse(raw) as Partial<MockState>) };

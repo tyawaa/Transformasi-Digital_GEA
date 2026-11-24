@@ -1,5 +1,5 @@
-import type { BadgeId, Visit, VisitProgress } from "../../domain/contracts.ts";
-import { activityPoints } from "../../domain/points.ts";
+import type { AnswerResult, BadgeId, Quest, Visit, VisitProgress } from "../../domain/contracts.ts";
+import { activityPoints, type QuestProgress } from "../../domain/points.ts";
 
 /** Status satu POI pada sesi ini. Disimpan di perangkat agar bertahan setelah app ditutup. */
 export type PoiProgress = {
@@ -7,16 +7,15 @@ export type PoiProgress = {
   readonly closed: boolean;
   /** Batas waktu verifikasi GPS atau QR koleksi (ms epoch). Quest terkunci tanpa ini. */
   readonly verifiedUntil: number | null;
-  /** Kuis dijawab benar. */
+  /** Semua quest aktif di POI dijawab benar. */
   readonly completed: boolean;
-  /** Kuis gagal setelah batas percobaan habis. */
+  /** Semua quest sudah dikerjakan, dengan setidaknya satu quest kehabisan kesempatan. */
   readonly failed: boolean;
   readonly attempts: number;
-  /** Poin kuis dari respons jawaban/progres, tanpa bonus lencana. */
+  /** Jumlah poin semua quest di POI, tanpa bonus lencana. */
   readonly pointsAwarded: number;
+  readonly quests?: { readonly [questId: string]: QuestProgress };
   // Dinilai di aplikasi (belum ada di backend), jadi hanya tersimpan di perangkat.
-  /** Indeks koleksi di "Story Isi 2" yang sudah difoto. */
-  readonly photos?: readonly number[];
   /** Tantangan (quest kedua dari sheet) sudah dikerjakan. */
   readonly challengeDone?: boolean;
   /** Poin tantangan: poin sheet bila berhasil, 0 bila kesempatan habis. */
@@ -29,15 +28,10 @@ export type PoiProgress = {
   readonly checkedIn?: boolean;
 };
 
-/** Bagian progres yang hanya ada di perangkat (tantangan & foto koleksi). */
+/** Check-in lokal dipertahankan ketika jawaban per quest dipulihkan dari server. */
 function localOnly(state: PoiProgress | undefined): Partial<PoiProgress> {
   if (state === undefined) return {};
   return {
-    ...(state.photos !== undefined && { photos: state.photos }),
-    ...(state.challengeDone !== undefined && { challengeDone: state.challengeDone }),
-    ...(state.challengePoints !== undefined && { challengePoints: state.challengePoints }),
-    ...(state.challengeAttempts !== undefined && { challengeAttempts: state.challengeAttempts }),
-    ...(state.challengeSuccess !== undefined && { challengeSuccess: state.challengeSuccess }),
     ...(state.checkedIn !== undefined && { checkedIn: state.checkedIn }),
   };
 }
@@ -47,11 +41,6 @@ export function localActivityPoints(progress: ProgressMap): number {
   return Object.values(progress).reduce((sum: number, state: PoiProgress): number => sum + activityPoints(state), 0);
 }
 
-/** Total poin tantangan lokal; belum dinilai server sehingga ditambahkan ke total resmi. */
-export function localChallengePoints(progress: ProgressMap): number {
-  return Object.values(progress).reduce((sum: number, state: PoiProgress): number => sum + (state.challengePoints ?? 0), 0);
-}
-
 export const emptyProgress: PoiProgress = {
   closed: false,
   verifiedUntil: null,
@@ -59,12 +48,38 @@ export const emptyProgress: PoiProgress = {
   failed: false,
   attempts: 0,
   pointsAwarded: 0,
-  photos: [],
   challengeDone: false,
   challengePoints: 0,
 };
 
 export type ProgressMap = { readonly [poiId: string]: PoiProgress };
+
+/** Simpan hasil per quest dan hitung POI tuntas setelah seluruh quest yang aktif dikerjakan. */
+export function recordQuestAnswer(state: PoiProgress, answer: AnswerResult, plan: readonly Quest[]): PoiProgress {
+  const quest: Quest | undefined = plan.find((item: Quest): boolean => item.idQuest === answer.idQuest);
+  if (quest === undefined) throw new Error(`Quest ${answer.idQuest} tidak ada pada POI ${answer.idPoi}.`);
+  const quests: { readonly [questId: string]: QuestProgress } = {
+    ...state.quests,
+    [answer.idQuest]: {
+      type: quest.type, completed: answer.completed, failed: answer.failed,
+      attempts: answer.attemptCount, pointsAwarded: answer.pointsAwarded,
+    },
+  };
+  const active: readonly QuestProgress[] = plan.flatMap((item: Quest): readonly QuestProgress[] => {
+    const result: QuestProgress | undefined = quests[item.idQuest];
+    return result === undefined ? [] : [result];
+  });
+  const completed: boolean = plan.length > 0 && plan.every((item: Quest): boolean => quests[item.idQuest]?.completed === true);
+  const resolved: boolean = plan.length > 0 && plan.every((item: Quest): boolean =>
+    quests[item.idQuest]?.completed === true || quests[item.idQuest]?.failed === true
+  );
+  return {
+    ...state, quests, completed, failed: resolved && !completed,
+    attempts: Math.max(0, ...active.map((result: QuestProgress): number => result.attempts)),
+    pointsAwarded: active.reduce((sum: number, result: QuestProgress): number => sum + result.pointsAwarded, 0),
+    challengeDone: resolved, challengePoints: 0, challengeAttempts: 0, challengeSuccess: completed,
+  };
+}
 
 export type VisitRewards = {
   readonly totalPoints: number;
@@ -92,6 +107,13 @@ export function restoreServerVisit(server: VisitProgress): RestoredVisit {
       failed: poi.kuis_gagal,
       attempts: poi.jumlah_percobaan,
       pointsAwarded: poi.poin_kuis,
+      quests: Object.fromEntries(server.quests.filter((quest): boolean => quest.id_poi === poi.id_poi).map((quest) => [
+        quest.id_quest,
+        {
+          type: quest.type, completed: quest.answer_correct, failed: quest.failed === true,
+          attempts: quest.jumlah_percobaan, pointsAwarded: quest.pointsAwarded ?? 0,
+        },
+      ])),
     },
   ]));
   return {
@@ -102,8 +124,7 @@ export function restoreServerVisit(server: VisitProgress): RestoredVisit {
 }
 
 /**
- * Server menentukan progres kuis; dari perangkat hanya dipertahankan masa berlaku verifikasi GPS/QR
- * dan data tantangan/foto (belum dinilai server).
+ * Server menentukan progres seluruh quest; perangkat mempertahankan verifikasi GPS/QR dan check-in.
  */
 export function mergeServerProgress(local: ProgressMap, server: ProgressMap): ProgressMap {
   const verified: ProgressMap = Object.fromEntries(Object.entries(local).map(([id, state]): [string, PoiProgress] => [

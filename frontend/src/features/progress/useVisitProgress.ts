@@ -12,12 +12,14 @@ import { readableError } from "../../services/api";
 import type { StoriesSource } from "../../services/stories";
 import {
   emptyProgress,
+  recordQuestAnswer,
   mergeServerProgress,
   type PoiProgress,
   type ProgressMap,
   type RestoredVisit,
   type VisitRewards,
 } from "../stories/progress";
+import { questPlan } from "../stories/questPlan";
 
 // Sesi demo tidak boleh dipulihkan lewat API, atau sebaliknya.
 const visitKey = (source: StoriesSource["kind"]): string => `gea.visit.v2:${source}`;
@@ -76,7 +78,7 @@ export function useVisitProgress(source: StoriesSource): VisitProgressState {
       // Migrasi cache demo lama yang belum menyimpan poin per jawaban.
       if (source.kind === "mock") {
         local = Object.fromEntries(Object.entries(local).map(([id, state]): [string, PoiProgress] => [
-          id, { ...state, pointsAwarded: quizPoints(state) },
+          id, state.quests === undefined ? { ...state, pointsAwarded: quizPoints(state) } : state,
         ]));
       }
       if (!active) return;
@@ -161,11 +163,14 @@ export function useVisitProgress(source: StoriesSource): VisitProgressState {
         badges: [...new Set([...current.badges, ...scored.newBadges])],
       }));
     }
-    update(answer.idPoi, {
-      completed: answer.completed,
-      failed: answer.failed,
-      attempts: answer.attemptCount,
-      pointsAwarded: answer.pointsAwarded,
+    if (visit === null) throw new Error("Sesi kunjungan belum dimulai.");
+    setProgress((current: ProgressMap): ProgressMap => {
+      const next: ProgressMap = {
+        ...current,
+        [answer.idPoi]: recordQuestAnswer(current[answer.idPoi] ?? emptyProgress, answer, questPlan(answer.idPoi, visit.profil)),
+      };
+      persist(visit.id_sesi, next);
+      return next;
     });
   }
 

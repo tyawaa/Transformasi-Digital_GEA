@@ -7,9 +7,9 @@ import { colors } from "./src/design/tokens";
 import { GeaFontsProvider, GeaText } from "./src/design/typography";
 import type { PoiSummary, Visit } from "./src/domain/contracts";
 import { availableBadges, type BadgeContext, type BadgeDef, badgeBonus, type BadgeId, badges as badgeDefs, earnedBadges, poiStatus, type PoiRef, totalPoints } from "./src/domain/points";
-import { localActivityPoints, localChallengePoints } from "./src/features/stories/progress";
+import { localActivityPoints } from "./src/features/stories/progress";
 import { useQuestDays } from "./src/features/progress/useQuestDays";
-import { questKind } from "./src/features/stories/questPlan";
+import { questKind, questPlan } from "./src/features/stories/questPlan";
 import {
   activePois,
   museumPoiById,
@@ -219,25 +219,25 @@ function Home(): ReactElement {
       wing: poi.museum.wing,
       code: poi.museum.code,
       quest: questKind(poi.id ?? "", profile),
+      quests: questPlan(poi.id ?? "", profile),
     }));
   const questsDone: number = refs.filter((ref: PoiRef): boolean => {
     const state = progress[ref.id];
     if (state === undefined || ref.quest === null) return false;
-    return ref.quest === "quiz" ? state.completed || state.failed : state.challengeDone === true;
+    return state.completed || state.failed;
   }).length;
   const questDays: number = useQuestDays(questsDone);
   // Lencana prioritas rendah (BD-05, BD-08, BD-09; POI-12 s.d. POI-21) ditunda sesuai sheet Badge_Poin:
   // konten POI-15 s.d. POI-20 belum ada. Ganti ke wingEnabled("right") setelah kontennya lengkap.
   const badgeContext: BadgeContext = { kid: profile === "anak", questDays, rightWing: false };
   const localBadges: readonly BadgeId[] = earnedBadges(refs, progress, badgeContext);
-  // Mode API: poin kuis dan lencana resmi dari Supabase. Tantangan (benar-salah/isian/foto) dan lencana yang
-  // butuh data perangkat belum dinilai server, jadi ditambahkan di atas total resmi tanpa dihitung dua kali.
+  // Mode API: semua poin quest berasal dari Supabase. Bonus lencana lokal ditambahkan sekali.
   const badges: readonly BadgeId[] = storiesSource.kind === "api"
     ? [...new Set([...visitState.rewards.badges, ...localBadges])]
     : localBadges;
   // Poin aktivitas (check-in, cerita, percobaan pertama, POI tuntas) dihitung di aplikasi.
   const points: number = localActivityPoints(progress) + (storiesSource.kind === "api"
-    ? visitState.rewards.totalPoints + localChallengePoints(progress) + badgeBonus(
+    ? visitState.rewards.totalPoints + badgeBonus(
       localBadges.filter((id: BadgeId): boolean => !visitState.rewards.badges.includes(id)),
     )
     : totalPoints(refs, progress, badgeContext));

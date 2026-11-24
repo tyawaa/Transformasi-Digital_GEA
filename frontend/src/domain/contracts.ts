@@ -107,6 +107,12 @@ export type QuestType = z.infer<typeof questTypeSchema>;
 
 export const questSchema = z.object({
   idQuest: z.uuid(),
+  code: z.string().nullable().optional(),
+  title: z.string().min(1).optional(),
+  points: z.number().int().nonnegative().optional(),
+  maxAttempts: z.number().int().positive().optional(),
+  requiredForBadge: z.boolean().optional(),
+  hint: z.string().nullable().optional(),
   type: questTypeSchema.default("pilgan"),
   instruksi: z.string().min(1),
   pertanyaan: z.string().min(1),
@@ -133,6 +139,7 @@ export const poiDetailSchema = z.object({
     instruction: z.string().min(1),
   })),
   quest: questSchema,
+  quests: z.array(questSchema),
 });
 export type DescriptionCard = z.infer<typeof descriptionCardSchema>;
 export type AudioCard = z.infer<typeof audioCardSchema>;
@@ -166,6 +173,9 @@ export const answerResultSchema = z.object({
   hint: z.string().nullable(),
   failed: z.boolean(),
   pointsAwarded: z.number().int().nonnegative(),
+  poiCompleted: z.boolean().optional(),
+  poiFailed: z.boolean().optional(),
+  poiPoints: z.number().int().nonnegative().optional(),
 });
 export type AnswerResult = z.infer<typeof answerResultSchema>;
 
@@ -208,9 +218,13 @@ export const visitProgressSchema = z.object({
   })),
   quests: z.array(z.object({
     id_quest: z.uuid(),
+    type: questTypeSchema,
     jumlah_percobaan: z.number().int().positive(),
     hint_dipakai: z.boolean(),
     answer_correct: z.boolean(),
+    id_poi: z.uuid().optional(),
+    pointsAwarded: z.number().int().nonnegative().optional(),
+    failed: z.boolean().optional(),
   })),
 });
 export type VisitProgress = z.infer<typeof visitProgressSchema>;

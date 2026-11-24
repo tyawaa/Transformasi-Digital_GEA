@@ -80,7 +80,11 @@ export async function poiDetail(
     ),
     gateway.query(
       "quest",
-      new URLSearchParams({ select: "id_quest,tipe_quest", id_poi: `eq.${poiId}` }),
+      new URLSearchParams({
+        select: "id_quest,tipe_quest,kode_quest,poin,batas_percobaan,wajib_badge,urutan",
+        id_poi: `eq.${poiId}`,
+        order: "urutan.asc,id_quest.asc",
+      }),
     ),
     gateway.query(
       "poi_media",
@@ -97,13 +101,60 @@ export async function poiDetail(
     "STORY_SECOND_PHOTO_NOT_AVAILABLE",
   );
   const content: JsonObject = pickProfile(contents, profile, "CONTENT_VARIANT_NOT_AVAILABLE");
-  const quest: JsonObject = requireSingle(quests, "QUEST_NOT_AVAILABLE");
+  if (quests.length === 0) {
+    throw new ApiError(404, "QUEST_NOT_AVAILABLE", "Quest POI belum tersedia.");
+  }
+  const details: readonly JsonObject[] = await Promise.all(
+    quests.map((quest: JsonObject): Promise<JsonObject> =>
+      questDetail(gateway, quest, language, profile)
+    ),
+  );
+  return {
+    ...poi,
+    language,
+    profile,
+    cards: [
+      {
+        type: "description",
+        text: content.teks_cerita,
+        title: content.judul_cerita,
+        fact: content.fakta_menarik,
+        highlights: content.koleksi_sorotan,
+        photoUrl: gateway.mediaUrl(text(poi.path_foto, "path_foto", 1024)),
+        secondPhotoUrl: gateway.mediaUrl(text(secondPhoto.path_foto, "poi_media.path_foto", 1024)),
+      },
+      content.path_audio === null ? null : {
+        type: "audio",
+        audioUrl: gateway.mediaUrl(text(content.path_audio, "path_audio", 1024)),
+        durationSeconds: content.durasi_audio,
+      },
+    ],
+    photoChallenges: media.filter((image: JsonObject): boolean =>
+      typeof image.nomor === "number" && image.nomor >= 3
+    )
+      .map((image: JsonObject): JsonObject => ({
+        sequence: image.nomor,
+        photoUrl: gateway.mediaUrl(text(image.path_foto, "poi_media.path_foto", 1024)),
+        instruction: text(image.instruksi, "poi_media.instruksi", 2000),
+      })),
+    quest: details[0],
+    quests: details,
+  };
+}
+
+/** Muat semua quest POI tanpa mengirim kunci jawaban ke aplikasi. */
+async function questDetail(
+  gateway: SupabaseGateway,
+  quest: JsonObject,
+  language: Language,
+  profile: Profile,
+): Promise<JsonObject> {
   const questId: string = uuid(quest.id_quest, "id_quest");
   const [questions, options]: [readonly JsonObject[], readonly JsonObject[]] = await Promise.all([
     gateway.query(
       "quest_teks",
       new URLSearchParams({
-        select: "profil,instruksi,pertanyaan,target_foto,penjelasan",
+        select: "profil,instruksi,pertanyaan,target_foto,penjelasan,hint",
         id_quest: `eq.${questId}`,
         bahasa: `eq.${language}`,
         profil: profileFilter(profile),
@@ -143,41 +194,16 @@ export async function poiDetail(
     }
   }
   return {
-    ...poi,
-    language,
-    profile,
-    cards: [
-      {
-        type: "description",
-        text: content.teks_cerita,
-        title: content.judul_cerita,
-        fact: content.fakta_menarik,
-        highlights: content.koleksi_sorotan,
-        photoUrl: gateway.mediaUrl(text(poi.path_foto, "path_foto", 1024)),
-        secondPhotoUrl: gateway.mediaUrl(text(secondPhoto.path_foto, "poi_media.path_foto", 1024)),
-      },
-      content.path_audio === null ? null : {
-        type: "audio",
-        audioUrl: gateway.mediaUrl(text(content.path_audio, "path_audio", 1024)),
-        durationSeconds: content.durasi_audio,
-      },
-    ],
-    photoChallenges: media.filter((image: JsonObject): boolean =>
-      typeof image.nomor === "number" && image.nomor >= 3
-    )
-      .map((image: JsonObject): JsonObject => ({
-        sequence: image.nomor,
-        photoUrl: gateway.mediaUrl(text(image.path_foto, "poi_media.path_foto", 1024)),
-        instruction: text(image.instruksi, "poi_media.instruksi", 2000),
-      })),
-    quest: {
-      idQuest: questId,
-      type: questType,
-      // Anak tidak mengerjakan quest foto; quest lain (pilgan, cocokkan, benar/salah, isian) tetap aktif.
-      isDisabled: profile === "anak" && questType === "foto",
-      ...question,
-      options,
-    },
+    idQuest: questId,
+    type: questType,
+    code: quest.kode_quest,
+    title: question.instruksi,
+    ...(quest.poin === null ? {} : { points: quest.poin }),
+    maxAttempts: quest.batas_percobaan,
+    requiredForBadge: quest.wajib_badge,
+    isDisabled: profile === "anak" && questType === "foto",
+    ...question,
+    options,
   };
 }
 
