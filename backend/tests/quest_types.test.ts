@@ -319,10 +319,15 @@ Deno.test("Quest Types: pilgan, foto, isian_singkat, benar_salah, dan profil ana
         [visitIdChild, poiPilganId],
       );
       equal(childStory.rows[0]!.kartu_ditutup, true);
+      // Quest_Anak: anak hanya mengerjakan quest foto; POI tanpa quest foto tuntas setelah cerita.
+      const childPhoto: boolean = (await database.query(
+        "select 1 from public.quest where id_poi=$1 and tipe_quest='foto'",
+        [poiPilganId],
+      )).rows.length > 0;
       equal(
         childStory.rows[0]!.kuis_selesai,
-        true,
-        "POI anak tanpa quest aktif tuntas setelah cerita",
+        !childPhoto,
+        "POI anak tuntas setelah cerita bila tidak ada quest foto",
       );
     });
   } finally {
