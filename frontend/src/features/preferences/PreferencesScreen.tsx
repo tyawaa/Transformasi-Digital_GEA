@@ -1,4 +1,4 @@
-import { type ReactElement, useState } from "react";
+import { type ReactElement, useEffect, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Toast } from "../../design/Toast";
 import { AnimatedNotification } from "../../design/AnimatedNotification";
@@ -9,6 +9,7 @@ import { BackButton, FrameStage, StoryButton } from "../stories/hifi/parts";
 import { ageOptions, topics } from "./recommend";
 import { durationOptions } from "./visitTiming";
 import type { Preferences } from "./usePreferences";
+import { type ExploreMode, readExploreMode, saveExploreMode } from "../eyesfree/mode";
 
 // Figma "Preferensi - Usia / Waktu / Minat".
 type Question = {
@@ -16,9 +17,16 @@ type Question = {
   readonly hint: string;
   readonly multiple: boolean;
   readonly options: readonly string[];
+  /** Keterangan kecil di bawah tiap pilihan. */
+  readonly details?: readonly string[];
 };
 
-const questions: readonly [Question, Question, Question] = [
+const modes: readonly { readonly mode: ExploreMode; readonly label: string; readonly detail: string }[] = [
+  { mode: "biasa", label: "Mode biasa", detail: "Baca cerita dan kerjakan quest di layar, pindai QR koleksi." },
+  { mode: "tanpa-layar", label: "Mode tanpa layar", detail: "HP bergetar dan rekaman cerita diputar otomatis saat tiba. Layar boleh dikunci." },
+];
+
+const questions: readonly [Question, Question, Question, Question] = [
   {
     title: "Berapa usiamu sekarang?",
     hint: "Pilih salah satu.",
@@ -38,9 +46,16 @@ const questions: readonly [Question, Question, Question] = [
     // Di Figma masih "Lorem ipsum". Topik dan ruangannya diatur di recommend.ts.
     options: topics.map((topic) => topic.label),
   },
+  {
+    title: "Mau menjelajah dengan cara apa?",
+    hint: "Bisa diganti nanti lewat tombol speaker di peta.",
+    multiple: false,
+    options: modes.map((item) => item.label),
+    details: modes.map((item) => item.detail),
+  },
 ];
 
-/** Tiga layar preferensi setelah onboarding: usia → waktu → minat. */
+/** Empat layar preferensi setelah onboarding: usia → waktu → minat → mode jelajah. */
 export function PreferencesScreen(
   { value, onChange, onBack, onDone, saving, error, onDismissError }: {
     readonly value: Preferences;
@@ -52,11 +67,18 @@ export function PreferencesScreen(
     readonly onDismissError: () => void;
   },
 ): ReactElement {
-  const [step, setStep] = useState<0 | 1 | 2>(0);
-  const answers: readonly [readonly string[], readonly string[], readonly string[]] = [
+  const [step, setStep] = useState<0 | 1 | 2 | 3>(0);
+  // Mode jelajah tidak ikut personalisasi server; disimpan di perangkat (lihat eyesfree/mode.ts).
+  const [mode, setMode] = useState<ExploreMode | null>(null);
+  useEffect((): void => {
+    readExploreMode().then(setMode, (): void => undefined);
+  }, []);
+  const modeLabel: string | undefined = modes.find((item) => item.mode === mode)?.label;
+  const answers: readonly [readonly string[], readonly string[], readonly string[], readonly string[]] = [
     value.age === "" ? [] : [value.age],
     value.duration === "" ? [] : [value.duration],
     value.topics,
+    modeLabel === undefined ? [] : [modeLabel],
   ];
   const question: Question = questions[step];
   const selected: readonly string[] = answers[step];
@@ -67,6 +89,11 @@ export function PreferencesScreen(
       ? selected.includes(option) ? selected.filter((item: string): boolean => item !== option) : [...selected, option]
       : [option];
     setWarning(null);
+    if (step === 3) {
+      const chosen: ExploreMode | undefined = modes.find((item) => item.label === option)?.mode;
+      if (chosen !== undefined) setMode(chosen);
+      return;
+    }
     onChange(step === 0
       ? { ...value, age: next[0] ?? "" }
       : step === 1
@@ -76,7 +103,8 @@ export function PreferencesScreen(
 
   function back(): void {
     setWarning(null);
-    if (step === 2) setStep(1);
+    if (step === 3) setStep(2);
+    else if (step === 2) setStep(1);
     else if (step === 1) setStep(0);
     else onBack();
   }
@@ -87,10 +115,11 @@ export function PreferencesScreen(
       return;
     }
     setWarning(null);
-    if (step < 2) {
-      setStep((step + 1) as 1 | 2);
+    if (step < 3) {
+      setStep((step + 1) as 1 | 2 | 3);
       return;
     }
+    if (mode !== null) saveExploreMode(mode);
     onDone(value);
   }
 
@@ -110,19 +139,23 @@ export function PreferencesScreen(
       </View>
       <BackButton onPress={back} label="Kembali" labelColor={colors.secondaryGreen[100]} />
       <View style={[styles.list, { top: listTop }]}>
-        {question.options.map((option: string): ReactElement => {
+        {question.options.map((option: string, index: number): ReactElement => {
           const checked: boolean = selected.includes(option);
+          const detail: string | undefined = question.details?.[index];
           return (
             <Pressable
               key={option}
               accessibilityRole={question.multiple ? "checkbox" : "radio"}
               accessibilityState={{ checked }}
               onPress={(): void => toggle(option)}
-              style={({ pressed }) => [styles.option, checked && styles.optionChecked, pressed && styles.pressed]}
+              style={({ pressed }) => [styles.option, detail !== undefined && styles.optionTall, checked && styles.optionChecked, pressed && styles.pressed]}
             >
-              <GeaText variant="label16" color={colors.tertiary[300]} style={styles.optionText}>
-                {option}
-              </GeaText>
+              <View style={styles.optionBody}>
+                <GeaText variant="label16" color={colors.tertiary[300]} style={styles.optionLabel}>
+                  {option}
+                </GeaText>
+                {detail !== undefined && <GeaText variant="body14" color={colors.primary[800]}>{detail}</GeaText>}
+              </View>
               <View style={[styles.box, checked && styles.boxChecked]}>
                 {checked && <GeaText variant="bold16" color={colors.secondaryGreen[900]}>✓</GeaText>}
               </View>
@@ -179,7 +212,9 @@ const styles = StyleSheet.create({
   },
   optionChecked: { borderColor: colors.tertiary[200] },
   pressed: { opacity: 0.8 },
-  optionText: { flex: 1, fontSize: 18 },
+  optionTall: { height: undefined, minHeight: 104, paddingVertical: spacing[12] },
+  optionBody: { flex: 1, gap: 4, paddingRight: spacing[12] },
+  optionLabel: { fontSize: 18 },
   box: {
     width: 26,
     height: 26,

@@ -20,16 +20,18 @@ where exists(select 1 from public.quest where id_poi=${poi})
 on conflict(id_quest) do update set tipe_quest=excluded.tipe_quest,kode_quest=excluded.kode_quest,poin=excluded.poin,batas_percobaan=excluded.batas_percobaan,wajib_badge=excluded.wajib_badge,urutan=excluded.urutan;`,
       `delete from public.quest_opsi_text where id_quest=${id};`,
       `delete from public.quest_opsi where id_quest=${id};`,
-      ...variants.map((profile: string): string =>
-        `insert into public.quest_teks(id_quest,bahasa,profil,instruksi,pertanyaan,hint,target_foto,kunci_isian,variasi_jawaban,penjelasan,kriteria_foto)
-select ${id},'id',${quote(profile)},${quote(quest.title)},${quote(quest.question)},${
-          quote(quest.hint)
-        },${nullable(quest.photoTarget)},${
+      ...variants.map((profile: string): string => {
+        // Quest_Anak: teks versi anak untuk quest foto; quest lain memakai teks umum.
+        const text = profile === "anak" && "kid" in quest && quest.kid !== undefined ? quest.kid : quest;
+        return `insert into public.quest_teks(id_quest,bahasa,profil,instruksi,pertanyaan,hint,target_foto,kunci_isian,variasi_jawaban,penjelasan,kriteria_foto)
+select ${id},'id',${quote(profile)},${quote(text.title)},${quote(text.question)},${
+          quote(text.hint)
+        },${nullable(text.photoTarget)},${
           quest.type === "isian_singkat" ? quote(quest.answer) : "NULL"
-        },${accepted},${quote(quest.explanation)},${nullable(quest.photoCriteria)}
+        },${accepted},${quote(text.explanation)},${nullable(quest.photoCriteria)}
 where exists(select 1 from public.quest where id_quest=${id})
-on conflict(id_quest,bahasa,profil) do update set instruksi=excluded.instruksi,pertanyaan=excluded.pertanyaan,hint=excluded.hint,target_foto=excluded.target_foto,kunci_isian=excluded.kunci_isian,variasi_jawaban=excluded.variasi_jawaban,penjelasan=excluded.penjelasan,kriteria_foto=excluded.kriteria_foto;`
-      ),
+on conflict(id_quest,bahasa,profil) do update set instruksi=excluded.instruksi,pertanyaan=excluded.pertanyaan,hint=excluded.hint,target_foto=excluded.target_foto,kunci_isian=excluded.kunci_isian,variasi_jawaban=excluded.variasi_jawaban,penjelasan=excluded.penjelasan,kriteria_foto=excluded.kriteria_foto;`;
+      }),
       ...quest.options.flatMap((option): readonly string[] => [
         `insert into public.quest_opsi(id_quest,label_opsi,is_correct) select ${id},${
           quote(option.label_opsi)

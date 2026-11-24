@@ -201,7 +201,8 @@ async function questDetail(
     ...(quest.poin === null ? {} : { points: quest.poin }),
     maxAttempts: quest.batas_percobaan,
     requiredForBadge: quest.wajib_badge,
-    isDisabled: profile === "anak" && questType === "foto",
+    // Sheet Quest_Anak: anak hanya mengerjakan quest foto.
+    isDisabled: profile === "anak" && questType !== "foto",
     ...question,
     options,
   };

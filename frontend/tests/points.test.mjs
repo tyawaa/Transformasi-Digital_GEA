@@ -47,15 +47,16 @@ test("status POI belum/sebagian/selesai", () => {
 });
 
 test("daftar lencana sesuai sheet Badge_Poin dan profil", () => {
-  const umum = availableBadges({ kid: false, oldSheet: true }).map((b) => b.id);
-  const anak = availableBadges({ kid: true, oldSheet: true }).map((b) => b.id);
+  const umum = availableBadges({ kid: false }).map((b) => b.id);
+  const anak = availableBadges({ kid: true }).map((b) => b.id);
   // Prioritas rendah (sayap kanan) hanya tampil bila sayap kanan dibuka.
   assert.equal(umum.includes("BD-05") || umum.includes("BD-08") || umum.includes("BD-09"), false);
-  assert.equal(availableBadges({ rightWing: true, oldSheet: true }).some((b) => b.id === "BD-05"), true);
-  // Anak tidak mengerjakan quest foto: tanpa Pemburu Foto dan Fotografer Cilik; ada Penjelajah Cilik.
-  assert.equal(anak.includes("BD-02") || anak.includes("BD-14"), false);
-  assert.equal(anak.includes("BD-15"), true);
-  assert.equal(umum.includes("BD-15"), false);
+  assert.equal(availableBadges({ rightWing: true }).some((b) => b.id === "BD-05"), true);
+  // Semua 15 lencana sheet aktif; anak mendapat Fotografer Cilik dan Penjelajah Cilik, bukan Pemburu Foto.
+  assert.equal(availableBadges({ kid: false, rightWing: true }).length, 13);
+  assert.equal(anak.includes("BD-02"), false);
+  assert.equal(anak.includes("BD-14") && anak.includes("BD-15"), true);
+  assert.equal(umum.includes("BD-14") || umum.includes("BD-15"), false);
 });
 
 test("lencana dari quest per POI dan total poin tidak ganda", () => {
@@ -65,7 +66,7 @@ test("lencana dari quest per POI dan total poin tidak ganda", () => {
     { id: "c", wing: "left", code: "P05", quest: "kuis" },
     { id: "d", wing: "left", code: "P08", quest: "kuis" },
   ];
-  const old = { oldSheet: true };
+  const old = {};
   assert.deepEqual(earnedBadges(pois, {}, old), []);
   const one = { b: challenge(true, 1, 10) };
   assert.deepEqual(earnedBadges(pois, one, old), ["BD-06"]);
@@ -78,8 +79,6 @@ test("lencana dari quest per POI dan total poin tidak ganda", () => {
   };
   assert.deepEqual(earnedBadges(pois, all, old), ["BD-01", "BD-02", "BD-03", "BD-04", "BD-06", "BD-07"]);
   assert.equal(totalPoints(pois, all, old), 60 + 50 + 30 + 40 + 100 + 10 + 30);
-  // Sheet terbaru: hanya BD-01 s.d. BD-04.
-  assert.deepEqual(earnedBadges(pois, all), ["BD-01", "BD-02", "BD-03", "BD-04"]);
 });
 
 test("anak: POI quest foto jadi cerita saja; Penjelajah Cilik di 2 POI", () => {
@@ -89,9 +88,9 @@ test("anak: POI quest foto jadi cerita saja; Penjelajah Cilik di 2 POI", () => {
     { id: "c", wing: "left", code: "P04", quest: "kuis" },
   ];
   const states = { a: s(true, false, 0), b: s(true, false, 2), c: challenge(true, 2, 10) };
-  const ids = earnedBadges(pois, states, { kid: true, oldSheet: true });
+  const ids = earnedBadges(pois, states, { kid: true });
   assert.deepEqual(ids, ["BD-01", "BD-04", "BD-06", "BD-15"]);
-  assert.equal(earnedBadges(pois, states, { kid: true, questDays: 3, oldSheet: true }).includes("BD-11"), true);
+  assert.equal(earnedBadges(pois, states, { kid: true, questDays: 3 }).includes("BD-11"), true);
 });
 
 test("poin aktivitas sheet: check-in 10, cerita 5, percobaan pertama 5, POI tuntas 10", () => {
@@ -106,9 +105,11 @@ test("poin aktivitas sheet: check-in 10, cerita 5, percobaan pertama 5, POI tunt
   assert.ok(!activitiesDone({ ...s(true, false, 0), challengeSuccess: true, challengeAttempts: 0 }).includes("firstTry"));
 });
 
-test("sheet terbaru: lencana aktif BD-01 s.d. BD-04, sheet lama ditahan; Geolog Sejati = sayap kiri", () => {
-  assert.deepEqual(availableBadges({ kid: false }).map((b) => b.id), ["BD-01", "BD-02", "BD-03", "BD-04"]);
-  assert.deepEqual(availableBadges({ kid: true }).map((b) => b.id), ["BD-01", "BD-03", "BD-04"]);
+test("sheet acuan rekaman: 15 lencana aktif sesuai profil; Geolog Sejati = sayap kiri", () => {
+  assert.deepEqual(availableBadges({ kid: false }).map((b) => b.id),
+    ["BD-01", "BD-02", "BD-03", "BD-04", "BD-06", "BD-07", "BD-10", "BD-11", "BD-12", "BD-13"]);
+  assert.deepEqual(availableBadges({ kid: true }).map((b) => b.id),
+    ["BD-01", "BD-03", "BD-04", "BD-06", "BD-07", "BD-10", "BD-11", "BD-12", "BD-13", "BD-14", "BD-15"]);
   const pois = [
     { id: "a", wing: "left", code: "P01", quest: "quiz" },
     { id: "b", wing: "right", code: "P12", quest: "quiz" },

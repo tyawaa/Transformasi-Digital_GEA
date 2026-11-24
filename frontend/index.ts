@@ -1,4 +1,5 @@
 import { registerRootComponent } from 'expo';
+import './src/features/eyesfree/background';
 import { Platform } from 'react-native';
 
 // Aplikasi ini untuk HP. Di browser layar lebar, buka di dalam bingkai HP (public/demo.html)

@@ -69,8 +69,8 @@ Deno.test("A8: audit skema Supabase dan tabel Sprint 2", async (test): Promise<v
       equal(badges.rows.length, 15); // BD-01 s.d. BD-15
 
       const activeCodes = badges.rows.filter((b) => b.is_active).map((b) => b.kode_badge);
-      // Sheet terbaru: fokus sayap kiri, hanya BD-01 s.d. BD-04 aktif; BD-05 s.d. BD-15 tetap ada (nonaktif).
-      deepStrictEqual(activeCodes, ["BD-01", "BD-02", "BD-03", "BD-04"]);
+      // Sheet acuan rekaman (24 Nov 2026): semua lencana BD-01 s.d. BD-15 aktif.
+      deepStrictEqual(activeCodes, badges.rows.map((b) => b.kode_badge));
     });
 
     await test.step("unique key anti-poin ganda (session, POI, komponen) bekerja", async (): Promise<void> => {
