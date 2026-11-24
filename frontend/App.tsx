@@ -22,7 +22,9 @@ import { OnboardingScreen } from "./src/features/onboarding/OnboardingScreen";
 import { useOnboarding } from "./src/features/onboarding/useOnboarding";
 import { PreferencesScreen } from "./src/features/preferences/PreferencesScreen";
 import { usePreferences } from "./src/features/preferences/usePreferences";
-import { matchedTopics, profileForAge, recommendRoute, type Route } from "./src/features/preferences/recommend";
+import type { Preferences } from "./src/features/preferences/usePreferences";
+import { visitWindow } from "./src/features/preferences/visitTiming";
+import { profileForAge, recommendRoute, type Route } from "./src/features/preferences/recommend";
 import { ProgressScreen } from "./src/features/progress/ProgressScreen";
 import { wingEnabled, wingsMode } from "./src/config/wings";
 import { useVisitProgress } from "./src/features/progress/useVisitProgress";
@@ -37,6 +39,7 @@ import { useOperation } from "./src/hooks/useOperation";
 import { useAuthRefresh } from "./src/hooks/useAuthRefresh";
 import { useVisitSession } from "./src/hooks/useVisitSession";
 import { useGeofence } from "./src/hooks/useGeofence";
+import { useVisitClock } from "./src/hooks/useVisitClock";
 import type { Checkpoint, Fix } from "./src/domain/geofence";
 import type { GpsTest } from "./src/features/map/MapScreen";
 import { MOCK_ENTRANCE_QR, MOCK_ENTRANCE_TOKEN, mockPoiQr, mockZoneToken } from "./src/mocks/stories";
@@ -100,11 +103,53 @@ function Home(): ReactElement {
   useAuthRefresh();
   const onboarding = useOnboarding();
   const preferences = usePreferences();
-  const { busy, error: operationError, runOperation } = useOperation();
-  const profile = profileForAge(preferences.preferences);
-  const session = useVisitSession(api, runOperation, profile);
+  const { busy, error: operationError, clearError, runOperation } = useOperation();
   const visitState = useVisitProgress(storiesSource);
   const { visit, progress, progressOf } = visitState;
+  const effectivePreferences: Preferences | null = visit?.personalization ?? preferences.preferences;
+  const profile = profileForAge(effectivePreferences);
+  const session = useVisitSession(api, runOperation, profile);
+  const startedAtMs: number | null = visit?.startedAt ?? null;
+  const endsAtMs: number | null = storiesSource.kind === "api"
+    ? visit?.planned_end_at == null ? null : Date.parse(visit.planned_end_at)
+    : startedAtMs === null || effectivePreferences === null ? null : visitWindow(effectivePreferences.duration, startedAtMs).endsAtMs;
+  const clock = useVisitClock(startedAtMs, endsAtMs);
+  const [planError, setPlanError] = useState<string | null>(null);
+  const [savingPlan, setSavingPlan] = useState<boolean>(false);
+  // Pulihkan jawaban dari sesi server; draft perangkat hanya dipakai sebelum sesi memiliki rencana.
+  useEffect((): void => {
+    if (visit?.personalization == null || preferences.state === "loading") return;
+    if (JSON.stringify(visit.personalization) !== JSON.stringify(preferences.preferences)) preferences.save(visit.personalization);
+  }, [visit?.personalization, preferences.state]);
+  useEffect((): (() => void) | undefined => {
+    if (!visitState.ready || storiesSource.kind !== "api" || visit === null ||
+      visit.personalization != null || preferences.preferences === null) return undefined;
+    let active: boolean = true;
+    setSavingPlan(true);
+    setPlanError(null);
+    api.personalizeVisit(visit.id_sesi, preferences.preferences, wingsMode).then(async (updated: Visit): Promise<void> => {
+      if (active) {
+        setSavingPlan(false);
+        await visitState.replaceVisit(updated);
+      }
+    }).catch((cause: unknown): void => {
+      if (active) setPlanError(readableError(cause));
+    }).finally((): void => {
+      if (active) setSavingPlan(false);
+    });
+    return (): void => { active = false; };
+  }, [visitState.ready, visit?.id_sesi, visit?.personalization, preferences.preferences]);
+
+  async function savePreferences(value: Preferences): Promise<void> {
+    await runOperation("stories", async (): Promise<void> => {
+      if (storiesSource.kind === "api" && visit !== null) {
+        const updated: Visit = await api.personalizeVisit(visit.id_sesi, value, wingsMode);
+        await visitState.replaceVisit(updated);
+        setPlanError(null);
+      }
+      preferences.save(value);
+    });
+  }
   // Toast "Rute Untuk Anda" sekali saat kunjungan baru dimulai (dari peta awal).
   const [routeToast, setRouteToast] = useState<boolean>(false);
   const lastVisitId = useRef<string | null | undefined>(undefined);
@@ -161,7 +206,7 @@ function Home(): ReactElement {
         museumPoiById(s.id_poi)?.code === museum.code
       );
       const id: string | null = match?.id_poi ?? null;
-      const state = id === null ? undefined : progress[id];
+      const state = progress[museum.idPoi];
       const verified: boolean = state?.verifiedUntil != null && state.verifiedUntil > Date.now();
       return { museum, id, status: poiStatus(state, verified) };
     }), [summaries, progress]);
@@ -196,12 +241,24 @@ function Home(): ReactElement {
       localBadges.filter((id: BadgeId): boolean => !visitState.rewards.badges.includes(id)),
     )
     : totalPoints(refs, progress, badgeContext));
-  // Rute rekomendasi dari preferensi, hanya dari ruangan yang ceritanya sudah tersedia.
-  const route: Route | null = useMemo((): Route | null =>
-    recommendRoute(
-      preferences.preferences,
-      mapPois.filter((poi: MapPoi): boolean => poi.id !== null).map((poi: MapPoi): string => poi.museum.code),
-    ), [preferences.preferences, mapPois]);
+  // Anggaran rute memakai waktu mulai yang tetap, sehingga progres dan timer tidak mengubah rutenya.
+  const route: Route | null = useMemo((): Route | null => {
+    if (storiesSource.kind === "api" && visit !== null) {
+      if (visit.personalization == null || visit.route_codes == null || visit.route_minutes == null || visit.closing_limited == null) return null;
+      return {
+        codes: visit.route_codes, topics: visit.personalization.topics,
+        duration: visit.personalization.duration, totalMinutes: visit.route_minutes,
+        closingLimited: visit.closing_limited,
+      };
+    }
+    return recommendRoute(
+      effectivePreferences,
+      museumPois.filter((poi): boolean => wingEnabled(poi.wing) &&
+        summaries?.some((summary: PoiSummary): boolean => summary.id_poi === poi.idPoi) === true
+      ).map((poi): string => poi.code),
+      new Date(startedAtMs ?? Date.now()),
+    );
+  }, [effectivePreferences, summaries, startedAtMs, visit]);
   /** Ruangan berikutnya di rute yang belum selesai (selain ruangan yang sedang dibuka). */
   function nextStop(exceptPoiId: string): string | null {
     const next: MapPoi | undefined = route?.codes
@@ -228,8 +285,8 @@ function Home(): ReactElement {
     questsTotal: refs.filter((ref: PoiRef): boolean => ref.quest !== null).length,
     totalPoints: points,
     badgeName: bestBadge?.name ?? null,
-    durationText: formatVisitDuration(visit?.startedAt),
-    durationMinutes: Math.max(1, Math.round((Date.now() - (visit?.startedAt ?? Date.now())) / 60_000)),
+    durationText: formatVisitDuration(startedAtMs, clock.nowMs),
+    durationMinutes: Math.max(1, Math.round((clock.nowMs - (startedAtMs ?? clock.nowMs)) / 60_000)),
   };
 
   // Zona dipantau selama kunjungan; POI hanya diperiksa setelah Buka cerita ditekan.
@@ -390,7 +447,10 @@ function Home(): ReactElement {
           onBack={(): void => {
             setLocationSplash(visit === null ? "fail" : "ok");
           }}
-          onDone={preferences.save}
+          onDone={(value: Preferences): void => { void savePreferences(value); }}
+          saving={busy === "stories"}
+          error={operationError}
+          onDismissError={clearError}
         />
       </>
     );
@@ -498,12 +558,13 @@ function Home(): ReactElement {
       <StatusBar style="dark" />
       <MapScreen
         onBack={preferences.reopen}
+        remainingMs={clock.remainingMs}
         routeToast={routeToast}
         onCloseRouteToast={(): void => setRouteToast(false)}
         wingsMode={wingsMode}
         pois={mapPois}
-        loading={summaries === null && poisError === null}
-        error={poisError ?? (summaries !== null && summaries.length === 0
+        loading={(summaries === null && poisError === null) || savingPlan}
+        error={planError ?? poisError ?? (summaries !== null && summaries.length === 0
           ? "Data koleksi belum tersedia di server. Hubungi tim untuk mengisi data POI."
           : null)}
         hasVisit={visit !== null}
@@ -538,13 +599,20 @@ function Home(): ReactElement {
         onRetry={(): void => {
           setSummaries(null);
           void loadPois();
+          setPlanError(null);
+          if (storiesSource.kind === "api" && visit !== null && effectivePreferences !== null) {
+            setSavingPlan(true);
+            api.personalizeVisit(visit.id_sesi, effectivePreferences, wingsMode)
+              .then(visitState.replaceVisit)
+              .catch((cause: unknown): void => setPlanError(readableError(cause)))
+              .finally((): void => setSavingPlan(false));
+          }
         }}
         onOpenProgress={(): void => setScreen({ name: "progress" })}
         onOpenSummary={(): void => setScreen({ name: "summary" })}
         onOpenPoi={(poiId: string): void => setScreen({ name: "story", poiId, token: null })}
         userFix={geofence.fix}
         route={route}
-        topicsFor={(code: string): readonly string[] => matchedTopics(preferences.preferences, code)}
       />
     </>
   );

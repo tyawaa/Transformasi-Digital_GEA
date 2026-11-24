@@ -12,8 +12,8 @@ export function StartMap({ checkingLocation, onScan, onCheckLocation, notice }: 
 }): ReactElement {
   return (
     <>
-      <GeaText variant="heading24" color={colors.tertiary[300]} style={styles.title}>Selamat memulai perjalanan Anda</GeaText>
-      <GeaText variant="body14" color={colors.primary[800]}>{notice ?? "Aktifkan lokasi untuk memulai perjalanan dan mengikuti arah menuju koleksi pilihanmu."}</GeaText>
+      <GeaText variant="heading20" color={colors.tertiary[300]} style={styles.title}>Mulai petualanganmu</GeaText>
+      <GeaText variant="body14" color={colors.primary[800]}>{notice ?? "Periksa lokasi di museum untuk memulai."}</GeaText>
       <Pressable accessibilityRole="button" accessibilityState={{ disabled: checkingLocation }} disabled={checkingLocation} onPress={onCheckLocation} style={({ pressed }) => [styles.button, (pressed || checkingLocation) && styles.dim]}>
         {checkingLocation ? <ActivityIndicator color={colors.white} /> : <GeaText variant="bold16" color={colors.white}>Mulai perjalanan</GeaText>}
       </Pressable>

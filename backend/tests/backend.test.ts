@@ -582,6 +582,97 @@ Deno.test("integrasi SQL: migrasi, enam POI, hak akses, QR, jawaban, idempotensi
       );
       deepStrictEqual(repeated, visit);
     });
+    await test.step("personalisasi sesi: rute server, batas WIB, pemilik dan progres tetap tersimpan", async (): Promise<void> => {
+      const preferences: JsonObject = {
+        age: "18-24 Tahun",
+        duration: "< 30 menit",
+        topics: ["Gunung Api & Gempa"],
+      };
+      const savePlan = (owner: string, value: JsonObject): Promise<JsonObject> =>
+        resultObject(database, "select public.simpan_personalisasi($1,$2,$3,'both') as result", [
+          owner,
+          visitId,
+          JSON.stringify(value),
+        ]);
+      await database.exec("begin");
+      try {
+        await database.exec("update public.poi set kode_poi='POI-' || right(id_poi::text,2)");
+        await database.query(
+          "update public.sesi_kunjungan set start_time='2026-11-24T10:00:00+07:00' where id_sesi=$1",
+          [visitId],
+        );
+        await database.query(
+          "insert into public.menampilkan_kartu(id_sesi,id_poi,status_kartu) values($1,$2,'ditutup')",
+          [visitId, "30000000-0000-4000-8000-000000000001"],
+        );
+        const plan: JsonObject = await savePlan(userId, preferences);
+        deepStrictEqual(plan.personalization, preferences);
+        deepStrictEqual(plan.route_codes, ["P04", "P03", "P02", "P01", "P06", "P05"]);
+        equal(plan.route_minutes, 30);
+        equal(Date.parse(String(plan.planned_end_at)), Date.parse("2026-11-24T10:30:00+07:00"));
+        equal(plan.closing_limited, false);
+        deepStrictEqual(await savePlan(userId, preferences), plan);
+        const restored: JsonObject = await resultObject(
+          database,
+          "select public.progres_kunjungan($1,$2) as result",
+          [userId, visitId],
+        );
+        deepStrictEqual(restored.session, plan);
+        equal((restored.cards as readonly JsonObject[]).length, 1);
+        equal((restored.cards as readonly JsonObject[])[0]?.status_kartu, "ditutup");
+        const cases: readonly { readonly value: JsonObject; readonly error: RegExp }[] = [
+          { value: { ...preferences, duration: "invalid" }, error: /PERSONALIZATION_INVALID/ },
+          {
+            value: { ...preferences, topics: ["unknown"] },
+            error: /PERSONALIZATION_TOPICS_INVALID/,
+          },
+          {
+            value: { ...preferences, topics: ["Gunung Api & Gempa", "Gunung Api & Gempa"] },
+            error: /PERSONALIZATION_TOPICS_INVALID/,
+          },
+        ];
+        for (const item of cases) {
+          await database.exec("savepoint invalid_plan");
+          await rejects(savePlan(userId, item.value), item.error);
+          await database.exec("rollback to savepoint invalid_plan");
+        }
+        await database.exec("savepoint owner_plan");
+        await rejects(savePlan(otherUserId, preferences), /SESSION_NOT_FOUND/);
+        await database.exec("rollback to savepoint owner_plan");
+        await database.query(
+          "update public.sesi_kunjungan set start_time='2026-11-24T15:45:00+07:00' where id_sesi=$1",
+          [visitId],
+        );
+        const limited: JsonObject = await savePlan(userId, preferences);
+        deepStrictEqual(limited.route_codes, ["P04", "P03", "P02"]);
+        equal(limited.route_minutes, 15);
+        equal(limited.closing_limited, true);
+        equal(Date.parse(String(limited.planned_end_at)), Date.parse("2026-11-24T16:00:00+07:00"));
+        const child: JsonObject = await savePlan(userId, { ...preferences, age: "7-12 Tahun" });
+        deepStrictEqual(child.route_codes, limited.route_codes);
+        equal(child.profil, "anak");
+        await database.exec("update public.poi set is_published=false where kode_poi='POI-03'");
+        const published: JsonObject = await savePlan(userId, preferences);
+        equal((published.route_codes as readonly string[]).includes("P03"), false);
+        const untilClosing: JsonObject = await savePlan(userId, {
+          ...preferences,
+          duration: "> 1.5 jam",
+        });
+        equal(
+          Date.parse(String(untilClosing.planned_end_at)),
+          Date.parse("2026-11-24T16:00:00+07:00"),
+        );
+        await database.query(
+          "update public.sesi_kunjungan set start_time='2026-11-24T17:00:00+07:00' where id_sesi=$1",
+          [visitId],
+        );
+        const expired: JsonObject = await savePlan(userId, preferences);
+        deepStrictEqual(expired.route_codes, []);
+        equal(expired.planned_end_at, expired.start_time);
+      } finally {
+        await database.exec("rollback");
+      }
+    });
     await test.step("GPS utama: radius, akurasi, pemilik sesi dan akses kuis tanpa QR", async (): Promise<void> => {
       const poiId: string = "30000000-0000-4000-8000-000000000001";
       const gpsVisitId: string = "50000000-0000-4000-8000-000000000077";

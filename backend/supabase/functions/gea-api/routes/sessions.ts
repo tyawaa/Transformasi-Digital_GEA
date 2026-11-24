@@ -12,6 +12,7 @@ import {
   type Profile,
   profile,
   qrToken,
+  text,
   uuid,
 } from "../validation.ts";
 
@@ -23,6 +24,22 @@ export async function routeSessions(
   userId: string,
   headers: Headers,
 ): Promise<Response | null> {
+  const personalization: RegExpMatchArray | null = path.match(
+    /^\/sessions\/([^/]+)\/personalization$/,
+  );
+  if (request.method === "POST" && personalization !== null) {
+    const body: JsonObject = await jsonBody(request);
+    return success(
+      await gateway.rpc("simpan_personalisasi", {
+        p_user_id: userId,
+        p_id_sesi: uuid(personalization[1], "idSesi"),
+        p_preferences: object(body.preferences, "preferences"),
+        p_wings: text(body.wings, "wings", 4),
+      }),
+      200,
+      headers,
+    );
+  }
   if (request.method === "POST" && path === "/sessions") {
     const body: JsonObject = await jsonBody(request);
     const decision: AccessDecision = evaluateGeofence(

@@ -32,6 +32,7 @@ export type VisitProgressState = {
   readonly retry: () => void;
   readonly progressOf: (poiId: string) => PoiProgress;
   readonly startVisit: (visit: Visit) => void;
+  readonly replaceVisit: (visit: Visit) => Promise<void>;
   readonly update: (poiId: string, patch: Partial<PoiProgress>) => void;
   readonly recordAnswer: (answer: AnswerResult) => void;
   readonly endVisit: () => void;
@@ -83,14 +84,19 @@ export function useVisitProgress(source: StoriesSource): VisitProgressState {
       const server: RestoredVisit | null = await source.restore(restoredVisit.id_sesi);
       if (!active) return;
       if (server !== null) {
+        if (server.visit.start_time === undefined) throw new Error("Server tidak mengirim waktu mulai kunjungan.");
         local = mergeServerProgress(local, server.progress);
         setRewards(server.rewards);
+        const authoritative: Visit = { ...server.visit, startedAt: Date.parse(server.visit.start_time) };
+        await AsyncStorage.setItem(visitKey(source.kind), JSON.stringify(authoritative));
+        if (!active) return;
+        setVisit(authoritative);
       }
       if (server !== null || legacy) {
         await AsyncStorage.setItem(progressKey(source.kind, restoredVisit.id_sesi), JSON.stringify(local));
       }
       if (legacy) {
-        await AsyncStorage.setItem(visitKey(source.kind), JSON.stringify(restoredVisit));
+        if (server === null) await AsyncStorage.setItem(visitKey(source.kind), JSON.stringify(restoredVisit));
         await AsyncStorage.removeItem("gea.visit.v1");
       }
       if (!active) return;
@@ -128,6 +134,14 @@ export function useVisitProgress(source: StoriesSource): VisitProgressState {
     AsyncStorage.setItem(visitKey(source.kind), JSON.stringify(withStart)).catch((cause: unknown): void =>
       warn("gea_visit_save_failed", cause)
     );
+  }
+
+  async function replaceVisit(next: Visit): Promise<void> {
+    if (visit === null || next.id_sesi !== visit.id_sesi) throw new Error("Sesi personalisasi tidak cocok dengan kunjungan aktif.");
+    if (next.start_time === undefined) throw new Error("Server tidak mengirim waktu mulai kunjungan.");
+    const updated: Visit = { ...next, startedAt: Date.parse(next.start_time) };
+    await AsyncStorage.setItem(visitKey(source.kind), JSON.stringify(updated));
+    setVisit(updated);
   }
 
   function update(poiId: string, patch: Partial<PoiProgress>): void {
@@ -177,6 +191,7 @@ export function useVisitProgress(source: StoriesSource): VisitProgressState {
     retry,
     progressOf: (poiId: string): PoiProgress => progress[poiId] ?? emptyProgress,
     startVisit,
+    replaceVisit,
     update,
     recordAnswer,
     endVisit,

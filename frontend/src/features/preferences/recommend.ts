@@ -1,10 +1,10 @@
 // Preferensi → rute rekomendasi. Pilihan jawaban dan pemetaannya ke POI ada di file ini.
-import { museumPoiByCode } from "../../data/museum";
+import { museumPoiByCode } from "../../data/museum.ts";
 import type { Profile } from "../../domain/contracts";
 import type { Preferences } from "./usePreferences";
+import { visitWindow, type VisitWindow } from "./visitTiming.ts";
 
 export const ageOptions = ["7-12 Tahun", "13-17 Tahun", "18-24 Tahun", ">24 Tahun"] as const;
-export const durationOptions = ["< 30 menit", "30-45 Menit", "45 menit-1.5 Jam", "> 1.5 jam"] as const;
 
 /**
  * Kategori pengunjung sesuai sheet (Kategori_Pengunjung): 7–12 tahun = Anak-anak ("anak"); selain itu,
@@ -23,39 +23,14 @@ export const topics: readonly { readonly label: string; readonly codes: readonly
   { label: "Fosil & Hewan Purba", codes: ["P01", "P14", "P15", "P16", "P17", "P18"] },
 ];
 
-// Sprint 3 (sheet Config_Rekomendasi): waktu efektif = MIN(waktu pilihan, sisa waktu sampai jam tutup).
-/** Batas waktu pilihan pengguna dalam menit. "> 1.5 jam" dibatasi jam tutup saja. */
-const minutesByDuration: Record<(typeof durationOptions)[number], number> = {
-  "< 30 menit": 30,
-  "30-45 Menit": 45,
-  "45 menit-1.5 Jam": 90,
-  "> 1.5 jam": Number.POSITIVE_INFINITY,
-};
-/** Jam tutup museum. ASUMSI di sheet (16:00), perlu dikonfirmasi tim. */
-export const CLOSING_HOUR = 16;
 /** Estimasi menit per POI bila belum ada di POI_Preference (mis. POI-12 s.d. POI-21). */
 const DEFAULT_POI_MINUTES = 7;
 // POI-01 s.d. POI-11 = prioritas tinggi (kuning di sheet); POI-12 s.d. POI-21 = rendah (oranye), ditunda.
 const HIGH_PRIORITY_LAST = 11;
 
-/** Anak punya quest di POI ini: quest selain foto (anak tidak mengerjakan quest foto). */
-function kidHasQuest(code: string): boolean {
-  const content = museumPoiByCode(code)?.content;
-  if (content === null || content === undefined) return false;
-  return content.tanpaKuis !== true || (content.tantangan !== undefined && content.tantangan.tipe !== "foto");
-}
-
 /** Estimasi lama kunjungan POI (menit), dari kolom Estimated_Duration di POI_Preference. */
 export function poiMinutes(code: string): number {
   return museumPoiByCode(code)?.content?.durasiMenit ?? DEFAULT_POI_MINUTES;
-}
-
-/** Sisa menit sampai jam tutup; null bila museum sudah tutup hari ini (mis. uji di malam hari). */
-function minutesUntilClosing(now: Date): number | null {
-  const closing = new Date(now);
-  closing.setHours(CLOSING_HOUR, 0, 0, 0);
-  const left: number = Math.floor((closing.getTime() - now.getTime()) / 60_000);
-  return left > 0 ? left : null;
 }
 
 // Urutan jalan kaki: sayap kiri baris atas kiri→kanan, lalu baris bawah kanan→kiri; lalu sayap kanan.
@@ -85,36 +60,30 @@ export function matchedTopics(prefs: Preferences | null, code: string): readonly
 }
 
 /**
- * Pilih ruangan dari yang tersedia. Skor = 2 × topik minat yang cocok, +1 untuk anak bila POI punya quest
- * quest anak (selain foto), dan POI prioritas rendah (P12+) selalu di belakang. Ruangan diambil menurut skor
+ * Pilih ruangan dari yang tersedia. Skor = 2 × topik minat yang cocok, sama untuk semua usia,
+ * dan POI prioritas rendah (P12+) selalu di belakang. Ruangan diambil menurut skor
  * selama total Estimated_Duration masih muat di waktu efektif, lalu diurutkan sesuai jalur jalan kaki.
  */
 export function recommendRoute(
   prefs: Preferences | null,
   available: readonly string[],
-  now: Date = new Date(),
+  now: Date,
 ): Route | null {
   if (prefs === null || available.length === 0) return null;
-  const chosen: number = minutesByDuration[prefs.duration as keyof typeof minutesByDuration] ?? 45;
-  const closing: number | null = minutesUntilClosing(now);
-  // Museum sudah tutup (uji di luar jam buka): pakai waktu pilihan saja.
-  const budget: number = closing === null ? chosen : Math.min(chosen, closing);
-  const kid: boolean = prefs.age === "7-12 Tahun";
+  const budget: VisitWindow = visitWindow(prefs.duration, now.getTime());
   const lowPriority = (code: string): boolean => Number(code.slice(1)) > HIGH_PRIORITY_LAST;
   const walk = (code: string): number => {
     const index: number = walkOrder.indexOf(code);
     return index === -1 ? walkOrder.length : index;
   };
   const score = (code: string): number =>
-    matchedTopics(prefs, code).length * 2 +
-    (kid && kidHasQuest(code) ? 1 : 0) -
-    (lowPriority(code) ? 100 : 0);
+    matchedTopics(prefs, code).length * 2 - (lowPriority(code) ? 100 : 0);
 
   const picked: string[] = [];
   let total = 0;
   for (const code of [...available].sort((a: string, b: string): number => score(b) - score(a) || walk(a) - walk(b))) {
     const minutes: number = poiMinutes(code);
-    if (total + minutes > budget) continue;
+    if (total + minutes > budget.budgetMinutes) continue;
     picked.push(code);
     total += minutes;
   }
@@ -128,6 +97,6 @@ export function recommendRoute(
     topics: routeTopics,
     duration: prefs.duration,
     totalMinutes: total,
-    closingLimited: closing !== null && closing < chosen,
+    closingLimited: budget.closingLimited,
   };
 }

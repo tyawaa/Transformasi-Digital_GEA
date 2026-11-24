@@ -1,5 +1,6 @@
 import { type Session, type SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import type { Preferences } from "../features/preferences/usePreferences";
 import {
   type AccessDecision,
   accessDecisionSchema,
@@ -259,6 +260,12 @@ export class GeaApi {
     return visitProgressSchema.parse(
       await this.get(`/sessions/${encodeURIComponent(idSesi)}/progress`),
     );
+  }
+
+  async personalizeVisit(idSesi: string, preferences: Preferences, wings: "left" | "both"): Promise<Visit> {
+    return visitSchema.parse(await this.post(`/sessions/${encodeURIComponent(idSesi)}/personalization`, {
+      preferences, wings,
+    }));
   }
 
   private async get(path: string): Promise<unknown> {

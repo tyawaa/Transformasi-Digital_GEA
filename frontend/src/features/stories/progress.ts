@@ -1,4 +1,4 @@
-import type { BadgeId, VisitProgress } from "../../domain/contracts.ts";
+import type { BadgeId, Visit, VisitProgress } from "../../domain/contracts.ts";
 import { activityPoints } from "../../domain/points.ts";
 
 /** Status satu POI pada sesi ini. Disimpan di perangkat agar bertahan setelah app ditutup. */
@@ -72,6 +72,7 @@ export type VisitRewards = {
 };
 
 export type RestoredVisit = {
+  readonly visit: Visit;
   readonly progress: ProgressMap;
   readonly rewards: VisitRewards;
 };
@@ -94,6 +95,7 @@ export function restoreServerVisit(server: VisitProgress): RestoredVisit {
     },
   ]));
   return {
+    visit: server.session,
     progress: { ...cards, ...quests },
     rewards: { totalPoints: server.totalPoints, badges: server.badges.map((badge): BadgeId => badge.kodeBadge) },
   };
