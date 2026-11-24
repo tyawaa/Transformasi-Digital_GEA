@@ -263,7 +263,8 @@ const result = StyleSheet.create({
   star: { fontSize: 56, lineHeight: 60 },
   starGlow: { textShadowColor: "rgba(212, 80, 30, 0.45)", textShadowRadius: 12, textShadowOffset: { width: 0, height: 0 } },
   divider: { width: 246, height: 1, backgroundColor: colors.greys[0] },
-  scoreCol: { alignSelf: "stretch", alignItems: "center", gap: spacing[8] },
+  scores: { flexDirection: "row", gap: spacing[12], alignSelf: "stretch" },
+  scoreCol: { flex: 1, alignItems: "center", gap: spacing[8] },
   box: {
     alignSelf: "stretch",
     height: 52,
