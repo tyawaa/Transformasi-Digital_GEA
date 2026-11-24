@@ -2,6 +2,7 @@ import { Image } from "expo-image";
 import { type ReactElement, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, useWindowDimensions, View } from "react-native";
 import { Toast } from "../../../design/Toast";
+import { AnimatedNotification } from "../../../design/AnimatedNotification";
 import { colors, componentColors, radius, shadows, spacing } from "../../../design/tokens";
 import { GeaText } from "../../../design/typography";
 import type {
@@ -95,7 +96,7 @@ function resumeStep(state: PoiProgress): Step {
  * Cerita diselesaikan sebelum daftar quest dibuka. Jawaban dan kesempatan disimpan per quest;
  * backend menentukan poin sesuai sheet. Aktivitas kamera terpisah dari cerita.
  */
-type Reward = { readonly points: number; readonly labels: readonly string[] };
+type Reward = { readonly id: number; readonly points: number; readonly labels: readonly string[] };
 
 /** Alur cerita + notifikasi poin kecil di atas layar. */
 export function StoryFlow(props: Props): ReactElement {
@@ -103,34 +104,30 @@ export function StoryFlow(props: Props): ReactElement {
   // Ukuran pil mengikuti skala frame 390 × 844 seperti layar lain.
   const { width, height } = useWindowDimensions();
   const scale: number = Math.min(width / 390, height / FRAME_H);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   function addRewards(items: readonly { readonly points: number; readonly label: string }[]): void {
     // Poin yang masuk bersamaan digabung jadi satu notifikasi.
     setReward((current: Reward | null): Reward => ({
+      id: Date.now(),
       points: (current?.points ?? 0) + items.reduce((sum, item): number => sum + item.points, 0),
       labels: [...(current?.labels ?? []), ...items.map((item): string => item.label)],
     }));
-    if (timer.current !== null) clearTimeout(timer.current);
-    timer.current = setTimeout((): void => setReward(null), 3000);
   }
-  useEffect((): (() => void) => (): void => {
-    if (timer.current !== null) clearTimeout(timer.current);
-  }, []);
   return (
     <View style={styles.flowRoot}>
       <StoryFlowSteps {...props} onRewards={addRewards} />
-      {reward !== null && (
-        <View pointerEvents="box-none" style={[styles.rewardWrap, { top: (height - FRAME_H * scale) / 2 + 47 * scale, transform: [{ scale }] }]}>
-          <View style={styles.rewardToast}>
+      <View pointerEvents="box-none" style={[styles.rewardWrap, { top: (height - FRAME_H * scale) / 2 + 47 * scale, transform: [{ scale }] }]}>
+        <AnimatedNotification style={styles.rewardToast}>
+          {reward !== null ? (
             <Toast
               tone="success"
               title={`+${reward.points} Poin`}
               description={reward.labels.join(" · ")}
+              countdown={{ id: reward.id, durationMs: 3000 }}
               onClose={(): void => setReward(null)}
             />
-          </View>
-        </View>
-      )}
+          ) : null}
+        </AnimatedNotification>
+      </View>
     </View>
   );
 }

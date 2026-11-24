@@ -1,6 +1,7 @@
-import { type ReactElement, useEffect, useMemo, useState } from "react";
+import { type ReactElement, useMemo, useState } from "react";
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { Toast } from "../../design/Toast";
+import { AnimatedNotification } from "../../design/AnimatedNotification";
 import { colors, shadows, spacing } from "../../design/tokens";
 import { GeaText } from "../../design/typography";
 import type { MuseumPoi, ZoneInfo } from "../../data/museum";
@@ -101,12 +102,6 @@ export function MapScreen(props: Props): ReactElement {
   const routeCompleted: number = routePois.filter((poi: MapPoi): boolean => poi.status === "selesai").length;
   const timeExpired: boolean = props.remainingMs !== null && props.remainingMs === 0;
   const showRouteToast: boolean = props.routeToast === true && props.hasVisit && routeCount > 0;
-  useEffect((): (() => void) | undefined => {
-    if (!showRouteToast) return undefined;
-    const timer = setTimeout((): void => props.onCloseRouteToast?.(), 5000);
-    return (): void => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showRouteToast]);
 
   function choosePoi(code: string): void {
     setSelectedCode(code);
@@ -242,27 +237,31 @@ export function MapScreen(props: Props): ReactElement {
           </View>
         </FrameStage>
       </Modal>
-      {timeExpired && !expiryDismissed ? (
-        <View style={[styles.toast, styles.expiryToast]} accessibilityRole="alert" accessibilityLiveRegion="polite">
-          <View style={styles.flex}>
-            <GeaText variant="bold16" color={colors.primary[900]}>Waktu rencanamu selesai</GeaText>
-            <GeaText variant="body14" color={colors.primary[800]}>Progresmu tetap tersimpan. Kamu bisa membuka ringkasan kunjungan.</GeaText>
+      <AnimatedNotification style={[styles.toast, styles.expiryPosition]}>
+        {timeExpired && !expiryDismissed ? (
+          <View style={styles.expiryToast} accessibilityRole="alert" accessibilityLiveRegion="polite">
+            <View style={styles.flex}>
+              <GeaText variant="bold16" color={colors.primary[900]}>Waktu rencanamu selesai</GeaText>
+              <GeaText variant="body14" color={colors.primary[800]}>Progresmu tetap tersimpan. Kamu bisa membuka ringkasan kunjungan.</GeaText>
+            </View>
+            <Pressable accessibilityRole="button" accessibilityLabel="Tutup pemberitahuan waktu" style={styles.sheetClose}
+              onPress={(): void => setExpiryDismissed(true)}>
+              <GeaText variant="heading24" color={colors.primary[800]}>×</GeaText>
+            </Pressable>
           </View>
-          <Pressable accessibilityRole="button" accessibilityLabel="Tutup pemberitahuan waktu" style={styles.sheetClose}
-            onPress={(): void => setExpiryDismissed(true)}>
-            <GeaText variant="heading24" color={colors.primary[800]}>×</GeaText>
-          </Pressable>
-        </View>
-      ) : showRouteToast && (
-        <View style={styles.toast}>
+        ) : null}
+      </AnimatedNotification>
+      <AnimatedNotification style={styles.toast}>
+        {(!timeExpired || expiryDismissed) && showRouteToast ? (
           <Toast
             tone="success"
             title="Rute Untuk Anda"
             description={`${routeCount} Titik Kunjungan`}
+            countdown={{ id: "route", durationMs: 5000 }}
             onClose={(): void => props.onCloseRouteToast?.()}
           />
-        </View>
-      )}
+        ) : null}
+      </AnimatedNotification>
       {testsOpen && props.hasVisit && props.gpsTests.length > 0 && (
         <View style={styles.testMenu}>
           <ScrollView>
@@ -315,7 +314,8 @@ const styles = StyleSheet.create({
   actions: { flexDirection: "row", alignItems: "center", gap: 8 },
   qrButton: { minHeight: 48, alignItems: "center", justifyContent: "center", paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: colors.primary[200] },
   routeLink: { minHeight: 44, flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 },
-  expiryToast: { top: 100, padding: 16, borderRadius: 20, flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1, borderColor: colors.primary[600], backgroundColor: colors.secondaryYellow[0], boxShadow: shadows.drop },
+  expiryPosition: { top: 100 },
+  expiryToast: { padding: 16, borderRadius: 20, flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1, borderColor: colors.primary[600], backgroundColor: colors.secondaryYellow[0], boxShadow: shadows.drop },
   routeSheet: { position: "absolute", left: 16, bottom: 16, width: 358, maxHeight: 632, borderRadius: 24, padding: 20, gap: 12, backgroundColor: colors.white },
   sheetClose: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: colors.primary[0] },
   routeList: { gap: 10, paddingBottom: 12 },

@@ -1,8 +1,9 @@
 import { Image } from "expo-image";
 import { type ReactElement } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { colors, componentColors, radius, spacing } from "./tokens";
 import { GeaText } from "./typography";
+import { ToastCloseButton, type ToastCountdown } from "./ToastCloseButton";
 
 export type ToastTone = "danger" | "success";
 
@@ -11,7 +12,6 @@ const tones = {
     background: componentColors.toastDangerBackground,
     accent: colors.danger[400],
     icon: require("../../assets/design/toast-danger-icon.svg") as number,
-    close: require("../../assets/design/toast-danger-close.svg") as number,
     // Kotak ikon dan rotasi persis seperti "Toast 1".
     iconFrame: { left: 0, top: 0, width: 42.406, height: 40.098 },
     iconSize: { width: 34.384, height: 30.703 },
@@ -21,7 +21,6 @@ const tones = {
     background: componentColors.toastSuccessBackground,
     accent: colors.success[500],
     icon: require("../../assets/design/toast-success-icon.svg") as number,
-    close: require("../../assets/design/toast-success-close.svg") as number,
     // "Toast 2".
     iconFrame: { left: -5, top: -5.69, width: 47.21, height: 50.906 },
     iconSize: { width: 34, height: 40.922 },
@@ -33,10 +32,11 @@ type ToastProps = {
   readonly tone: ToastTone;
   readonly title: string;
   readonly description: string;
+  readonly countdown: ToastCountdown | null;
   readonly onClose: () => void;
 };
 
-export function Toast({ tone, title, description, onClose }: ToastProps): ReactElement {
+export function Toast({ tone, title, description, countdown, onClose }: ToastProps): ReactElement {
   const spec = tones[tone];
   return (
     <View
@@ -57,16 +57,8 @@ export function Toast({ tone, title, description, onClose }: ToastProps): ReactE
         <GeaText variant="bold16" color={spec.accent}>{title}</GeaText>
         <GeaText variant="body14" color={colors.greys[300]}>{description}</GeaText>
       </View>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Tutup notifikasi"
-        hitSlop={8}
-        onPress={onClose}
-        style={styles.close}
-      >
-        <Image accessible={false} source={spec.close} style={styles.closeRing} />
-        <GeaText variant="body16" color={spec.accent} style={styles.closeX}>X</GeaText>
-      </Pressable>
+      <ToastCloseButton key={JSON.stringify([tone, title, description, countdown?.id])}
+        color={spec.accent} countdown={countdown} onClose={onClose} />
     </View>
   );
 }
@@ -86,7 +78,4 @@ const styles = StyleSheet.create({
   iconBox: { width: 42.697, height: 40 },
   iconFrame: { position: "absolute", alignItems: "center", justifyContent: "center" },
   content: { flex: 1, gap: spacing[4] },
-  close: { width: 32, height: 31 },
-  closeRing: { position: "absolute", left: 0, top: 0, width: 32, height: 31 },
-  closeX: { position: "absolute", left: 12, top: 6.5 },
 });

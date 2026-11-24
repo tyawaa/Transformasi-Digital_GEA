@@ -14,6 +14,7 @@ import {
 import { Button } from "../../design/Button";
 import { PoiCard } from "../../design/Cards";
 import { Toast } from "../../design/Toast";
+import { AnimatedNotification } from "../../design/AnimatedNotification";
 import { colors, componentColors, spacing } from "../../design/tokens";
 import { GeaText } from "../../design/typography";
 import { LocationCheckingContent } from "../location/LocationChecking";
@@ -68,12 +69,7 @@ export function OnboardingScreen(
   // Mikrofon dan notifikasi belum punya fitur di aplikasi; pilihan hanya dicatat.
   const [microphone, setMicrophone] = useState<boolean>(false);
   const [notification, setNotification] = useState<boolean>(false);
-  const [warning, setWarning] = useState<{ readonly title: string; readonly description: string } | null>(null);
-  useEffect((): (() => void) | undefined => {
-    if (warning === null) return undefined;
-    const timer = setTimeout((): void => setWarning(null), 6000);
-    return (): void => clearTimeout(timer);
-  }, [warning]);
+  const [warning, setWarning] = useState<{ readonly id: number; readonly title: string; readonly description: string } | null>(null);
 
   function goTo(next: Step, after?: () => void): void {
     if (moving.current) return;
@@ -113,6 +109,7 @@ export function OnboardingScreen(
       ? "Lokasi dipakai untuk tahu kamu sudah tiba di museum."
       : "Kamera dipakai untuk scan QR koleksi.";
     setWarning({
+      id: Date.now(),
       title: `Izinkan ${what} dulu, ya!`,
       description: blocked
         ? `${why} Izinnya sempat ditolak, buka pengaturan HP untuk mengaktifkannya.`
@@ -188,16 +185,17 @@ export function OnboardingScreen(
           />
         </Animated.View>
 
-        {warning !== null && step >= 2 && (
-          <View style={styles.toast}>
+        <AnimatedNotification style={styles.toast}>
+          {warning !== null && step >= 2 ? (
             <Toast
               tone="danger"
               title={warning.title}
               description={warning.description}
+              countdown={{ id: warning.id, durationMs: 6000 }}
               onClose={(): void => setWarning(null)}
             />
-          </View>
-        )}
+          ) : null}
+        </AnimatedNotification>
 
         {/* Langkah 1: Selamat datang (Onboarding #1). */}
         <Animated.View style={[styles.welcome, { transform: [{ translateY: welcomeY }] }]}>

@@ -1,6 +1,7 @@
-import { type ReactElement, useEffect, useState } from "react";
+import { type ReactElement, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Toast } from "../../design/Toast";
+import { AnimatedNotification } from "../../design/AnimatedNotification";
 import { colors, componentColors, shadows, spacing } from "../../design/tokens";
 import { GeaText } from "../../design/typography";
 import { StoryBackground } from "../stories/hifi/backgrounds";
@@ -59,18 +60,13 @@ export function PreferencesScreen(
   ];
   const question: Question = questions[step];
   const selected: readonly string[] = answers[step];
-  const [warning, setWarning] = useState<boolean>(false);
-  useEffect((): (() => void) | undefined => {
-    if (!warning) return undefined;
-    const timer = setTimeout((): void => setWarning(false), 5000);
-    return (): void => clearTimeout(timer);
-  }, [warning]);
+  const [warning, setWarning] = useState<number | null>(null);
 
   function toggle(option: string): void {
     const next: readonly string[] = question.multiple
       ? selected.includes(option) ? selected.filter((item: string): boolean => item !== option) : [...selected, option]
       : [option];
-    setWarning(false);
+    setWarning(null);
     onChange(step === 0
       ? { ...value, age: next[0] ?? "" }
       : step === 1
@@ -79,7 +75,7 @@ export function PreferencesScreen(
   }
 
   function back(): void {
-    setWarning(false);
+    setWarning(null);
     if (step === 2) setStep(1);
     else if (step === 1) setStep(0);
     else onBack();
@@ -87,10 +83,10 @@ export function PreferencesScreen(
 
   function next(): void {
     if (selected.length === 0) {
-      setWarning(true);
+      setWarning(Date.now());
       return;
     }
-    setWarning(false);
+    setWarning(null);
     if (step < 2) {
       setStep((step + 1) as 1 | 2);
       return;
@@ -135,19 +131,20 @@ export function PreferencesScreen(
         })}
       </View>
       <StoryButton label={saving ? "Menyimpan…" : "Lanjut"} disabled={saving} onPress={next} style={styles.button} />
-      {error !== null && <View style={styles.toast}>
-        <Toast tone="danger" title="Personalisasi belum tersimpan" description={error} onClose={onDismissError} />
-      </View>}
-      {warning && (
-        <View style={styles.toast}>
+      <AnimatedNotification style={styles.toast}>
+        {error !== null ? <Toast tone="danger" title="Personalisasi belum tersimpan" description={error} countdown={null} onClose={onDismissError} /> : null}
+      </AnimatedNotification>
+      <AnimatedNotification style={styles.toast}>
+        {warning !== null ? (
           <Toast
             tone="danger"
             title="Belum ada pilihan"
             description={question.multiple ? "Pilih minimal satu topik dulu untuk melanjutkan." : "Pilih salah satu jawaban dulu untuk melanjutkan."}
-            onClose={(): void => setWarning(false)}
+            countdown={{ id: warning, durationMs: 5000 }}
+            onClose={(): void => setWarning(null)}
           />
-        </View>
-      )}
+        ) : null}
+      </AnimatedNotification>
     </FrameStage>
   );
 }

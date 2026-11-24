@@ -143,8 +143,8 @@ function Preview(): ReactElement {
         </Section>
 
         <Section title="TOAST">
-          <Toast tone="danger" title="Lorem ipsum dolor sit amet" description="Lorem ipsum dolor sit amet" onClose={noop} />
-          <Toast tone="success" title="Lorem ipsum dolor sit amet" description="Lorem ipsum dolor sit amet" onClose={noop} />
+          <Toast tone="danger" title="Lorem ipsum dolor sit amet" description="Lorem ipsum dolor sit amet" countdown={null} onClose={noop} />
+          <Toast tone="success" title="Lorem ipsum dolor sit amet" description="Lorem ipsum dolor sit amet" countdown={null} onClose={noop} />
         </Section>
 
         <Section title="MODAL">

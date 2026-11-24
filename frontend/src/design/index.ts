@@ -4,6 +4,8 @@ export { Chip, type ChipTone } from "./Chip";
 export { SheetContent, SheetModal } from "./SheetModal";
 export { TextField } from "./TextField";
 export { Toast, type ToastTone } from "./Toast";
+export type { ToastCountdown } from "./ToastCloseButton";
+export { AnimatedNotification } from "./AnimatedNotification";
 export { colors, componentColors, radius, shadows, spacing } from "./tokens";
 export {
   type FontName,
