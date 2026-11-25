@@ -109,21 +109,21 @@ export class MockStoriesSource implements StoriesSource {
     return poiListSchema.parse(mockPoiSummaries);
   }
 
-  async poiDetail(idPoi: string, _language: Language, profile: Profile): Promise<PoiDetail> {
+  async poiDetail(idPoi: string, language: Language, profile: Profile): Promise<PoiDetail> {
     await delay();
-    return poiDetailSchema.parse(mockPoiForProfile(this.findPoi(idPoi), profile));
+    return poiDetailSchema.parse(mockPoiForProfile(this.findPoi(idPoi), profile, language));
   }
 
-  async verifyPoiQr(idSesi: string, token: string, _language: Language, profile: Profile): Promise<PoiVerification> {
+  async verifyPoiQr(idSesi: string, token: string, language: Language, profile: Profile): Promise<PoiVerification> {
     await delay();
     const idPoi: string | undefined = mockTokenToPoi.get(token);
     if (idPoi === undefined) {
       throw new GeaServiceError(403, "POI_QR_INVALID", "QR koleksi tidak valid.");
     }
-    return this.storeVerification(idSesi, idPoi, profile);
+    return this.storeVerification(idSesi, idPoi, language, profile);
   }
 
-  async verifyPoiGps(idSesi: string, idPoi: string, location: DeviceLocation, _language: Language, profile: Profile): Promise<PoiVerification> {
+  async verifyPoiGps(idSesi: string, idPoi: string, location: DeviceLocation, language: Language, profile: Profile): Promise<PoiVerification> {
     await delay();
     this.findPoi(idPoi);
     const checkpoint = museumPoiById(idPoi);
@@ -131,15 +131,15 @@ export class MockStoriesSource implements StoriesSource {
     const decision = stepGeofence([], locationSchema.parse(location), [{ ...checkpoint, id: idPoi }]);
     if (decision.weak) throw new GeaServiceError(403, "GPS_ACCURACY_EXCEEDS_20_METERS", "Lokasi belum cukup akurat.");
     if (!decision.inside.includes(idPoi)) throw new GeaServiceError(403, "OUTSIDE_POI_AREA", "Kamu belum berada di dekat koleksi ini.");
-    return this.storeVerification(idSesi, idPoi, profile);
+    return this.storeVerification(idSesi, idPoi, language, profile);
   }
 
-  private async storeVerification(idSesi: string, idPoi: string, profile: Profile): Promise<PoiVerification> {
+  private async storeVerification(idSesi: string, idPoi: string, language: Language, profile: Profile): Promise<PoiVerification> {
     const state: MockState = await this.load();
     const expiresAt: number = Date.now() + VERIFICATION_MINUTES * 60_000;
     state.verifiedUntil[`${idSesi}:${idPoi}`] = expiresAt;
     await this.save();
-    return poiVerificationSchema.parse({ idPoi, verified: true, expiresAt: new Date(expiresAt).toISOString(), poi: mockPoiForProfile(this.findPoi(idPoi), profile) });
+    return poiVerificationSchema.parse({ idPoi, verified: true, expiresAt: new Date(expiresAt).toISOString(), poi: mockPoiForProfile(this.findPoi(idPoi), profile, language) });
   }
 
   /** Penilaian mock mengikuti kunci, variasi jawaban, poin dan batas percobaan sheet. */

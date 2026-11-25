@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, View } from "react-native";
 import { colors } from "../../../design/tokens";
 import { GeaText } from "../../../design/typography";
 import { StoryButton } from "./parts";
+import { useLanguage } from "../../preferences/LanguageSettings";
 
 function clock(seconds: number): string {
   const safe: number = Math.max(0, Math.floor(seconds));
@@ -17,6 +18,7 @@ function clock(seconds: number): string {
 export function StoryAudio(
   { source, durationSeconds }: { readonly source: number | { readonly uri: string }; readonly durationSeconds: number },
 ): ReactElement {
+  const { t } = useLanguage();
   const player = useAudioPlayer(source);
   const status = useAudioPlayerStatus(player);
   const [error, setError] = useState<string | null>(null);
@@ -43,7 +45,7 @@ export function StoryAudio(
       if (action === "restart" || atEnd) await player.seekTo(0);
       player.play();
     } catch (cause: unknown) {
-      setError("Narasi belum bisa diputar. Coba lagi.");
+      setError(t("Narasi belum bisa diputar. Coba lagi.", "Could not play the narration. Try again."));
       console.error("gea_audio_failed", {
         source,
         error: cause instanceof Error ? cause.message : String(cause),
@@ -66,18 +68,18 @@ export function StoryAudio(
       </View>
       <View style={styles.controls}>
         <StoryButton
-          label={!status.isLoaded ? "Memuat..." : status.playing ? "Jeda" : "Putar"}
+          label={!status.isLoaded ? t("Memuat…", "Loading…") : status.playing ? t("Jeda", "Pause") : t("Putar", "Play")}
           disabled={!status.isLoaded}
           onPress={(): void => void run("toggle")}
         />
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Ulang narasi dari awal"
+          accessibilityLabel={t("Ulang narasi dari awal", "Restart narration")}
           disabled={!status.isLoaded}
           hitSlop={10}
           onPress={(): void => void run("restart")}
         >
-          <GeaText variant="body16" color={colors.secondaryYellow[100]} style={styles.link}>Ulang</GeaText>
+          <GeaText variant="body16" color={colors.secondaryYellow[100]} style={styles.link}>{t("Ulang", "Restart")}</GeaText>
         </Pressable>
       </View>
       {error !== null && (

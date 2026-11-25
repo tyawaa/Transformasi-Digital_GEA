@@ -18,6 +18,7 @@ export type ZoneInfo = {
   readonly wing: Wing;
   readonly name: string;
   readonly intro: string;
+  readonly en: { readonly name: string; readonly intro: string };
   /** Titik zona dari keputusan A7 (QR jalur utama, GPS bonus). */
   readonly latitude: number;
   readonly longitude: number;
@@ -31,6 +32,10 @@ export const zones: readonly ZoneInfo[] = [
     name: "Sayap Kiri · Geologi Indonesia",
     intro:
       "Selamat datang di sayap kiri! Di sini kamu akan mengenal bagaimana Bumi terbentuk, kenapa Indonesia punya banyak gunung api, dan batuan apa saja yang ada di bawah kakimu.",
+    en: {
+      name: "Left Wing · Geology of Indonesia",
+      intro: "Welcome to the left wing! Discover how Earth formed, why Indonesia has so many volcanoes, and what rocks lie beneath your feet.",
+    },
     latitude: -6.90078,
     longitude: 107.62147,
     radiusMeters: 10,
@@ -41,13 +46,20 @@ export const zones: readonly ZoneInfo[] = [
     name: "Sayap Kanan · Sejarah Kehidupan",
     intro:
       "Selamat datang di sayap kanan! Ikuti perjalanan kehidupan di Bumi, dari makhluk bersel satu, zaman dinosaurus, sampai manusia purba yang pernah hidup di Jawa.",
+    en: {
+      name: "Right Wing · History of Life",
+      intro: "Welcome to the right wing! Follow the story of life on Earth, from single-celled organisms through the age of dinosaurs to early humans who lived on Java.",
+    },
     latitude: -6.90078,
     longitude: 107.62192,
     radiusMeters: 10,
   },
 ];
 
+type EnglishStory = Pick<StoryContent, "judul" | "cerita" | "fakta"> & { readonly status: "Draft" };
+
 export type StoryContent = {
+  readonly en?: Readonly<Record<"umum" | "anak", EnglishStory>>;
   readonly cerita: string;
   // Sesuai sheet ada dua kategori: `cerita` = Umum (profil "dewasa", 13 tahun ke atas) dan
   // `ceritaAnak` = Anak-anak (Konten_Cerita_Anak). Tanpa teks anak, anak melihat versi Umum.
@@ -174,6 +186,20 @@ function approvedStoryContent(
 // Konten P15–P20 belum diisi, jadi tampil "segera hadir" di peta.
 const contents: { readonly [n: number]: StoryContent } = {
   1: {
+    en: {
+      "umum": {
+        "judul": "Traces of Ancient Fauna in Indonesia",
+        "cerita": "Millions of years ago, Indonesia was home to many unique prehistoric animals. There was Megalochelys, a giant tortoise. There was also Elephas celebensis, a tiny ancient elephant from Sulawesi. Together with Elephas maximus and Sinomastodon bumiayuensis, these fossils are witnesses to the rich variety of animal life in the past. Take a closer look, and spot the differences!",
+        "fakta": "Elephas celebensis is known as one of the small-bodied ancient elephants that once lived in Sulawesi.",
+        "status": "Draft"
+      },
+      "anak": {
+        "judul": "Meet Indonesia's Ancient Animals!",
+        "cerita": "Long, long ago, Indonesia was home to many amazing ancient animals. There was Megalochelys, a giant tortoise. There was also Elephas celebensis, a tiny ancient elephant from Sulawesi. These fossils show us which animals lived here in the past. Take a look, and spot the differences!",
+        "fakta": "Did you know? Elephas celebensis was a small ancient elephant that lived in Sulawesi.",
+        "status": "Draft"
+      }
+    },
     ...approvedStoryContent("POI-01"),
     // Cerita umum: approved-stories.json. Sisanya dari workbook Template_..._Anak (15 Nov 2026):
     // Konten_Cerita_Anak, Quest, Quest_Anak,
@@ -218,6 +244,20 @@ const contents: { readonly [n: number]: StoryContent } = {
     },
   },
   2: {
+    en: {
+      "umum": {
+        "judul": "Secrets of Indonesia's Karst World",
+        "cerita": "Have you ever seen a cave with stone decorations hanging from its ceiling? That is one of the wonders of karst regions, such as Gunung Sewu. Karst forms when limestone slowly dissolves over a very long time. Take a look at the stalactites, limestone sinter, ginger stones, different kinds of rock, and coral reefs, and discover the beauty of how nature is shaped!",
+        "fakta": "Stalactites form from calcite minerals that slowly build up from water dripping from a cave ceiling.",
+        "status": "Draft"
+      },
+      "anak": {
+        "judul": "Secrets of Caves and Karst",
+        "cerita": "Have you ever seen a cave with rocks hanging from the roof? How cool! Caves like that are found in karst areas, such as Gunung Sewu. Karst forms when limestone slowly dissolves over a very long time. Come and look at the cave rocks and the corals here!",
+        "fakta": "Did you know? The rock hanging from a cave roof is called a stalactite, and it forms from dripping water that slowly leaves minerals behind.",
+        "status": "Draft"
+      }
+    },
     ...approvedStoryContent("POI-02"),
     // Cerita umum: approved-stories.json. Sisanya dari workbook Template_..._Anak (15 Nov 2026):
     // Konten_Cerita_Anak, Quest, Quest_Anak,
@@ -237,6 +277,20 @@ const contents: { readonly [n: number]: StoryContent } = {
     penjelasan: "Stalaktit terbentuk dari endapan mineral kalsit yang menumpuk perlahan dari tetesan air di langit-langit gua.",
   },
   3: {
+    en: {
+      "umum": {
+        "judul": "Indonesia on the Ring of Fire",
+        "cerita": "Indonesia sits along the meeting zone of tectonic plates known as the Pacific Ring of Fire. This is what formed the chain of volcanoes stretching from Sumatra to Maluku. Take a look at the map in front of you, and find the volcano closest to Bandung!",
+        "fakta": "The Pacific Ring of Fire stretches along the edges of the Pacific Ocean, and Indonesia is part of it.",
+        "status": "Draft"
+      },
+      "anak": {
+        "judul": "Indonesia on the Ring of Fire",
+        "cerita": "Indonesia is on the Pacific Ring of Fire. There, the Earth's plates push against each other. That meeting makes volcanoes, from Sumatra all the way to Maluku. Look at the map in front of you, and find the volcano closest to Bandung!",
+        "fakta": "Did you know? The Pacific Ring of Fire stretches along the edges of the Pacific Ocean, and Indonesia is part of it.",
+        "status": "Draft"
+      }
+    },
     // Sumber: workbook Template_..._Anak (15 Nov 2026): Konten_Cerita, Konten_Cerita_Anak, Quest, Quest_Anak,
     // POI_Preference. Status: Draft.
     fotoUtama: 4,
@@ -280,6 +334,20 @@ const contents: { readonly [n: number]: StoryContent } = {
     },
   },
   4: {
+    en: {
+      "umum": {
+        "judul": "The Story of Indonesia's Landscape",
+        "cerita": "Did you know that Indonesia's landscape took millions of years to form? The movement and pressure of the Earth's plates create many rock structures, such as folds and faults. Take a look at the gneiss, biotite schist, and examples of geological structures, and see how the Earth keeps changing!",
+        "fakta": "Folds form when layers of rock are pressed until they bend without breaking.",
+        "status": "Draft"
+      },
+      "anak": {
+        "judul": "An Ever-Changing Earth",
+        "cerita": "Indonesia's landscape took millions of years to form. The Earth's plates move and push against each other. That pushing can bend rocks, or break them. Come and look at gneiss, biotite schist, and examples of folds and faults. See how our Earth keeps changing!",
+        "fakta": "Did you know? A fold forms when layers of rock are pushed until they bend, without breaking.",
+        "status": "Draft"
+      }
+    },
     ...approvedStoryContent("POI-04"),
     // Cerita umum: approved-stories.json. Sisanya dari workbook Template_..._Anak (15 Nov 2026):
     // Konten_Cerita_Anak, Quest, Quest_Anak,
@@ -310,6 +378,20 @@ const contents: { readonly [n: number]: StoryContent } = {
     },
   },
   5: {
+    en: {
+      "umum": {
+        "judul": "The Journey of Indonesia's Islands",
+        "cerita": "Have you ever wondered how Indonesia's thousands of islands were formed? Through this animation, you can follow the journey. The islands were shaped by the movement of tectonic plates, volcanic activity, and geological processes over millions of years. Watch how land that was once separated eventually became the Indonesia we know today!",
+        "fakta": "The shape of Indonesia's archipelago keeps changing because of tectonic activity, even today.",
+        "status": "Draft"
+      },
+      "anak": {
+        "judul": "The Birth of Indonesia's Islands",
+        "cerita": "How did Indonesia's thousands of islands appear? Let's watch the animation! The islands formed because the Earth's plates moved, volcanoes erupted, and nature kept working for millions of years. See how land that was once far apart became the Indonesia we know today!",
+        "fakta": "Did you know? The shape of Indonesia's islands is still changing today.",
+        "status": "Draft"
+      }
+    },
     ...approvedStoryContent("POI-05"),
     // Cerita umum: approved-stories.json. Sisanya dari workbook Template_..._Anak (15 Nov 2026):
     // Konten_Cerita_Anak, Quest, Quest_Anak,
@@ -340,6 +422,20 @@ const contents: { readonly [n: number]: StoryContent } = {
     },
   },
   6: {
+    en: {
+      "umum": {
+        "judul": "How Was the Face of the Earth Formed?",
+        "cerita": "The shape of the Earth's surface that we see today was formed by natural processes over thousands to millions of years. Three processes are at work. Weathering breaks rocks apart, erosion moves the material, and deposition piles it up in a new place. Take a look at these examples of landforms, and find out how these three processes reshape Indonesia's landscape!",
+        "fakta": "Eroded material can be carried by water, wind, or ice before it finally settles somewhere else.",
+        "status": "Draft"
+      },
+      "anak": {
+        "judul": "Three Shapers of the Earth",
+        "cerita": "The face of the Earth can change! Three things are at work. Weathering breaks rocks into pieces. Erosion carries those pieces away. Deposition piles them up in a new place. Come and look at the landforms here!",
+        "fakta": "Did you know? Broken rock can be carried by water, wind, or ice before it finally settles down.",
+        "status": "Draft"
+      }
+    },
     ...approvedStoryContent("POI-06"),
     // Cerita umum: approved-stories.json. Sisanya dari workbook Template_..._Anak (15 Nov 2026):
     // Konten_Cerita_Anak, Quest, Quest_Anak,
@@ -359,6 +455,20 @@ const contents: { readonly [n: number]: StoryContent } = {
     penjelasan: "Pelapukan menghancurkan batuan, erosi memindahkan material hasil pelapukan lewat air, angin, atau es, dan pengendapan menumpuknya di tempat baru.",
   },
   7: {
+    en: {
+      "umum": {
+        "judul": "Discovering Earth's Treasures: Rocks and Minerals",
+        "cerita": "The Earth holds a wide variety of minerals and rocks, each with its own color, shape, and character. There is lapis lazuli, famous for its deep blue color, and geodes, which hide crystals inside. Take a look at the mineral collection, and learn the three main groups of rock: igneous, sedimentary, and metamorphic!",
+        "fakta": "A geode can look like an ordinary rock from the outside, but its inside may be filled with beautiful crystals.",
+        "status": "Draft"
+      },
+      "anak": {
+        "judul": "Earth's Treasures: Rocks and Minerals",
+        "cerita": "The Earth holds lots of colorful rocks and minerals. There is lapis lazuli, a deep blue stone. There are also geodes, rocks that are full of crystals inside. Rocks come in three groups: igneous, sedimentary, and metamorphic. Come and look at the collection!",
+        "fakta": "Did you know? A geode looks like an ordinary rock from the outside, but inside it can be full of beautiful crystals.",
+        "status": "Draft"
+      }
+    },
     ...approvedStoryContent("POI-07"),
     // Cerita umum: approved-stories.json. Sisanya dari workbook Template_..._Anak (15 Nov 2026):
     // Konten_Cerita_Anak, Quest, Quest_Anak,
@@ -399,6 +509,20 @@ const contents: { readonly [n: number]: StoryContent } = {
     },
   },
   8: {
+    en: {
+      "umum": {
+        "judul": "The Hidden Power Inside the Earth",
+        "cerita": "The ground we stand on is always moving! Tectonic force comes from the movement of the Earth's plates, and it can build mountains, folds, and faults. Take a look at the mica schist, peridotite, and basalt lava, and learn more about the processes that shape our planet!",
+        "fakta": "Peridotite is a rock that makes up much of the Earth's upper mantle.",
+        "status": "Draft"
+      },
+      "anak": {
+        "judul": "The Earth That Never Rests",
+        "cerita": "The ground we stand on is moving, very slowly! The movement of the Earth's plates can build mountains, folds, and faults. This power is called tectonic force. Come and look at the mica schist, peridotite, and basalt lava here!",
+        "fakta": "Did you know? Peridotite is a rock that makes up much of the Earth's upper mantle.",
+        "status": "Draft"
+      }
+    },
     ...approvedStoryContent("POI-08"),
     // Cerita umum: approved-stories.json. Sisanya dari workbook Template_..._Anak (15 Nov 2026):
     // Konten_Cerita_Anak, Quest, Quest_Anak,
@@ -429,6 +553,20 @@ const contents: { readonly [n: number]: StoryContent } = {
     },
   },
   9: {
+    en: {
+      "umum": {
+        "judul": "From the Big Bang to the Birth of Earth",
+        "cerita": "Have you ever wondered how the universe and planet Earth were formed? According to the Big Bang theory, the universe began in an extremely hot and dense state, and has been expanding ever since. Over time, Earth took shape and changed until it became the planet we know today. Follow Earth's long journey through the collection and illustrations in front of you!",
+        "fakta": "The Earth has four main layers: the crust, the mantle, the outer core, and the inner core.",
+        "status": "Draft"
+      },
+      "anak": {
+        "judul": "From the Big Bang to Planet Earth",
+        "cerita": "How were the universe and planet Earth formed? According to the Big Bang theory, the universe was once extremely hot and dense, and it has been growing ever since. Over time, Earth took shape and became the planet we live on. Follow Earth's long journey through the collection and pictures in front of you!",
+        "fakta": "Did you know? The Earth has four layers: the crust, the mantle, the outer core, and the inner core.",
+        "status": "Draft"
+      }
+    },
     ...approvedStoryContent("POI-09"),
     // Cerita umum: approved-stories.json. Sisanya dari workbook Template_..._Anak (15 Nov 2026):
     // Konten_Cerita_Anak, Quest, Quest_Anak,
@@ -448,6 +586,20 @@ const contents: { readonly [n: number]: StoryContent } = {
     penjelasan: "Bumi memiliki empat lapisan utama, yaitu kerak, mantel, inti luar, dan inti dalam.",
   },
   10: {
+    en: {
+      "umum": {
+        "judul": "The Variety of Rocks from the Archipelago",
+        "cerita": "Indonesia has many kinds of rock, formed through different geological processes. There is black limestone, biotite schist, chert, peridotite, and granite. Every rock holds a story about how our planet was formed. Take a look at the colors and textures of the collection, and spot the differences!",
+        "fakta": "Granite forms from magma that cools slowly beneath the Earth's surface, so its crystals are clearly visible.",
+        "status": "Draft"
+      },
+      "anak": {
+        "judul": "Rocks from the Archipelago",
+        "cerita": "Indonesia has many kinds of rocks, and each one was made in a different way. There is black limestone, biotite schist, chert, peridotite, and granite. Look closely at their colors and textures, and spot the differences!",
+        "fakta": "Did you know? Granite forms when magma cools slowly underground, so its crystals are easy to see.",
+        "status": "Draft"
+      }
+    },
     ...approvedStoryContent("POI-10"),
     // Cerita umum: approved-stories.json. Sisanya dari workbook Template_..._Anak (15 Nov 2026):
     // Konten_Cerita_Anak, Quest, Quest_Anak,
@@ -488,6 +640,20 @@ const contents: { readonly [n: number]: StoryContent } = {
     },
   },
   11: {
+    en: {
+      "umum": {
+        "judul": "Indonesia's Natural Wealth",
+        "cerita": "Indonesia holds an abundance of geological riches. There are metallic minerals, non-metallic minerals, and gemstones, such as amethyst from Solok in West Sumatra. There are also coal, oil and natural gas, geothermal energy, and water resources, all used in our everyday lives. Discover these natural resources, and how people make use of them!",
+        "fakta": "Indonesia has great geothermal potential because it lies in an area of high volcanic activity.",
+        "status": "Draft"
+      },
+      "anak": {
+        "judul": "Indonesia's Treasures",
+        "cerita": "Indonesia has so much natural wealth! There are metals, and gemstones such as amethyst from Solok in West Sumatra. There are also coal, oil and gas, geothermal energy, and water. People use all of these every day. Let's get to know our natural treasures!",
+        "fakta": "Did you know? Indonesia has great geothermal energy, because there are so many volcanoes here.",
+        "status": "Draft"
+      }
+    },
     ...approvedStoryContent("POI-11"),
     // Cerita umum: approved-stories.json. Sisanya dari workbook Template_..._Anak (15 Nov 2026):
     // Konten_Cerita_Anak, Quest, Quest_Anak,

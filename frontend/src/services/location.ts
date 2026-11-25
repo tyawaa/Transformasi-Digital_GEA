@@ -114,13 +114,13 @@ export async function openLocationServicesSettings(): Promise<void> {
 
 /** Hanya izin foreground; lokasi tidak dibaca sampai pengunjung menekan tombol. */
 export async function readVisitorLocation(
-  onProgress: (message: string) => void,
+  onProgress: (message: string, english: string) => void,
 ): Promise<LocationReading> {
   if (Platform.OS === "web") {
-    onProgress("Mencari posisi lokasi browser. Izinkan lokasi jika diminta...");
+    onProgress("Mencari posisi lokasi browser. Izinkan lokasi jika diminta...", "Finding your location in the browser. Allow location access if prompted…");
     return readBrowserLocation();
   }
-  onProgress("Memeriksa izin lokasi...");
+  onProgress("Memeriksa izin lokasi...", "Checking location permission…");
   const current: Location.LocationPermissionResponse = await Location
     .getForegroundPermissionsAsync();
   if (!current.granted && !current.canAskAgain) return { status: "permission_blocked" };
@@ -130,9 +130,9 @@ export async function readVisitorLocation(
   if (!permission.granted) {
     return { status: permission.canAskAgain ? "permission_denied" : "permission_blocked" };
   }
-  onProgress("Memeriksa GPS perangkat...");
+  onProgress("Memeriksa GPS perangkat...", "Checking your device’s GPS…");
   const enabled: boolean = await enableLocationServices();
   if (!enabled) return { status: "disabled" };
-  onProgress("Mencari posisi GPS...");
+  onProgress("Mencari posisi GPS...", "Finding your GPS location…");
   return readCurrentPosition();
 }

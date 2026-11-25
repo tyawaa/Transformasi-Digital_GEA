@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { museumPois } from "../src/data/museum.ts";
-import { ENTRANCE, PLAN_PINS, locateOnPlan, routeLegs, walkingPath } from "../src/features/map/navigation.ts";
+import {
+  ENTRANCE, PLAN_PINS, estimateMetersPerUnit, locateOnPlan, pathLength, reachedDestination,
+  routeLegs, updateActiveLeg, walkingMinutes, walkingPath,
+} from "../src/features/map/navigation.ts";
 
 const anchors = museumPois.map((poi) => ({ code: poi.code, latitude: poi.latitude, longitude: poi.longitude }));
 const pin = (code) => {
@@ -49,4 +52,28 @@ test("semua pasangan POI terhubung dan titik yang sudah dicapai tidak membuat pu
       assert.ok(path.every(({ x, y }) => Number.isFinite(x) && Number.isFinite(y)));
     }
   }
+});
+
+test("posisi di rute memotong jarak tersisa dan deviasi di atas 10 meter menghitung ulang", () => {
+  const leg = { code: "P02", points: [{ x: 1017, y: 490 }, { x: 1017, y: 188 }, pin("P02")] };
+  const metersPerUnit = 0.1;
+  const onRoute = updateActiveLeg(leg, { x: 1017, y: 300 }, metersPerUnit);
+  assert.equal(onRoute.rerouted, false);
+  assert.ok(pathLength(onRoute.leg.points) < pathLength(leg.points));
+  assert.equal(updateActiveLeg(leg, { x: 917, y: 300 }, metersPerUnit).rerouted, false);
+  const offRoute = { x: 1120, y: 400 };
+  const reroute = updateActiveLeg(leg, offRoute, metersPerUnit);
+  assert.equal(reroute.rerouted, true);
+  assert.deepEqual(reroute.leg.points[0], offRoute);
+  assert.deepEqual(reroute.leg.points.at(-1), pin("P02"));
+  assert.ok(estimateMetersPerUnit(anchors) > 0);
+  assert.equal(walkingMinutes(73), 2);
+});
+
+test("pemberitahuan tiba hanya untuk tujuan aktif dengan GPS yang cukup akurat", () => {
+  const target = { ...anchors[1], radiusMeters: 15 };
+  assert.equal(reachedDestination({ ...target, accuracyMeters: 5 }, target), true);
+  assert.equal(reachedDestination({ ...target, accuracyMeters: 15 }, target), false);
+  assert.equal(reachedDestination({ ...anchors.at(-1), accuracyMeters: 5 }, target), false);
+  assert.equal(reachedDestination(null, target), false);
 });

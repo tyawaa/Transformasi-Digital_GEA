@@ -3,6 +3,7 @@
 // Foto editorial memakai URL Storage dari manifest; audio mock masih file dummy.
 // Bentuk setiap objek mengikuti respons API backend (lihat backend/README.md).
 import {
+  type Language,
   type PoiDetail,
   type PoiSummary,
   type Profile,
@@ -86,14 +87,22 @@ function firstQuest(poiId: string): Quest {
  * Teks cerita anak (ceritaAnak, dari Konten_Cerita_Anak). Seperti backend, bila belum ada teks anak
  * dipakai versi Umum (dewasa).
  */
-export function mockPoiForProfile(detail: PoiDetail, profile: Profile): PoiDetail {
-  const quests: readonly Quest[] = questsForPoi(detail.id_poi, profile);
+export function mockPoiForProfile(detail: PoiDetail, profile: Profile, language: Language = "id"): PoiDetail {
+  const quests: readonly Quest[] = questsForPoi(detail.id_poi, profile, language);
   const profiled: PoiDetail = { ...detail, profile, quests: [...quests] };
-  if (profile === "dewasa") return profiled;
   const content = pois.find((poi): boolean => poiIdFor(poi.number) === detail.id_poi)?.content;
+  const [description, audio] = detail.cards;
+  const english = language === "en" ? content?.en?.[profile === "anak" ? "anak" : "umum"] : undefined;
+  if (english !== undefined) {
+    return {
+      ...profiled,
+      language,
+      quest: quests[0] ?? detail.quest,
+      cards: [{ ...description, text: english.cerita, title: english.judul, fact: english.fakta, highlights: null }, null],
+    };
+  }
   const text: string | undefined = profile === "anak" ? content?.ceritaAnak : undefined;
   if (text === undefined) return profiled;
-  const [description, audio] = detail.cards;
   return { ...profiled, cards: [{ ...description, text }, audio] };
 }
 

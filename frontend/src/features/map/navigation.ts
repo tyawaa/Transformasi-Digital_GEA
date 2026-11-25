@@ -64,7 +64,9 @@ function nodeById(id: string): WalkNode {
 function project(point: PlanPoint, a: PlanPoint, b: PlanPoint): PlanPoint {
   const dx: number = b.x - a.x;
   const dy: number = b.y - a.y;
-  const ratio: number = Math.max(0, Math.min(1, ((point.x - a.x) * dx + (point.y - a.y) * dy) / (dx * dx + dy * dy)));
+  const squaredLength = dx * dx + dy * dy;
+  if (squaredLength === 0) return a;
+  const ratio: number = Math.max(0, Math.min(1, ((point.x - a.x) * dx + (point.y - a.y) * dy) / squaredLength));
   return { x: a.x + ratio * dx, y: a.y + ratio * dy };
 }
 
@@ -119,11 +121,62 @@ export function walkingPath(start: PlanPoint, end: PlanPoint): readonly PlanPoin
   return shortest.filter((point: PlanPoint, index: number): boolean => index === 0 || length(point, shortest[index - 1] as PlanPoint) > 0.1);
 }
 
-function pathLength(points: readonly PlanPoint[]): number {
+export function pathLength(points: readonly PlanPoint[]): number {
   return points.reduce((total: number, point: PlanPoint, index: number): number => {
     const previous: PlanPoint | undefined = points[index - 1];
     return total + (previous === undefined ? 0 : length(previous, point));
   }, 0);
+}
+
+export const OFF_ROUTE_METERS = 10;
+export const ARRIVAL_RADIUS_METERS = 10;
+const WALKING_METERS_PER_SECOND = 1.2;
+
+/** Skala perkiraan dari pasangan titik survei dalam sayap yang sama. */
+export function estimateMetersPerUnit(anchors: readonly LocationAnchor[]): number | null {
+  const points = anchors.flatMap((anchor) => {
+    const pin = PLAN_PINS.find((item) => item.code === anchor.code);
+    return pin === undefined ? [] : [{ anchor, pin }];
+  });
+  const ratios = points.flatMap(({ anchor, pin }, index) => points.slice(index + 1).flatMap((other) => {
+    if ((Number(pin.code.slice(1)) <= 11) !== (Number(other.pin.code.slice(1)) <= 11)) return [];
+    const units = length(pin, other.pin);
+    const meters = distanceMeters(anchor, other.anchor);
+    return units >= 100 && meters >= 3 && Number.isFinite(meters) ? [meters / units] : [];
+  })).sort((a, b) => a - b);
+  return ratios[Math.floor(ratios.length / 2)] ?? null;
+}
+
+export function walkingMinutes(meters: number): number {
+  return Math.ceil(meters / WALKING_METERS_PER_SECOND / 60);
+}
+
+export function reachedDestination(fix: Fix | null, target: LocationAnchor & { readonly radiusMeters: number }): boolean {
+  const radius = Math.min(ARRIVAL_RADIUS_METERS, target.radiusMeters);
+  return fix !== null && Number.isFinite(fix.accuracyMeters) && fix.accuracyMeters <= radius &&
+    distanceMeters(fix, target) <= radius;
+}
+
+/** Potong segmen yang sudah dilewati, atau buat jalur baru bila posisi menyimpang lebih dari 10 m. */
+export function updateActiveLeg(leg: RouteLeg, position: PlanPoint, metersPerUnit: number): { readonly leg: RouteLeg; readonly rerouted: boolean } {
+  const end = leg.points.at(-1);
+  if (end === undefined) return { leg, rerouted: false };
+  let nearest = end;
+  let deviation = length(position, end);
+  let remainingIndex = leg.points.length;
+  leg.points.slice(1).forEach((point, index) => {
+    const snapped = project(position, leg.points[index] as PlanPoint, point);
+    const distance = length(position, snapped);
+    if (distance < deviation) {
+      nearest = snapped;
+      deviation = distance;
+      remainingIndex = index + 1;
+    }
+  });
+  if (deviation * metersPerUnit > OFF_ROUTE_METERS) {
+    return { leg: { ...leg, points: walkingPath(position, end) }, rerouted: true };
+  }
+  return { leg: { ...leg, points: [nearest, ...leg.points.slice(remainingIndex)] }, rerouted: false };
 }
 
 /** Urutan mengikuti rekomendasi; POI yang selesai disaring oleh pemanggil. */
