@@ -146,8 +146,9 @@ export function useVisitProgress(source: StoriesSource): VisitProgressState {
 
   async function replaceVisit(next: Visit): Promise<void> {
     if (visit === null || next.id_sesi !== visit.id_sesi) throw new Error("Sesi personalisasi tidak cocok dengan kunjungan aktif.");
-    if (next.start_time === undefined) throw new Error("Server tidak mengirim waktu mulai kunjungan.");
-    const updated: Visit = { ...next, startedAt: Date.parse(next.start_time) };
+    const startedAt: number | undefined = next.start_time === undefined ? next.startedAt : Date.parse(next.start_time);
+    if (startedAt === undefined || !Number.isFinite(startedAt)) throw new Error("Sesi tidak mengirim waktu mulai kunjungan yang valid.");
+    const updated: Visit = { ...next, startedAt };
     await AsyncStorage.setItem(visitKey(source.kind), JSON.stringify(updated));
     setVisit(updated);
   }

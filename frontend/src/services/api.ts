@@ -25,6 +25,8 @@ import {
   visitProgressSchema,
   type Visit,
   visitSchema,
+  visitStatusSchema,
+  type VisitStatus,
 } from "../domain/contracts";
 
 type JsonObject = { readonly [key: string]: unknown };
@@ -142,6 +144,18 @@ export class GeaApi {
     private readonly projectUrl: string,
     private readonly authClient: SupabaseClient,
   ) {}
+
+  async visitStatus(idSesi: string): Promise<VisitStatus> {
+    return visitStatusSchema.parse(await this.get(`/sessions/${idSesi}/status`));
+  }
+
+  async extendVisit(idSesi: string, requestId: string, minutes: number): Promise<Visit> {
+    return visitSchema.parse(await this.post(`/sessions/${idSesi}/extend`, { requestId, minutes }));
+  }
+
+  async finishVisit(idSesi: string): Promise<Visit> {
+    return visitSchema.parse(await this.post(`/sessions/${idSesi}/finish`, {}));
+  }
 
   async health(): Promise<BackendHealth> {
     return healthSchema.parse(
@@ -337,6 +351,11 @@ export class GeaApi {
 
 export function readableError(error: unknown): string {
   if (error instanceof GeaServiceError) {
+    if (error.code === "MUSEUM_CLOSED") return "Museum sudah tutup. Kunjunganmu telah selesai; buka ringkasan kunjungan.";
+    if (error.code === "SESSION_FINISHED") return "Kunjungan ini sudah selesai dan tidak dapat dilanjutkan kembali.";
+    if (error.code === "VISIT_EXTENSION_TOO_LATE") return "Waktu tambahan sudah tidak cukup sebelum museum tutup. Kembali ke peta untuk bersiap keluar.";
+    if (error.code === "VISIT_PLAN_REQUIRED") return "Lengkapi rencana kunjungan sebelum menambah waktu.";
+    if (error.code === "MUSEUM_SCHEDULE_MISSING") return "Jadwal museum belum tersedia. Hubungi petugas museum.";
     if (error.status === 404 || error.code === "SERVICE_UNAVAILABLE") {
       return "Layanan kunjungan belum tersedia. Coba lagi setelah layanan diaktifkan.";
     }

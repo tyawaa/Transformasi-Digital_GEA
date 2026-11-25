@@ -8,7 +8,7 @@ type VisitClock = {
 };
 
 /** Pembaruan waktu bersama; pindah layar tidak mengubah waktu mulai kunjungan yang tersimpan. */
-export function useVisitClock(startedAtMs: number | null, endsAtMs: number | null): VisitClock {
+export function useVisitClock(startedAtMs: number | null, endsAtMs: number | null, serverOffsetMs: number): VisitClock {
   const [nowMs, setNowMs] = useState<number>(Date.now);
   useEffect((): (() => void) | undefined => {
     if (startedAtMs === null) return undefined;
@@ -22,9 +22,9 @@ export function useVisitClock(startedAtMs: number | null, endsAtMs: number | nul
     };
   }, [startedAtMs]);
   return {
-    nowMs,
+    nowMs: nowMs + serverOffsetMs,
     remainingMs: startedAtMs === null || endsAtMs === null
       ? null
-      : remainingVisitMs(endsAtMs, nowMs),
+      : remainingVisitMs(endsAtMs, nowMs + serverOffsetMs),
   };
 }

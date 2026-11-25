@@ -44,11 +44,14 @@ export function useEyesFree(
     void stopBackgroundGuidance();
   }, []);
 
-  useEffect((): void => {
+  useEffect((): (() => void) => {
+    let active: boolean = true;
+    if (visitId === null) { turnOff(); return turnOff; }
     readExploreMode().then((mode): void => {
-      if (mode === "tanpa-layar") void turnOn();
+      if (active && mode === "tanpa-layar") void turnOn();
     }, (): void => undefined);
-  }, [turnOn]);
+    return (): void => { active = false; turnOff(); };
+  }, [visitId, turnOn, turnOff]);
 
   useEffect((): void => resetEyesFreeVisit(), [visitId]);
   useEffect((): void => setEyesFreeStops(stops), [stops]);
