@@ -262,7 +262,8 @@ function Home(): ReactElement {
   const localBadges: readonly BadgeId[] = earnedBadges(refs, progress, badgeContext);
   // Kuis API memakai total server; hasil model APK disimpan dan dijumlahkan di perangkat.
   const badges: readonly BadgeId[] = storiesSource.kind === "api"
-    ? [...new Set([...visitState.rewards.badges, ...localBadges])]
+    ? [...new Set([...visitState.rewards.badges, ...localBadges])].filter((id: BadgeId): boolean =>
+      availableBadges(badgeContext).some((badge: BadgeDef): boolean => badge.id === id))
     : localBadges;
   // Poin aktivitas (check-in, cerita, percobaan pertama, POI tuntas) dihitung di aplikasi.
   const points: number = localActivityPoints(progress) + (storiesSource.kind === "api"

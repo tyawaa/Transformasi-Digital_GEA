@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { localizedQuestsForPoi, normalizeLocalQuestAnswer, questCatalog, questsForPoi } from "../src/data/quests.ts";
-import { earnedBadges } from "../src/domain/points.ts";
+import { availableBadges, badgeProgress, earnedBadges } from "../src/domain/points.ts";
+import { questKind, questPlan } from "../src/features/stories/questPlan.ts";
 import { devicePhotoPoints, emptyProgress, mergeServerProgress, recordQuestAnswer, restoreServerVisit } from "../src/features/stories/progress.ts";
 import { withDevicePhotoQuests } from "../src/services/devicePhotoPlan.ts";
 
@@ -69,8 +70,48 @@ test("profil anak hanya mendapat quest foto versi anak (Quest_Anak)", () => {
   assert.deepEqual(childPlan.map((quest) => quest.type), ["foto"]);
   assert.equal(childPlan[0].title, "Cari Karang yang Bulat Seperti Kepala!");
   assert.notEqual(childPlan[0].pertanyaan, questsForPoi(poiId, "dewasa")[0].pertanyaan);
+  assert.equal(childPlan[0].points, 15);
+  assert.equal(childPlan[0].maxAttempts, 4);
+  assert.equal(childPlan[0].requiredForBadge, false);
   // POI tanpa quest foto (mis. POI-04 benar/salah) tidak punya quest untuk anak.
   assert.equal(questsForPoi("30000000-0000-4000-8000-000000000004", "anak").every((quest) => quest.isDisabled), true);
+});
+
+test("Fotografer Cilik hanya memerlukan empat POI acuan, termasuk POI-10", () => {
+  const refs = [...new Set(questCatalog.map((quest) => quest.idPoi))].map((id) => ({
+    id, code: `P${id.slice(-2)}`, wing: "left", quest: questKind(id, "anak"), quests: questPlan(id, "anak"),
+  }));
+  const required = refs.filter((poi) => poi.quests.some((quest) => quest.requiredForBadge));
+  assert.deepEqual(required.map((poi) => poi.code), ["P01", "P03", "P07", "P10"]);
+  const states = Object.fromEntries(required.map((poi) => [poi.id,
+    recordQuestAnswer({ ...emptyProgress, closed: true }, {
+      ...response, idPoi: poi.id, idQuest: poi.quests[0].idQuest, pointsAwarded: poi.quests[0].points,
+    }, poi.quests),
+  ]));
+  assert.deepEqual(badgeProgress(refs, states, { kid: true })["BD-14"], { current: 4, target: 4 });
+  assert.ok(earnedBadges(refs, states, { kid: true }).includes("BD-14"));
+  const withoutRijang = Object.fromEntries(Object.entries(states).filter(([id]) => !id.endsWith("000000000010")));
+  assert.ok(!earnedBadges(refs, withoutRijang, { kid: true }).includes("BD-14"));
+  assert.ok(!earnedBadges(refs.filter((poi) => poi.code !== "P10"), states, { kid: true }).includes("BD-14"));
+});
+
+test("semua badge yang ditampilkan kepada anak dapat diraih dengan quest anak dan cerita", () => {
+  const refs = [...new Set(questCatalog.map((quest) => quest.idPoi))].map((id) => ({
+    id, code: `P${id.slice(-2)}`, wing: "left", quest: questKind(id, "anak"), quests: questPlan(id, "anak"),
+  }));
+  const states = Object.fromEntries(refs.map((poi) => [poi.id,
+    poi.quests.reduce((state, quest) => recordQuestAnswer(state, {
+      ...response, idPoi: poi.id, idQuest: quest.idQuest, pointsAwarded: quest.points,
+    }, poi.quests), { ...emptyProgress, checkedIn: true, closed: true, completed: poi.quests.length === 0 }),
+  ]));
+  const ctx = { kid: true, questDays: 3 };
+  assert.deepEqual(earnedBadges(refs, states, ctx), availableBadges(ctx).map((badge) => badge.id));
+  for (const id of ["BD-02", "BD-03", "BD-07", "BD-12", "BD-13"]) {
+    assert.ok(!availableBadges(ctx).some((badge) => badge.id === id));
+  }
+  assert.equal(badgeProgress(refs, {}, ctx)["BD-15"].current, 0);
+  const stories = Object.fromEntries(refs.filter((poi) => poi.quests.length === 0).map((poi) => [poi.id, states[poi.id]]));
+  assert.equal(badgeProgress(refs, stories, ctx)["BD-15"].current, 0);
 });
 
 test("progres server mengembalikan centang quest dan poin setelah aplikasi dibuka ulang", () => {

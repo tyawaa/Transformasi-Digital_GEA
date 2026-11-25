@@ -88,18 +88,18 @@ export type BadgeDef = {
 export const badges: readonly BadgeDef[] = [
   { id: "BD-01", name: "Penjelajah Sayap Kiri", description: "Check-in di semua POI sayap kiri (POI-01 s.d. POI-11).", bonus: 50, audience: "semua" },
   { id: "BD-02", name: "Pemburu Foto", description: "Selesaikan semua quest tipe Foto.", bonus: 30, audience: "umum" },
-  { id: "BD-03", name: "Otak Geologi", description: "Jawab benar semua kuis tanpa salah.", bonus: 40, audience: "semua" },
+  { id: "BD-03", name: "Otak Geologi", description: "Jawab benar semua kuis tanpa salah.", bonus: 40, audience: "umum" },
   { id: "BD-04", name: "Geolog Sejati", description: "Selesaikan semua POI.", bonus: 100, audience: "semua" },
   { id: "BD-05", name: "Penjelajah Sayap Kanan", description: "Check-in di semua POI sayap kanan (POI-12 s.d. POI-20).", bonus: 50, audience: "semua", lowPriority: true },
   { id: "BD-06", name: "Langkah Pertama", description: "Selesaikan quest pertamamu di POI mana pun.", bonus: 10, audience: "semua" },
-  { id: "BD-07", name: "Pembaca Gerak Bumi", description: "Selesaikan quest di POI-03, POI-04, POI-05, dan POI-08.", bonus: 30, audience: "semua" },
+  { id: "BD-07", name: "Pembaca Gerak Bumi", description: "Selesaikan quest di POI-03, POI-04, POI-05, dan POI-08.", bonus: 30, audience: "umum" },
   { id: "BD-08", name: "Pengelana Lorong Waktu", description: "Selesaikan quest di POI-12 s.d. POI-17.", bonus: 40, audience: "semua", lowPriority: true },
   { id: "BD-09", name: "Jejak Manusia Purba", description: "Selesaikan quest di POI-18, POI-19, dan POI-20.", bonus: 30, audience: "semua", lowPriority: true },
   { id: "BD-10", name: "Kolektor Batuan", description: "Selesaikan quest di POI-07, POI-10, dan POI-11.", bonus: 30, audience: "semua" },
   { id: "BD-11", name: "Rajin Berkunjung", description: "Selesaikan minimal 1 quest pada 3 hari kunjungan yang berbeda.", bonus: 20, audience: "semua" },
-  { id: "BD-12", name: "Si Teliti", description: "Jawab benar pada percobaan pertama di 5 quest kuis.", bonus: 25, audience: "semua" },
-  { id: "BD-13", name: "Penakluk Tantangan Sulit", description: "Selesaikan semua quest tingkat Sulit (POI-06 dan POI-10).", bonus: 40, audience: "semua" },
-  { id: "BD-14", name: "Fotografer Cilik", description: "Selesaikan semua quest foto anak-anak.", bonus: 25, audience: "anak" },
+  { id: "BD-12", name: "Si Teliti", description: "Jawab benar pada percobaan pertama di 5 quest kuis.", bonus: 25, audience: "umum" },
+  { id: "BD-13", name: "Penakluk Tantangan Sulit", description: "Selesaikan semua quest tingkat Sulit (POI-06 dan POI-10).", bonus: 40, audience: "umum" },
+  { id: "BD-14", name: "Fotografer Cilik", description: "Selesaikan quest foto anak-anak di POI-01, POI-03, POI-07, dan POI-10.", bonus: 25, audience: "anak" },
   { id: "BD-15", name: "Penjelajah Cilik", description: "Selesaikan quest anak-anak di minimal 2 POI berbeda.", bonus: 15, audience: "anak" },
 ];
 
@@ -235,7 +235,7 @@ export function badgeProgress(
     "BD-11": { current: Math.min(ctx.questDays ?? 0, 3), target: 3 },
     "BD-12": { current: Math.min(quizzes.filter((poi: PoiRef): boolean => firstTry(poi, states[poi.id])).length, 5), target: 5 },
     "BD-13": forCodes(["P06", "P10"]),
-    "BD-14": photoProgress,
+    "BD-14": { current: photoProgress.current, target: 4 },
     "BD-15": { current: Math.min(questsDone, 2), target: 2 },
   };
 }

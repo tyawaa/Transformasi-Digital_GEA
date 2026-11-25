@@ -1,6 +1,7 @@
 import { equal, ok, rejects } from "node:assert/strict";
 import { PGlite } from "@electric-sql/pglite";
-import { prepareQuests } from "../scripts/prepare-quests.ts";
+import questCatalog from "../data/quests.json" with { type: "json" };
+import { prepareChildQuests, prepareQuests } from "../scripts/prepare-quests.ts";
 
 type QuestAnswer = {
   readonly answerCorrect: boolean;
@@ -188,6 +189,7 @@ Deno.test("Quest Types: pilgan, foto, isian_singkat, benar_salah, dan profil ana
     await test.step("sheet terbaru: beberapa quest per POI, PG, isian, batas percobaan dan progres tersimpan", async (): Promise<void> => {
       await database.exec(prepareQuests());
       await database.exec(prepareQuests());
+      await database.exec(prepareChildQuests());
       equal(
         (await database.query("select * from public.quest where id_poi=$1", [poiFotoId])).rows
           .length,
@@ -443,9 +445,63 @@ Deno.test("Quest Types: pilgan, foto, isian_singkat, benar_salah, dan profil ana
       const accepted = await database.query<{ result: QuestAnswer & { readonly poiCompleted: boolean } }>(statement, parameters);
       equal(accepted.rows[0]!.result.completed, true);
       equal(accepted.rows[0]!.result.poiCompleted, true);
-      equal(accepted.rows[0]!.result.pointsAwarded, 20);
+      equal(accepted.rows[0]!.result.pointsAwarded, 15);
       const repeated = await database.query<{ result: QuestAnswer }>(statement, parameters);
       equal(repeated.rows[0]!.result.attemptCount, 1);
+    });
+    await test.step("badge anak: empat foto acuan, dua POI berbeda, bonus sekali dan badge umum ditolak", async (): Promise<void> => {
+      for (const number of [7, 10]) {
+        const suffix: string = String(number).padStart(12, "0");
+        const entry = questCatalog.find((quest): boolean => quest.idPoi === `30000000-0000-4000-8000-${suffix}`);
+        if (entry === undefined || !("kid" in entry) || entry.kid === undefined) throw new Error(`Quest anak tidak tersedia untuk POI ${number}`);
+        await database.query(
+          `insert into public.poi(id_poi,id_zona,nama,path_foto,denah_x,denah_y,prioritas,estimasi_durasi,is_published)
+           values($1,$2,'POI simulasi','simulation/photo.jpg',0,0,1,5,false)`,
+          [`30000000-0000-4000-8000-${suffix}`, zoneId],
+        );
+        await database.query("insert into public.quest(id_quest,id_poi,tipe_quest,kode_quest,poin,batas_percobaan,wajib_badge) values($1,$2,'foto',$3,$4,$5,$6)", [entry.idQuest, entry.idPoi, entry.code, entry.points, entry.maxAttempts, entry.requiredForBadge]);
+        for (const profile of ["anak", "dewasa"]) {
+          const text = profile === "anak" ? entry.kid : entry;
+          await database.query("insert into public.quest_teks(id_quest,bahasa,profil,instruksi,pertanyaan,hint,target_foto) values($1,'id',$2,$3,$4,$5,$6)", [entry.idQuest, profile, text.title, text.question, text.hint, text.photoTarget]);
+        }
+        await database.query(
+          `insert into public.konten(id_poi,bahasa,profil,teks_cerita,path_audio,durasi_audio)
+           values($1,'id','dewasa','Cerita simulasi','simulation/audio.mp3',30)`,
+          [`30000000-0000-4000-8000-${suffix}`],
+        );
+      }
+      await database.exec(prepareChildQuests());
+      await database.exec("update public.poi set is_published=true where id_poi in ('30000000-0000-4000-8000-000000000007','30000000-0000-4000-8000-000000000010')");
+      const session: string = "50000000-0000-4000-8000-000000000004";
+      await database.query(
+        "insert into public.sesi_kunjungan(id_sesi,user_id,id_zona,bahasa,profil,verification_method) values($1,$2,$3,'id','anak','entrance_qr')",
+        [session, userIdChild, zoneId],
+      );
+      for (const code of ["BD-02", "BD-03", "BD-07", "BD-12", "BD-13"]) {
+        equal((await database.query<{ awarded: boolean }>("select private.beri_lencana($1,$2) as awarded", [session, code])).rows[0]!.awarded, false);
+      }
+      await database.query(
+        "insert into private.poi_verification(id_sesi,id_poi,expires_at) select $1,id_poi,now()+interval '15 minutes' from public.poi", [session],
+      );
+      for (const number of [4, 5]) {
+        await database.query("select public.tutup_kartu($1,$2,$3)", [userIdChild, session, `30000000-0000-4000-8000-${String(number).padStart(12, "0")}`]);
+      }
+      equal((await database.query("select 1 from public.user_badge where id_sesi=$1 and kode_badge='BD-15'", [session])).rows.length, 0);
+      for (const [index, code] of ["Q-001", "Q-005", "Q-009", "Q-012"].entries()) {
+        const quest = (await database.query<{ id_quest: string; id_poi: string; poin_anak: number }>(
+          "select id_quest,id_poi,poin_anak from public.quest where kode_quest=$1", [code],
+        )).rows[0]!;
+        await database.query("select public.tutup_kartu($1,$2,$3)", [userIdChild, session, quest.id_poi]);
+        const result = await database.query<{ result: QuestAnswer }>(
+          "select public.record_photo_quest($1,$2,$3,$4,$5,'accepted','smoke-v1','Sesuai',0.95,0.2) as result",
+          [userIdChild, session, quest.id_quest, crypto.randomUUID(), "d".repeat(64)],
+        );
+        equal(result.rows[0]!.result.pointsAwarded, quest.poin_anak);
+        equal((await database.query("select 1 from public.user_badge where id_sesi=$1 and kode_badge='BD-14'", [session])).rows.length, index === 3 ? 1 : 0);
+        equal((await database.query("select 1 from public.user_badge where id_sesi=$1 and kode_badge='BD-15'", [session])).rows.length, index >= 1 ? 1 : 0);
+      }
+      await database.query("select private.evaluasi_lencana($1)", [session]);
+      equal((await database.query<{ total: number }>("select sum(nilai_poin)::int as total from public.points where id_sesi=$1 and kode_badge in ('BD-14','BD-15')", [session])).rows[0]!.total, 40);
     });
   } finally {
     await database.close();

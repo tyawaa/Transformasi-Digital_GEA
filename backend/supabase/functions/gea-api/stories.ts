@@ -81,7 +81,7 @@ export async function poiDetail(
     gateway.query(
       "quest",
       new URLSearchParams({
-        select: "id_quest,tipe_quest,kode_quest,poin,batas_percobaan,wajib_badge,urutan",
+        select: "id_quest,tipe_quest,kode_quest,poin,batas_percobaan,wajib_badge,poin_anak,batas_percobaan_anak,wajib_badge_anak,urutan",
         id_poi: `eq.${poiId}`,
         order: "urutan.asc,id_quest.asc",
       }),
@@ -193,14 +193,20 @@ async function questDetail(
       );
     }
   }
+  const settings: JsonObject = profile === "anak" ? {
+    ...quest,
+    poin: quest.poin_anak ?? quest.poin,
+    batas_percobaan: quest.batas_percobaan_anak ?? quest.batas_percobaan,
+    wajib_badge: quest.wajib_badge_anak ?? quest.wajib_badge,
+  } : quest;
   return {
     idQuest: questId,
     type: questType,
     code: quest.kode_quest,
     title: question.instruksi,
-    ...(quest.poin === null ? {} : { points: quest.poin }),
-    maxAttempts: quest.batas_percobaan,
-    requiredForBadge: quest.wajib_badge,
+    ...(settings.poin === null ? {} : { points: settings.poin }),
+    maxAttempts: settings.batas_percobaan,
+    requiredForBadge: settings.wajib_badge,
     // Sheet Quest_Anak: anak hanya mengerjakan quest foto.
     isDisabled: profile === "anak" && questType !== "foto",
     ...question,

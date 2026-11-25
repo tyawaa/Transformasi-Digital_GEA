@@ -86,7 +86,7 @@ const englishCopy: Readonly<Record<string, string>> = {
   "Selesaikan minimal 1 quest pada 3 hari kunjungan yang berbeda.": "Complete at least one quest on three different visit days.",
   "Jawab benar pada percobaan pertama di 5 quest kuis.": "Answer five quiz quests correctly on your first attempt.",
   "Selesaikan semua quest tingkat Sulit (POI-06 dan POI-10).": "Complete every difficult quest (POI-06 and POI-10).",
-  "Selesaikan semua quest foto anak-anak.": "Complete every children's photo quest.",
+  "Selesaikan quest foto anak-anak di POI-01, POI-03, POI-07, dan POI-10.": "Complete the children's photo quests at POI-01, POI-03, POI-07, and POI-10.",
   "Selesaikan quest anak-anak di minimal 2 POI berbeda.": "Complete children's quests at two or more different POIs.",
   "Check-in lokasi": "Location check-in", "Cerita selesai dibaca": "Story completed", "Benar di percobaan pertama": "Correct on the first attempt", "POI tuntas": "POI completed",
   "Tulang lengan Megalochelys": "Megalochelys arm bone", "Head coral": "Head coral", "Obsidian": "Obsidian", "Dasit": "Dacite", "Meteorit Namibia": "Namibian meteorite", "Rijang": "Chert", "Nikel": "Nickel", "Batu kecubung": "Amethyst", "Kecubung": "Amethyst",

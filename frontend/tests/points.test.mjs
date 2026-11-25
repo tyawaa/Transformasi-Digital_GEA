@@ -109,7 +109,7 @@ test("sheet acuan rekaman: 15 lencana aktif sesuai profil; Geolog Sejati = sayap
   assert.deepEqual(availableBadges({ kid: false }).map((b) => b.id),
     ["BD-01", "BD-02", "BD-03", "BD-04", "BD-06", "BD-07", "BD-10", "BD-11", "BD-12", "BD-13"]);
   assert.deepEqual(availableBadges({ kid: true }).map((b) => b.id),
-    ["BD-01", "BD-03", "BD-04", "BD-06", "BD-07", "BD-10", "BD-11", "BD-12", "BD-13", "BD-14", "BD-15"]);
+    ["BD-01", "BD-04", "BD-06", "BD-10", "BD-11", "BD-14", "BD-15"]);
   const pois = [
     { id: "a", wing: "left", code: "P01", quest: "quiz" },
     { id: "b", wing: "right", code: "P12", quest: "quiz" },

@@ -459,7 +459,7 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
       submitPhoto={async (requestId: string, photo: CapturedPhoto): Promise<AnswerResult> => {
         requireQuestVerification();
         try {
-          const answer: AnswerResult = await source.answerPhotoQuest(visit.id_sesi, selectedQuest.idQuest, requestId, photo);
+          const answer: AnswerResult = await source.answerPhotoQuest(visit.id_sesi, selectedQuest.idQuest, requestId, photo, visit.profil);
           if (answer.photoDecision === "accepted") props.onAnswer(answer);
           return answer;
         } catch (cause: unknown) {

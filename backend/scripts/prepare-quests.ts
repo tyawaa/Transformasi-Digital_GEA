@@ -1,6 +1,14 @@
 import dataset from "../data/quests.json" with { type: "json" };
 import { quote } from "./sql.ts";
 
+/** Metadata Quest_Anak terpisah dari nilai quest umum; POI-10 tetap wajib untuk Fotografer Cilik. */
+export function prepareChildQuests(): string {
+  return dataset.flatMap((quest): readonly string[] => {
+    if (!("kid" in quest) || quest.kid === undefined) return [];
+    return [`update public.quest set poin_anak=${quest.kid.points},batas_percobaan_anak=${quest.kid.maxAttempts},wajib_badge_anak=${quest.kid.requiredForBadge} where id_quest=${quote(quest.idQuest)};`];
+  }).join("\n") + "\n";
+}
+
 /** SQL quest dari sheet. POI yang belum punya konten quest tetap ditunda, tanpa membuat cerita baru. */
 export function prepareQuests(): string {
   return dataset.map((quest): string => {
@@ -64,5 +72,5 @@ if (import.meta.main) {
   if (markerIndex < 0) {
     throw new Error("Seed B6 tidak memiliki penanda konten quest yang dihasilkan.");
   }
-  await Deno.writeTextFile(seedPath, seed.slice(0, markerIndex) + marker + content);
+  await Deno.writeTextFile(seedPath, seed.slice(0, markerIndex) + marker + content + prepareChildQuests());
 }

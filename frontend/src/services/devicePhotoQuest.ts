@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { z } from "zod";
-import { questCatalog } from "../data/quests";
-import { answerResultSchema, type AnswerResult } from "../domain/contracts";
+import { questCatalog, questsForPoi } from "../data/quests";
+import { answerResultSchema, type AnswerResult, type Profile, type Quest } from "../domain/contracts";
 import type { CapturedPhoto } from "./photo";
 import { verifyDevicePhoto } from "./photoModel";
 import { devicePhotoVerdictSchema, type DevicePhotoVerdict } from "./photoModelTypes";
@@ -28,11 +28,13 @@ export async function restoredDevicePhotoAnswers(idSesi: string): Promise<readon
 }
 
 /** Persist verdict metadata and points locally; these are never presented as server-verified evidence. */
-export async function answerDevicePhotoQuest(idSesi: string, idQuest: string, requestId: string, photo: CapturedPhoto): Promise<AnswerResult> {
+export async function answerDevicePhotoQuest(idSesi: string, idQuest: string, requestId: string, photo: CapturedPhoto, profile: Profile): Promise<AnswerResult> {
   z.uuid().parse(idSesi);
   z.uuid().parse(requestId);
-  const quest = questCatalog.find((item): boolean => item.idQuest === idQuest && item.type === "foto");
-  if (quest === undefined) throw new Error(`Quest foto tidak terdaftar: ${idQuest}`);
+  const entry = questCatalog.find((item): boolean => item.idQuest === idQuest && item.type === "foto");
+  if (entry === undefined) throw new Error(`Quest foto tidak terdaftar: ${idQuest}`);
+  const quest: Quest | undefined = questsForPoi(entry.idPoi, profile).find((item: Quest): boolean => item.idQuest === idQuest && item.isDisabled !== true);
+  if (quest === undefined) throw new RangeError(`Quest foto tidak tersedia untuk profil: idQuest=${idQuest}, profile=${profile}`);
   const requestKey: string = `gea.photo.request.v1:${idSesi}:${requestId}`;
   const completedKey: string = `gea.photo.completed.v1:${idSesi}:${idQuest}`;
   const verdict: DevicePhotoVerdict = await verifyDevicePhoto(photo.uri, idQuest);
@@ -48,7 +50,7 @@ export async function answerDevicePhotoQuest(idSesi: string, idQuest: string, re
   if (completed !== null) throw new Error("Quest foto ini sudah selesai pada kunjungan ini.");
   const accepted: boolean = verdict.decision === "accepted";
   const answer: AnswerResult = answerResultSchema.parse({
-    idQuest, idPoi: quest.idPoi, answerCorrect: accepted, attemptCount: accepted ? 1 : 0,
+    idQuest, idPoi: entry.idPoi, answerCorrect: accepted, attemptCount: accepted ? 1 : 0,
     completed: accepted, failed: false, hint: accepted ? null : verdict.reason,
     pointsAwarded: accepted ? quest.points : 0,
     photoDecision: verdict.decision, photoMessage: verdict.reason, evaluationSource: "device",

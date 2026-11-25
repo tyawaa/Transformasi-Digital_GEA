@@ -249,7 +249,16 @@ const englishQuests: Readonly<Record<string, { readonly umum: EnglishQuest; read
   }
 };
 
-type KidText = { readonly title: string; readonly question: string; readonly photoTarget: string; readonly hint: string; readonly explanation: string };
+type KidText = {
+  readonly title: string;
+  readonly question: string;
+  readonly photoTarget: string;
+  readonly hint: string;
+  readonly explanation: string;
+  readonly points: number;
+  readonly maxAttempts: number;
+  readonly requiredForBadge: boolean;
+};
 
 /** Sheet Quest_Anak: anak hanya mengerjakan quest foto versi anak; quest lain dinonaktifkan. */
 export function questsForPoi(poiId: string, profile: Profile): readonly Quest[] {
@@ -277,9 +286,9 @@ export function localizedQuestsForPoi(poiId: string, profile: Profile, language:
       target_foto: kid?.photoTarget ?? entry.photoTarget,
       penjelasan: localizeCopy(kid?.explanation ?? entry.explanation, language),
       hint: localizeCopy(kid?.hint ?? entry.hint, language),
-      points: entry.points,
-      maxAttempts: entry.maxAttempts,
-      requiredForBadge: entry.requiredForBadge,
+      points: kid?.points ?? entry.points,
+      maxAttempts: kid?.maxAttempts ?? entry.maxAttempts,
+      requiredForBadge: kid?.requiredForBadge ?? entry.requiredForBadge,
       isDisabled: profile === "anak" && kid === undefined,
     });
   });

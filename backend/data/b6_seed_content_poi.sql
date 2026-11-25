@@ -310,3 +310,10 @@ insert into public.quest_opsi(id_quest,label_opsi,is_correct) select '40000000-0
 insert into public.quest_opsi_text(id_quest,label_opsi,bahasa,teks_opsi) select '40000000-0000-4000-8000-000000000011','C','id','Cilacap, Jawa Tengah' where exists(select 1 from public.quest where id_quest='40000000-0000-4000-8000-000000000011');
 insert into public.quest_opsi(id_quest,label_opsi,is_correct) select '40000000-0000-4000-8000-000000000011','D',false where exists(select 1 from public.quest where id_quest='40000000-0000-4000-8000-000000000011');
 insert into public.quest_opsi_text(id_quest,label_opsi,bahasa,teks_opsi) select '40000000-0000-4000-8000-000000000011','D','id','Ternate, Maluku Utara' where exists(select 1 from public.quest where id_quest='40000000-0000-4000-8000-000000000011');
+update public.quest set poin_anak=10,batas_percobaan_anak=3,wajib_badge_anak=true where id_quest='40000000-0000-4000-8000-000000000001';
+update public.quest set poin_anak=15,batas_percobaan_anak=4,wajib_badge_anak=false where id_quest='40000000-0000-4000-8000-000000000024';
+update public.quest set poin_anak=15,batas_percobaan_anak=4,wajib_badge_anak=true where id_quest='40000000-0000-4000-8000-000000000003';
+update public.quest set poin_anak=15,batas_percobaan_anak=4,wajib_badge_anak=true where id_quest='40000000-0000-4000-8000-000000000007';
+update public.quest set poin_anak=10,batas_percobaan_anak=3,wajib_badge_anak=false where id_quest='40000000-0000-4000-8000-000000000025';
+update public.quest set poin_anak=25,batas_percobaan_anak=4,wajib_badge_anak=true where id_quest='40000000-0000-4000-8000-000000000010';
+update public.quest set poin_anak=15,batas_percobaan_anak=4,wajib_badge_anak=false where id_quest='40000000-0000-4000-8000-000000000026';
