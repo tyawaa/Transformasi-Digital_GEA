@@ -1,10 +1,11 @@
-// PB09: pencarian ruang dan koleksi di denah. Semua data dari dataset lokal (src/data/museum.ts),
+// PB09: pencarian ruang, POI, dan objek Photo Hunt dari katalog lokal,
 // jadi tetap jalan tanpa internet. Fungsi murni, diuji di tests/search.test.mjs.
+import photoHunt from "../../../assets/daftar_pencarian/photo-hunt/catalog.json" with { type: "json" };
 import type { MuseumPoi } from "../../data/museum.ts";
 
 export const MIN_QUERY_LENGTH = 3;
 
-export type SearchKind = "ruang" | "koleksi";
+export type SearchKind = "ruang" | "koleksi" | "poi";
 
 export type SearchEntry = {
   readonly kind: SearchKind;
@@ -19,8 +20,7 @@ export type SearchEntry = {
 
 export type SearchHit = SearchEntry & { readonly score: number };
 
-// Isi kolom "Koleksi yang Disorot" yang bukan nama koleksi.
-const NOT_A_COLLECTION: readonly string[] = ["video"];
+type PhotoHuntCollection = (typeof photoHunt)[number];
 
 /** Huruf kecil, tanpa aksen dan tanda baca. */
 export function normalize(text: string): string {
@@ -32,26 +32,18 @@ export function normalize(text: string): string {
     .trim();
 }
 
-function entry(kind: SearchKind, label: string, poi: MuseumPoi): SearchEntry {
-  const text: string = normalize(label);
+function entry(kind: SearchKind, label: string, poi: MuseumPoi, aliases: readonly string[]): SearchEntry {
+  const text: string = normalize([label, ...aliases].join(" "));
   return { kind, label, roomCode: poi.code, roomName: poi.name, text, words: text.split(" ").filter((word: string): boolean => word.length > 0) };
 }
 
-function collections(poi: MuseumPoi): readonly string[] {
-  const raw: string | undefined = poi.content?.sorotan;
-  if (raw === undefined || /display kosong/i.test(raw)) return [];
-  return raw
-    .split(/,|\bdan\b(?=[^,]*$)/)
-    .map((item: string): string => item.trim())
-    .filter((item: string): boolean => item.length > 0 && !NOT_A_COLLECTION.includes(item.toLowerCase()))
-    .map((item: string): string => item.charAt(0).toUpperCase() + item.slice(1));
-}
-
-/** Satu entri per ruang ditambah satu entri per koleksi yang disorot di ruang itu. */
+/** Kategori Koleksi mengikuti objek Photo Hunt; ruang dan POI mengikuti denah museum. */
 export function buildSearchIndex(pois: readonly MuseumPoi[]): readonly SearchEntry[] {
   return pois.flatMap((poi: MuseumPoi): readonly SearchEntry[] => [
-    entry("ruang", poi.name, poi),
-    ...collections(poi).map((label: string): SearchEntry => entry("koleksi", label, poi)),
+    ...photoHunt.filter((collection: PhotoHuntCollection): boolean => collection.poiCode === poi.code)
+      .map((collection: PhotoHuntCollection): SearchEntry => entry("koleksi", collection.name, poi, collection.aliases)),
+    entry("ruang", poi.name, poi, []),
+    entry("poi", `POI ${poi.number} · ${poi.code} · ${poi.name}`, poi, []),
   ]);
 }
 

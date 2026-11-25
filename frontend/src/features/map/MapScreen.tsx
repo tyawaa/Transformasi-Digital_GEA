@@ -19,6 +19,7 @@ import { FrameStage } from "../stories/hifi/parts";
 import { ENTRANCE, PLAN_PINS, locateOnPlan, routeLegs, type LocationAnchor, type PlanPin, type PlanPoint, type RouteLeg } from "./navigation";
 import { PlanViewport } from "./PlanViewport";
 import { StartMap } from "./StartMap";
+import { SearchPanel } from "../search/SearchPanel";
 import type { EyesFreeTarget } from "../eyesfree/engine";
 import { useEyesFree } from "../eyesfree/useEyesFree";
 import type { BackgroundResult } from "../eyesfree/background";
@@ -65,6 +66,7 @@ type Props = {
   readonly onCheckLocation: () => void;
   readonly onRetry: () => void;
   readonly onOpenSummary?: () => void;
+  readonly onOpenBadges: () => void;
   /** Membuka alur verifikasi geofence POI sebelum mengakses cerita. */
   readonly onOpenPoi: (id: string) => void;
   readonly userFix: Fix | null;
@@ -87,6 +89,7 @@ export function MapScreen(props: Props): ReactElement {
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
   const [testsOpen, setTestsOpen] = useState<boolean>(false);
   const [routeOpen, setRouteOpen] = useState<boolean>(false);
+  const [searchOpen, setSearchOpen] = useState<boolean>(false);
   const [expiryDismissed, setExpiryDismissed] = useState<boolean>(false);
   const [navigationStopped, setNavigationStopped] = useState<boolean>(false);
   const [eyesFreeToast, setEyesFreeToast] = useState<boolean>(false);
@@ -128,6 +131,9 @@ export function MapScreen(props: Props): ReactElement {
   const legs: readonly RouteLeg[] = useMemo((): readonly RouteLeg[] => routeLegs(location ?? ENTRANCE, destinationCodes), [location, destinationCodes]);
 
   const routeCount: number = props.route?.codes.length ?? 0;
+  const searchPois: readonly MuseumPoi[] = useMemo((): readonly MuseumPoi[] => props.pois
+    .filter((poi: MapPoi): boolean => poi.id !== null && (props.wingsMode === "both" || poi.museum.wing === "left"))
+    .map((poi: MapPoi): MuseumPoi => poi.museum), [props.pois, props.wingsMode]);
   const routePois: readonly MapPoi[] = (props.route?.codes ?? []).flatMap((code: string): readonly MapPoi[] => {
     const poi: MapPoi | undefined = props.pois.find((item: MapPoi): boolean => item.museum.code === code);
     return poi === undefined ? [] : [poi];
@@ -185,10 +191,10 @@ export function MapScreen(props: Props): ReactElement {
           <GeaText variant="bold16" color={colors.primary[700]} style={styles.statValue}>{props.totalPoints} poin</GeaText>
           <GeaText variant="caption12" color={colors.primary[700]} style={styles.statCaption}>Terkumpul</GeaText>
         </View>
-        <Pressable accessibilityRole="button" accessibilityLabel="Cari koleksi, segera tersedia"
-          accessibilityState={{ disabled: true }} disabled style={styles.searchButton} />
-        <Pressable accessibilityRole="button" accessibilityLabel="Lencana, segera tersedia"
-          accessibilityState={{ disabled: true }} disabled style={styles.badgeButton}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Cari koleksi, ruang, atau POI"
+          onPress={(): void => setSearchOpen(true)} style={styles.searchButton} />
+        <Pressable accessibilityRole="button" accessibilityLabel="Lihat koleksi lencana"
+          onPress={props.onOpenBadges} style={({ pressed }) => [styles.badgeButton, pressed && styles.dim]}>
           <GeaText variant="label16" color={colors.primary[900]} style={styles.badgeLabel}>Lencana</GeaText>
         </Pressable>
       </View>
@@ -333,6 +339,10 @@ export function MapScreen(props: Props): ReactElement {
           />
         ) : null}
       </AnimatedNotification>
+      <Modal visible={searchOpen} animationType="slide" onRequestClose={(): void => setSearchOpen(false)}>
+        <SearchPanel pois={searchPois} onClose={(): void => setSearchOpen(false)}
+          onPick={(code: string): void => { choosePoi(code); setSearchOpen(false); }} />
+      </Modal>
       {testsOpen && props.hasVisit && props.gpsTests.length > 0 && (
         <View style={styles.testMenu}>
           <ScrollView>

@@ -1,0 +1,76 @@
+[
+  {
+    "poiCode": "P01",
+    "questId": "40000000-0000-4000-8000-000000000001",
+    "name": "Tulang lengan Megalochelys",
+    "aliases": [
+      "Megalochelys"
+    ],
+    "photoFile": "p01.jpg",
+    "photoSha256": "b55357c7d4ff2dd85ff5e91291c844f0dc5fcfd19a91fce18febf40a44b0ae22"
+  },
+  {
+    "poiCode": "P02",
+    "questId": "40000000-0000-4000-8000-000000000024",
+    "name": "Head coral",
+    "aliases": [
+      "Head Coral"
+    ],
+    "photoFile": "p02.jpg",
+    "photoSha256": "bd323ab97ea8afcfbf551ce6fc35bd41681e1cf130fc6f5e105e834ed9453852"
+  },
+  {
+    "poiCode": "P03",
+    "questId": "40000000-0000-4000-8000-000000000003",
+    "name": "Obsidian",
+    "aliases": [
+      "Obsidian"
+    ],
+    "photoFile": "p03.jpg",
+    "photoSha256": "01ef54278bee71c85e6da44af34960b235aa358a0412f1ff6eb8eab88e7c5949"
+  },
+  {
+    "poiCode": "P07",
+    "questId": "40000000-0000-4000-8000-000000000007",
+    "name": "Dasit",
+    "aliases": [
+      "Dasit",
+      "Dacite"
+    ],
+    "photoFile": "p07.jpg",
+    "photoSha256": "027dee16e7e79d16d3f3fa7929d17ebd016c4c604ee692d38a1d94818bffe011"
+  },
+  {
+    "poiCode": "P09",
+    "questId": "40000000-0000-4000-8000-000000000025",
+    "name": "Meteorit Namibia",
+    "aliases": [
+      "Meteorit Namibia",
+      "Meteorite Namibia"
+    ],
+    "photoFile": "p09.jpg",
+    "photoSha256": "532349a331bc96aa2a608c64324eb660480443932d65fbe522f18a819141c395"
+  },
+  {
+    "poiCode": "P10",
+    "questId": "40000000-0000-4000-8000-000000000010",
+    "name": "Rijang",
+    "aliases": [
+      "Rijang",
+      "Chert"
+    ],
+    "photoFile": "p10.jpg",
+    "photoSha256": "ac234291c8c23e348bb101788daa4f8376d3e47e745f10fcce0962eddeac27e5"
+  },
+  {
+    "poiCode": "P11",
+    "questId": "40000000-0000-4000-8000-000000000026",
+    "name": "Nikel",
+    "aliases": [
+      "Nikel",
+      "Nickel"
+    ],
+    "photoFile": "p11.jpg",
+    "photoSha256": "95a5eb3524ed30b2afa34c1aef8a1c25823e0b26bf9c234b95f7aeadfc7649a2"
+  }
+]

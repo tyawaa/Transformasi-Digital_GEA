@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import { test } from "node:test";
+import photoHunt from "../assets/daftar_pencarian/photo-hunt/catalog.json" with { type: "json" };
 import { museumPois } from "../src/data/museum.ts";
+import { questCatalog } from "../src/data/quests.ts";
 import { buildSearchIndex, editDistance, searchMuseum } from "../src/features/search/search.ts";
 
 const index = buildSearchIndex(museumPois);
@@ -12,29 +16,48 @@ test("hasil baru muncul setelah 3 huruf", () => {
   assert.ok(searchMuseum(index, "kar").length > 0);
 });
 
-test("menemukan ruang dan koleksi", () => {
+test("menemukan ruang, koleksi Photo Hunt, dan kode POI", () => {
   assert.equal(first("kars").roomCode, "P02");
   assert.equal(first("kars").kind, "ruang");
-  const lapis = first("lapis lazuli");
-  assert.equal(lapis.kind, "koleksi");
-  assert.equal(lapis.roomCode, "P07");
-  assert.equal(first("coelacanth").roomCode, "P14");
+  const dasit = first("dasit");
+  assert.equal(dasit.kind, "koleksi");
+  assert.equal(dasit.roomCode, "P07");
+  assert.equal(first("P14").roomCode, "P14");
+  assert.equal(first("P07").kind, "poi");
+  assert.equal(first("P07").roomCode, "P07");
+  assert.equal(first("POI 4").roomCode, "P04");
 });
 
 test("toleran salah ketik ringan", () => {
   assert.equal(editDistance("gunugn", "gunung"), 1);
   assert.equal(first("gunug api").roomCode, "P03");
-  assert.equal(first("stalaktti").roomCode, "P02");
-  assert.equal(first("batubra").roomCode, "P11");
+  assert.equal(first("obsidain").roomCode, "P03");
+  assert.equal(first("meteort namibia").roomCode, "P09");
   assert.equal(searchMuseum(index, "xyzqw").length, 0);
 });
 
 test("bisa disaring per ruang", () => {
-  const all = searchMuseum(index, "sekis");
+  const all = searchMuseum(index, "poi");
   assert.ok(new Set(all.map((hit) => hit.roomCode)).size > 1);
-  const p10 = searchMuseum(index, "sekis", "P10");
+  const p10 = searchMuseum(index, "poi", "P10");
   assert.ok(p10.length > 0);
   assert.ok(p10.every((hit) => hit.roomCode === "P10"));
+});
+
+test("tujuh koleksi memakai foto referensi Photo Hunt asli dan tujuan quest yang sesuai", async () => {
+  const collections = index.filter((entry) => entry.kind === "koleksi");
+  assert.equal(collections.length, 7);
+  for (const target of photoHunt) {
+    const quest = questCatalog.find((quest) => quest.idQuest === target.questId);
+    assert.ok(quest, target.questId);
+    assert.equal(quest.type, "foto");
+    const poi = museumPois.find((poi) => poi.code === target.poiCode);
+    assert.equal(poi.idPoi, quest.idPoi);
+    const entry = collections.find((entry) => entry.roomCode === target.poiCode);
+    assert.equal(entry.label, target.name);
+    const photo = await readFile(new URL(`../assets/daftar_pencarian/photo-hunt/${target.photoFile}`, import.meta.url));
+    assert.equal(createHash("sha256").update(photo).digest("hex"), target.photoSha256);
+  }
 });
 
 test("tidak memasukkan isian yang bukan koleksi", () => {
