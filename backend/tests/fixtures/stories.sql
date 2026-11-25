@@ -1,4 +1,7 @@
 -- DATA SIMULASI KHUSUS DATABASE PENGUJIAN IN-MEMORY. Jangan deploy fixture ini.
+-- Pengujian selain jadwal memakai hari simulasi terbuka agar tidak bergantung jam eksekusi.
+delete from private.museum_calendar;
+update private.museum_hours set opening_time=time '00:00',closing_time=time '23:59:59.999999',is_closed=false;
 insert into auth.users (id) values
   ('10000000-0000-4000-8000-000000000001'), ('10000000-0000-4000-8000-000000000002');
 insert into public.zona (id_zona,nama,latitude,longitude,radius)

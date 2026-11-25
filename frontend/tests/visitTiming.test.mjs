@@ -3,6 +3,7 @@ import { test } from "node:test";
 import { museumPois } from "../src/data/museum.ts";
 import { recommendRoute } from "../src/features/preferences/recommend.ts";
 import { formatCountdown, remainingVisitMs, visitWindow } from "../src/features/preferences/visitTiming.ts";
+import { museumAccessAt, museumDayAt } from "../src/domain/museumHours.ts";
 
 const start = Date.parse("2026-11-24T10:00:00+07:00");
 
@@ -54,4 +55,32 @@ test("rekomendasi rute memakai minat dan waktu yang sama untuk anak dan umum", (
   assert.equal(nearClosing.closingLimited, true);
   const afterClosing = recommendRoute(prefs, available, new Date("2026-11-24T17:00:00+07:00"));
   assert.deepEqual(afterClosing.codes, []);
+});
+
+test("jadwal museum: batas buka, akhir pekan, Jumat, hari libur dan tanggal WIB", () => {
+  for (const [timestamp, expected] of [
+    ["2026-11-24T08:59:59+07:00", "before_opening"],
+    ["2026-11-24T09:00:00+07:00", "open"],
+    ["2026-11-23T15:30:00+07:00", "open"],
+    ["2026-11-24T15:00:00+07:00", "open"],
+    ["2026-11-24T15:59:59+07:00", "open"],
+    ["2026-11-24T16:00:00+07:00", "after_closing"],
+    ["2026-11-25T15:30:00+07:00", "open"],
+    ["2026-11-26T15:30:00+07:00", "open"],
+    ["2026-11-27T10:00:00+07:00", "closed_day"],
+    ["2026-11-28T13:59:59+07:00", "open"],
+    ["2026-11-28T14:00:00+07:00", "after_closing"],
+    ["2026-11-29T14:00:00+07:00", "after_closing"],
+    ["2026-12-24T10:00:00+07:00", "closed_day"],
+    ["2026-12-25T10:00:00+07:00", "closed_day"],
+    ["2027-03-10T10:00:00+07:00", "closed_day"],
+    ["2027-03-15T10:00:00+07:00", "closed_day"],
+    ["2026-12-23T18:00:00Z", "closed_day"],
+  ]) {
+    const at = Date.parse(timestamp);
+    assert.equal(museumAccessAt(at), expected, timestamp);
+    if (expected !== "open") assert.equal(visitWindow("< 30 menit", at).budgetMinutes, 0, timestamp);
+  }
+  assert.equal(museumDayAt(Date.parse("2026-11-28T10:00:00+07:00")).closingAtMs, Date.parse("2026-11-28T14:00:00+07:00"));
+  assert.throws(() => museumDayAt(Date.parse("2028-01-03T10:00:00+07:00")), /Kalender museum tahun 2028 belum tersedia/);
 });

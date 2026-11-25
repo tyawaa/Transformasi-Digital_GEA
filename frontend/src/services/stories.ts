@@ -29,7 +29,7 @@ import {
   mockTokenToPoi,
   mockZoneToken,
 } from "../mocks/stories";
-import { type GeaApi, GeaServiceError, type QuestAnswerExtra } from "./api";
+import { type GeaApi, GeaServiceError, type QuestAnswerExtra, requireMuseumOpen } from "./api";
 import type { CapturedPhoto } from "./photo";
 import { answerDevicePhotoQuest } from "./devicePhotoQuest";
 import { withDevicePhotoQuests } from "./devicePhotoPlan";
@@ -97,6 +97,7 @@ export class MockStoriesSource implements StoriesSource {
   private state: MockState | null = null;
 
   async startQrVisit(idSesi: string, token: string, profile: Profile): Promise<Visit> {
+    requireMuseumOpen(Date.now());
     await delay();
     if (token !== MOCK_ENTRANCE_TOKEN && token !== mockZoneToken("ZL") && token !== mockZoneToken("ZR")) {
       throw new GeaServiceError(403, "ENTRANCE_QR_INVALID", "QR pintu masuk tidak valid.");
@@ -115,6 +116,7 @@ export class MockStoriesSource implements StoriesSource {
   }
 
   async verifyPoiQr(idSesi: string, token: string, language: Language, profile: Profile): Promise<PoiVerification> {
+    requireMuseumOpen(Date.now());
     await delay();
     const idPoi: string | undefined = mockTokenToPoi.get(token);
     if (idPoi === undefined) {
@@ -124,6 +126,7 @@ export class MockStoriesSource implements StoriesSource {
   }
 
   async verifyPoiGps(idSesi: string, idPoi: string, location: DeviceLocation, language: Language, profile: Profile): Promise<PoiVerification> {
+    requireMuseumOpen(Date.now());
     await delay();
     this.findPoi(idPoi);
     const checkpoint = museumPoiById(idPoi);
@@ -144,6 +147,7 @@ export class MockStoriesSource implements StoriesSource {
 
   /** Penilaian mock mengikuti kunci, variasi jawaban, poin dan batas percobaan sheet. */
   async answerQuest(idSesi: string, idQuest: string, requestId: string, labelOpsi: OptionLabel | null, extra?: QuestAnswerExtra): Promise<AnswerResult> {
+    requireMuseumOpen(Date.now());
     await delay();
     const state: MockState = await this.load();
     const responseKey: string = `${idSesi}:${requestId}`;
@@ -193,6 +197,7 @@ export class MockStoriesSource implements StoriesSource {
   }
 
   async closeCard(idSesi: string, idPoi: string): Promise<ClosedCard> {
+    requireMuseumOpen(Date.now());
     await delay();
     this.findPoi(idPoi);
     const state: MockState = await this.load();

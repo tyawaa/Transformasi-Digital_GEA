@@ -1,5 +1,6 @@
 import { type Session, type SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import { museumAccessAt, type MuseumAccess } from "../domain/museumHours.ts";
 import { type CapturedPhoto, photoForm } from "./photo";
 import type { Preferences } from "../features/preferences/usePreferences";
 import {
@@ -40,6 +41,14 @@ export class GeaServiceError extends Error {
   constructor(readonly status: number, readonly code: string, message: string) {
     super(message);
   }
+}
+
+/** Cegah kunjungan dan aktivitas lokal di luar jadwal yang ikut dibundel dalam APK. */
+export function requireMuseumOpen(atMs: number): void {
+  const access: MuseumAccess = museumAccessAt(atMs);
+  if (access === "before_opening") throw new GeaServiceError(403, "MUSEUM_NOT_OPEN", "Museum belum buka. Jam kunjungan dimulai pukul 09.00 WIB.");
+  if (access === "closed_day") throw new GeaServiceError(403, "MUSEUM_CLOSED_DAY", "Museum tutup pada hari Jumat, libur nasional, dan cuti bersama.");
+  if (access === "after_closing") throw new GeaServiceError(403, "MUSEUM_CLOSED", "Museum sudah tutup. Silakan berkunjung pada jam operasional.");
 }
 
 async function fetchWithRetry(request: Request, timeoutMs: number): Promise<Response> {
@@ -150,6 +159,7 @@ export class GeaApi {
   }
 
   async extendVisit(idSesi: string, requestId: string, minutes: number): Promise<Visit> {
+    requireMuseumOpen(Date.now());
     return visitSchema.parse(await this.post(`/sessions/${idSesi}/extend`, { requestId, minutes }));
   }
 
@@ -176,6 +186,7 @@ export class GeaApi {
     location: DeviceLocation,
     profile: Profile = "dewasa",
   ): Promise<Visit> {
+    requireMuseumOpen(Date.now());
     return visitSchema.parse(
       await this.post("/sessions", {
         idSesi,
@@ -187,6 +198,7 @@ export class GeaApi {
   }
 
   async startQrVisit(idSesi: string, token: string, profile: Profile = "dewasa"): Promise<Visit> {
+    requireMuseumOpen(Date.now());
     return visitSchema.parse(
       await this.post("/sessions/qr", {
         idSesi,
@@ -220,6 +232,7 @@ export class GeaApi {
     language: Language,
     profile: Profile,
   ): Promise<PoiVerification> {
+    requireMuseumOpen(Date.now());
     return poiVerificationSchema.parse(
       await this.post(`/sessions/${encodeURIComponent(idSesi)}/verify-qr`, {
         token,
@@ -236,6 +249,7 @@ export class GeaApi {
     language: Language,
     profile: Profile,
   ): Promise<PoiVerification> {
+    requireMuseumOpen(Date.now());
     return poiVerificationSchema.parse(
       await this.post(`/sessions/${encodeURIComponent(idSesi)}/pois/${encodeURIComponent(idPoi)}/verify-gps`, {
         location, language, profile,
@@ -250,6 +264,7 @@ export class GeaApi {
     labelOpsi: OptionLabel | null,
     extra: QuestAnswerExtra = {},
   ): Promise<ScoredAnswerResult> {
+    requireMuseumOpen(Date.now());
     return scoredAnswerResultSchema.parse(
       await this.post(
         `/sessions/${encodeURIComponent(idSesi)}/quests/${
@@ -261,6 +276,7 @@ export class GeaApi {
   }
 
   async closeCard(idSesi: string, idPoi: string): Promise<ClosedCard> {
+    requireMuseumOpen(Date.now());
     return closedCardSchema.parse(
       await this.post(
         `/sessions/${encodeURIComponent(idSesi)}/pois/${
@@ -272,6 +288,7 @@ export class GeaApi {
   }
 
   async answerPhotoQuest(idSesi: string, idQuest: string, requestId: string, photo: CapturedPhoto): Promise<ScoredAnswerResult> {
+    requireMuseumOpen(Date.now());
     const headers: Headers = await this.authorizedHeaders();
     headers.delete("content-type");
     const form: FormData = await photoForm(requestId, photo);
@@ -288,6 +305,7 @@ export class GeaApi {
   }
 
   async personalizeVisit(idSesi: string, preferences: Preferences, wings: "left" | "both"): Promise<Visit> {
+    requireMuseumOpen(Date.now());
     return visitSchema.parse(await this.post(`/sessions/${encodeURIComponent(idSesi)}/personalization`, {
       preferences, wings,
     }));
@@ -351,7 +369,9 @@ export class GeaApi {
 
 export function readableError(error: unknown): string {
   if (error instanceof GeaServiceError) {
-    if (error.code === "MUSEUM_CLOSED") return "Museum sudah tutup. Kunjunganmu telah selesai; buka ringkasan kunjungan.";
+    if (error.code === "MUSEUM_CLOSED") return "Museum sudah tutup. Silakan berkunjung pada jam operasional.";
+    if (error.code === "MUSEUM_NOT_OPEN") return "Museum belum buka. Jam kunjungan dimulai pukul 09.00 WIB.";
+    if (error.code === "MUSEUM_CLOSED_DAY") return "Museum tutup pada hari Jumat, libur nasional, dan cuti bersama.";
     if (error.code === "SESSION_FINISHED") return "Kunjungan ini sudah selesai dan tidak dapat dilanjutkan kembali.";
     if (error.code === "VISIT_EXTENSION_TOO_LATE") return "Waktu tambahan sudah tidak cukup sebelum museum tutup. Kembali ke peta untuk bersiap keluar.";
     if (error.code === "VISIT_PLAN_REQUIRED") return "Lengkapi rencana kunjungan sebelum menambah waktu.";

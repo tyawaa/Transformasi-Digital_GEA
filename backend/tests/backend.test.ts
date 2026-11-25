@@ -598,6 +598,7 @@ Deno.test("integrasi SQL: migrasi, enam POI, hak akses, QR, jawaban, idempotensi
       await database.exec("begin");
       try {
         await database.exec("update public.poi set kode_poi='POI-' || right(id_poi::text,2)");
+        await database.query("insert into private.museum_calendar(visit_date,opening_time,closing_time,is_closed) values($1,time '00:00',time '16:00',false)", [visitDate]);
         await database.query(
           `update public.sesi_kunjungan set personalization=null,planned_end_at=null,start_time='${visitDate}T10:00:00+07:00' where id_sesi=$1`,
           [visitId],
@@ -667,9 +668,7 @@ Deno.test("integrasi SQL: migrasi, enam POI, hak akses, QR, jawaban, idempotensi
           `update public.sesi_kunjungan set personalization=null,planned_end_at=null,start_time='${visitDate}T17:00:00+07:00' where id_sesi=$1`,
           [visitId],
         );
-        const expired: JsonObject = await savePlan(userId, preferences);
-        deepStrictEqual(expired.route_codes, []);
-        equal(Date.parse(String(expired.planned_end_at)), Date.parse(`${visitDate}T16:00:00+07:00`));
+        await rejects(savePlan(userId, preferences), /MUSEUM_CLOSED/);
       } finally {
         await database.exec("rollback");
       }

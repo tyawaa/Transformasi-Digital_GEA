@@ -1,6 +1,9 @@
 import type { Language } from "../domain/contracts.ts";
 
 const englishCopy: Readonly<Record<string, string>> = {
+  "Museum belum buka. Jam kunjungan dimulai pukul 09.00 WIB.": "The museum is not open yet. Visiting hours begin at 09:00 WIB.",
+  "Museum tutup pada hari Jumat, libur nasional, dan cuti bersama.": "The museum is closed on Fridays, national holidays, and collective leave days.",
+  "Museum sudah tutup. Silakan berkunjung pada jam operasional.": "The museum has closed. Please visit during opening hours.",
   "Belum diperiksa": "Not checked", "Layanan belum tersedia": "Service unavailable", "Layanan terhubung": "Service connected",
   "Batas area museum sedang disiapkan. QR pintu masuk tetap bisa digunakan jika sudah tersedia.": "The museum boundary is being configured. You can still use an available entrance QR code.",
   "Selamat datang di museum": "Welcome to the museum", "QR pintu masuk berhasil diverifikasi. Kunjunganmu sudah aktif.": "Entrance QR code verified. Your visit is now active.",

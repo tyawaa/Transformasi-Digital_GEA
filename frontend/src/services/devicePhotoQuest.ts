@@ -5,6 +5,7 @@ import { answerResultSchema, type AnswerResult, type Profile, type Quest } from 
 import type { CapturedPhoto } from "./photo";
 import { verifyDevicePhoto } from "./photoModel";
 import { devicePhotoVerdictSchema, type DevicePhotoVerdict } from "./photoModelTypes";
+import { requireMuseumOpen } from "./api";
 
 const receiptSchema = z.object({ requestId: z.uuid(), verdict: devicePhotoVerdictSchema, answer: answerResultSchema });
 type PhotoReceipt = z.infer<typeof receiptSchema>;
@@ -29,6 +30,7 @@ export async function restoredDevicePhotoAnswers(idSesi: string): Promise<readon
 
 /** Persist verdict metadata and points locally; these are never presented as server-verified evidence. */
 export async function answerDevicePhotoQuest(idSesi: string, idQuest: string, requestId: string, photo: CapturedPhoto, profile: Profile): Promise<AnswerResult> {
+  requireMuseumOpen(Date.now());
   z.uuid().parse(idSesi);
   z.uuid().parse(requestId);
   const entry = questCatalog.find((item): boolean => item.idQuest === idQuest && item.type === "foto");
@@ -38,6 +40,7 @@ export async function answerDevicePhotoQuest(idSesi: string, idQuest: string, re
   const requestKey: string = `gea.photo.request.v1:${idSesi}:${requestId}`;
   const completedKey: string = `gea.photo.completed.v1:${idSesi}:${idQuest}`;
   const verdict: DevicePhotoVerdict = await verifyDevicePhoto(photo.uri, idQuest);
+  requireMuseumOpen(Date.now());
   const stored: string | null = await AsyncStorage.getItem(requestKey);
   if (stored !== null) {
     const receipt: PhotoReceipt = receiptSchema.parse(JSON.parse(stored) as unknown);

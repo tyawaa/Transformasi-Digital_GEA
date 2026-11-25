@@ -1,9 +1,7 @@
-export const durationOptions = ["< 30 menit", "30-45 Menit", "45 menit-1.5 Jam", "> 1.5 jam"] as const;
+import { museumAccessAt, museumDayAt } from "../../domain/museumHours.ts";
 
-/** Jam tutup 16:00 WIB mengikuti asumsi Config_Rekomendasi yang dipakai aplikasi. */
-export const CLOSING_HOUR = 16;
-const MUSEUM_UTC_OFFSET_HOURS = 7;
-const MINUTE_MS = 60_000;
+export const durationOptions = ["< 30 menit", "30-45 Menit", "45 menit-1.5 Jam", "> 1.5 jam"] as const;
+const MINUTE_MS: number = 60_000;
 
 export type VisitWindow = {
   readonly endsAtMs: number;
@@ -23,18 +21,13 @@ function durationMinutes(duration: string): number {
 
 /** Batas waktu tetap pada tanggal kunjungan di zona waktu museum (WIB). */
 export function museumClosingAt(startedAtMs: number): number {
-  if (!Number.isFinite(startedAtMs)) throw new RangeError(`Waktu mulai kunjungan tidak valid: ${startedAtMs}`);
-  const museumDate: Date = new Date(startedAtMs + MUSEUM_UTC_OFFSET_HOURS * 60 * MINUTE_MS);
-  if (!Number.isFinite(museumDate.getTime())) throw new RangeError(`Tanggal kunjungan di luar rentang: ${startedAtMs}`);
-  return Date.UTC(
-    museumDate.getUTCFullYear(), museumDate.getUTCMonth(), museumDate.getUTCDate(),
-    CLOSING_HOUR - MUSEUM_UTC_OFFSET_HOURS,
-  );
+  return museumDayAt(startedAtMs).closingAtMs;
 }
 
 export function visitWindow(duration: string, startedAtMs: number): VisitWindow {
   const closingAtMs: number = museumClosingAt(startedAtMs);
   const chosenEndMs: number = startedAtMs + durationMinutes(duration) * MINUTE_MS;
+  if (museumAccessAt(startedAtMs) !== "open") return { endsAtMs: startedAtMs, budgetMinutes: 0, closingLimited: true };
   const endsAtMs: number = Math.max(startedAtMs, Math.min(chosenEndMs, closingAtMs));
   return {
     endsAtMs,

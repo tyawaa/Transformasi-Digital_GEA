@@ -116,14 +116,15 @@ function Home(): ReactElement {
   const profile = profileForAge(effectivePreferences);
   const session = useVisitSession(api, runOperation, profile);
   const startedAtMs: number | null = visit?.startedAt ?? null;
-  const endsAtMs: number | null = visit?.planned_end_at != null ? Date.parse(visit.planned_end_at)
+  const scheduledClosingAtMs: number | null = startedAtMs === null ? null : museumClosingAt(startedAtMs);
+  const closingAtMs: number | null = scheduledClosingAtMs === null ? null
+    : visit?.closing_at != null ? Math.min(Date.parse(visit.closing_at), scheduledClosingAtMs) : scheduledClosingAtMs;
+  const endsAtMs: number | null = visit?.planned_end_at != null && closingAtMs !== null ? Math.min(Date.parse(visit.planned_end_at), closingAtMs)
     : storiesSource.kind === "api" ? null
     : startedAtMs === null || effectivePreferences === null ? null : visitWindow(effectivePreferences.duration, startedAtMs).endsAtMs;
   const [demoOffsetMs, setDemoOffsetMs] = useState<number>(0);
   const lifecycle = useVisitLifecycle({ api, source: storiesSource.kind, visit, replaceVisit: visitState.replaceVisit, demoOffsetMs });
   const clock = useVisitClock(startedAtMs, endsAtMs, lifecycle.serverOffsetMs + demoOffsetMs);
-  const closingAtMs: number | null = visit?.closing_at != null ? Date.parse(visit.closing_at)
-    : storiesSource.kind === "mock" && startedAtMs !== null ? museumClosingAt(startedAtMs) : null;
   const museumClosed: boolean = closingAtMs !== null && clock.nowMs >= closingAtMs;
   const visitEnded: boolean = visit?.status === "selesai" || museumClosed;
   const [requestedPanel, setRequestedPanel] = useState<"finish" | "extend" | null>(null);
