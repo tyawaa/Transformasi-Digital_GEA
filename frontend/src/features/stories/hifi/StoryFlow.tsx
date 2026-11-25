@@ -25,6 +25,7 @@ import { GeaServiceError, readableError } from "../../../services/api";
 import { readVisitorLocation, type LocationReading } from "../../../services/location";
 import { type Fix, stepGeofence } from "../../../domain/geofence";
 import { type StoriesSource } from "../../../services/stories";
+import type { CapturedPhoto } from "../../../services/photo";
 import { museumPoiById, type StoryContent } from "../../../data/museum";
 import { storyRecording } from "../../../data/poiAudio";
 import { audioSource } from "../../../services/media";
@@ -384,6 +385,23 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
     setStep("result");
   }
 
+  function requireQuestVerification(): void {
+    if (!isVerified(progressOf(poiId))) {
+      questPending.current = true;
+      setStep("gps");
+      throw new GeaServiceError(403, "CHECKPOINT_VERIFICATION_REQUIRED", "Verifikasi lokasi koleksi diperlukan sebelum menjawab.");
+    }
+  }
+
+  function handleQuestError(cause: unknown): never {
+    if (cause instanceof GeaServiceError && cause.code === "CHECKPOINT_VERIFICATION_REQUIRED") {
+      onProgress(poiId, { verifiedUntil: null });
+      questPending.current = true;
+      setStep("gps");
+    }
+    throw cause;
+  }
+
   function openNarration(from: "story" | "story2"): void {
     setNarrationFrom(from);
     setStep("narration");
@@ -405,23 +423,24 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
   if (step === "quest" && selectedQuest !== undefined) {
     return <QuestTaskScreen key={selectedQuest.idQuest} quest={selectedQuest} profile={visit.profil} result={progress.quests?.[selectedQuest.idQuest]}
       onBack={(): void => setStep("quests")}
-      submit={async (requestId: string, label: OptionLabel | null, text: string | null): Promise<AnswerResult> => {
-        if (!isVerified(progressOf(poiId))) {
-          questPending.current = true;
-          setStep("gps");
-          throw new GeaServiceError(403, "CHECKPOINT_VERIFICATION_REQUIRED", "Verifikasi lokasi koleksi diperlukan sebelum menjawab.");
+      submitPhoto={async (requestId: string, photo: CapturedPhoto): Promise<AnswerResult> => {
+        requireQuestVerification();
+        try {
+          const answer: AnswerResult = await source.answerPhotoQuest(visit.id_sesi, selectedQuest.idQuest, requestId, photo);
+          if (answer.photoDecision === "accepted") props.onAnswer(answer);
+          return answer;
+        } catch (cause: unknown) {
+          return handleQuestError(cause);
         }
+      }}
+      submit={async (requestId: string, label: OptionLabel | null, text: string | null): Promise<AnswerResult> => {
+        requireQuestVerification();
         try {
           const answer: AnswerResult = await source.answerQuest(visit.id_sesi, selectedQuest.idQuest, requestId, label, text === null ? {} : { jawabanTeks: text });
           props.onAnswer(answer);
           return answer;
         } catch (cause: unknown) {
-          if (cause instanceof GeaServiceError && cause.code === "CHECKPOINT_VERIFICATION_REQUIRED") {
-            onProgress(poiId, { verifiedUntil: null });
-            questPending.current = true;
-            setStep("gps");
-          }
-          throw cause;
+          return handleQuestError(cause);
         }
       }} />;
   }

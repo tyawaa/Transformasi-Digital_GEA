@@ -9,6 +9,8 @@ import type { AnswerResult, OptionLabel, Profile, Quest, QuestType } from "../..
 import { questRecording } from "../../../data/poiAudio";
 import type { QuestProgress } from "../../../domain/points";
 import { readableError } from "../../../services/api";
+import type { CapturedPhoto } from "../../../services/photo";
+import { PhotoQuestScreen } from "./PhotoQuestScreen";
 import { StoryBackground } from "./backgrounds";
 import { BackButton, FrameStage, StoryButton } from "./parts";
 import { QuestAudio } from "./QuestAudio";
@@ -81,13 +83,14 @@ export function QuestListScreen({ poiName, quests, results, onPick, onResult, on
   );
 }
 
-/** PG, cocokkan, benar/salah dan isian dinilai sumber data; slot foto menunggu implementasi. */
-export function QuestTaskScreen({ quest, profile, result, submit, onBack }: {
+/** Quest foto diperiksa model APK; instruksi audio mengikuti profil pengunjung. */
+export function QuestTaskScreen({ quest, profile, result, submit, submitPhoto, onBack }: {
   readonly quest: Quest;
   /** Untuk memilih rekaman instruksi versi umum/anak. */
   readonly profile: Profile;
   readonly result: QuestProgress | undefined;
   readonly submit: (requestId: string, label: OptionLabel | null, text: string | null) => Promise<AnswerResult>;
+  readonly submitPhoto: (requestId: string, photo: CapturedPhoto) => Promise<AnswerResult>;
   readonly onBack: () => void;
 }): ReactElement {
   const [selected, setSelected] = useState<OptionLabel | null>(null);
@@ -103,6 +106,8 @@ export function QuestTaskScreen({ quest, profile, result, submit, onBack }: {
   const isText: boolean = quest.type === "isian_singkat";
   const photo: boolean = quest.type === "foto";
   const recording: number | undefined = quest.code == null ? undefined : questRecording(quest.code, profile);
+
+  if (photo && !finished) return <PhotoQuestScreen quest={quest} recording={recording} submit={submitPhoto} onBack={onBack} />;
 
   async function send(): Promise<void> {
     if (busy || finished || photo) return;
@@ -138,17 +143,9 @@ export function QuestTaskScreen({ quest, profile, result, submit, onBack }: {
           <GeaText variant="caption12" color={componentColors.bodyDark}>{quest.points ?? 0} poin{!photo && ` · Sisa ${Math.max(0, limit - attempts)} dari ${limit} kesempatan`}</GeaText>
           {recording !== undefined && <QuestAudio source={recording} />}
         </View>
-        {photo ? (
-          <View style={styles.question}>
-            <GeaText variant="bold16" color={colors.primary[900]}>Target foto</GeaText>
-            <GeaText variant="body16" color={componentColors.bodyDark}>{quest.target_foto}</GeaText>
-            <GeaText variant="body14" color={componentColors.bodyDark}>{quest.hint}</GeaText>
-            <GeaText variant="bold16" color={colors.primary[900]}>Fitur foto akan tersedia nanti.</GeaText>
-            <GeaText variant="body14" color={componentColors.bodyDark}>Quest ini belum dapat diselesaikan. Kamu bisa mengerjakan quest lainnya dulu.</GeaText>
-          </View>
-        ) : finished ? (
+        {finished ? (
           <View style={styles.question} accessibilityLiveRegion="polite">
-            <GeaText variant="heading24" color={colors.primary[900]}>{result?.completed ? "Jawaban benar!" : "Kesempatan habis"}</GeaText>
+            <GeaText variant="heading24" color={colors.primary[900]}>{result?.completed ? (photo ? "Foto sesuai!" : "Jawaban benar!") : "Kesempatan habis"}</GeaText>
             <GeaText variant="body16" color={componentColors.bodyDark}>{quest.penjelasan}</GeaText>
             <GeaText variant="bold16" color={colors.primary[900]}>+{result?.pointsAwarded ?? 0} poin</GeaText>
           </View>

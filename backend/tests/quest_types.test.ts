@@ -149,13 +149,13 @@ Deno.test("Quest Types: pilgan, foto, isian_singkat, benar_salah, dan profil ana
       equal(correct.pointsAwarded, 10); // Percobaan ke-2 = 10 poin
     });
 
-    await test.step("foto ditunda: penanda photoTaken tidak menyelesaikan quest atau memberikan poin", async (): Promise<void> => {
+    await test.step("penanda photoTaken tanpa bukti model tidak menyelesaikan quest", async (): Promise<void> => {
       await rejects(
         database.query(
           "select public.jawab_quest($1, $2, $3, null, $4, null, true) as result",
           [userIdAdult, visitIdAdult, questFotoId, crypto.randomUUID()],
         ),
-        /PHOTO_QUEST_NOT_AVAILABLE/,
+        /PHOTO_VALIDATION_REQUIRED/,
       );
       equal(
         (await database.query("select * from public.mengerjakan where id_quest=$1", [questFotoId]))
@@ -164,13 +164,13 @@ Deno.test("Quest Types: pilgan, foto, isian_singkat, benar_salah, dan profil ana
       );
     });
 
-    await test.step("foto yang ditunda juga tidak dapat diselesaikan profil anak", async (): Promise<void> => {
+    await test.step("foto profil anak juga memerlukan bukti model", async (): Promise<void> => {
       await rejects(
         database.query(
           "select public.jawab_quest($1, $2, $3, null, $4, null, true) as result",
           [userIdChild, visitIdChild, questFotoId, crypto.randomUUID()],
         ),
-        /PHOTO_QUEST_NOT_AVAILABLE/,
+        /PHOTO_VALIDATION_REQUIRED/,
       );
     });
 
@@ -329,6 +329,123 @@ Deno.test("Quest Types: pilgan, foto, isian_singkat, benar_salah, dan profil ana
         !childPhoto,
         "POI anak tuntas setelah cerita bila tidak ada quest foto",
       );
+    });
+    await test.step("bukti model: retake tanpa penalti, poin foto sekali, pemilik dan checkpoint wajib", async (): Promise<void> => {
+      const session: string = "50000000-0000-4000-8000-000000000003";
+      const quest: string = "40000000-0000-4000-8000-000000000024";
+      const hash: string = "a".repeat(64);
+      const retakeId: string = crypto.randomUUID();
+      await rejects(
+        database.query("select public.prepare_photo_quest($1,$2,$3,$4,$5)", [
+          userIdChild,
+          session,
+          quest,
+          retakeId,
+          hash,
+        ]),
+        /SESSION_NOT_FOUND|SESSION_FORBIDDEN/,
+      );
+      equal(
+        (await database.query<{ allowed: boolean }>(
+          "select has_function_privilege('authenticated','public.record_photo_quest(uuid,uuid,uuid,uuid,text,text,text,text,double precision,double precision)','execute') as allowed",
+        )).rows[0]!.allowed,
+        false,
+      );
+      const retake = await database.query<{ result: QuestAnswer }>(
+        "select public.record_photo_quest($1,$2,$3,$4,$5,'retake','smoke-v1','Objek belum dapat dipastikan',0.8,0.02) as result",
+        [userIdAdult, session, quest, retakeId, hash],
+      );
+      equal(retake.rows[0]!.result.attemptCount, 0);
+      equal(retake.rows[0]!.result.pointsAwarded, 0);
+      equal(
+        (await database.query("select * from public.mengerjakan where id_sesi=$1 and id_quest=$2", [
+          session,
+          quest,
+        ])).rows.length,
+        0,
+      );
+      await rejects(
+        database.query("select public.prepare_photo_quest($1,$2,$3,$4,$5)", [
+          userIdAdult,
+          session,
+          quest,
+          retakeId,
+          "b".repeat(64),
+        ]),
+        /IDEMPOTENCY_CONFLICT/,
+      );
+      await database.query(
+        "update private.poi_verification set expires_at=now()-interval '1 second' where id_sesi=$1 and id_poi=$2",
+        [session, poiFotoId],
+      );
+      await rejects(
+        database.query("select public.prepare_photo_quest($1,$2,$3,$4,$5)", [
+          userIdAdult,
+          session,
+          quest,
+          crypto.randomUUID(),
+          hash,
+        ]),
+        /CHECKPOINT_VERIFICATION_REQUIRED/,
+      );
+      await database.query(
+        "update private.poi_verification set expires_at=now()+interval '15 minutes' where id_sesi=$1 and id_poi=$2",
+        [session, poiFotoId],
+      );
+      const acceptedId: string = crypto.randomUUID();
+      const params: readonly string[] = [userIdAdult, session, quest, acceptedId, hash];
+      const statement: string =
+        "select public.record_photo_quest($1,$2,$3,$4,$5,'accepted','smoke-v1','Sesuai',0.95,0.2) as result";
+      const accepted = await database.query<
+        { result: QuestAnswer & { readonly poiPoints: number } }
+      >(statement, [...params]);
+      equal(accepted.rows[0]!.result.completed, true);
+      equal(accepted.rows[0]!.result.attemptCount, 1);
+      equal(accepted.rows[0]!.result.pointsAwarded, 20);
+      equal(
+        accepted.rows[0]!.result.poiPoints,
+        30,
+        "PG dan foto dihitung bersama pada progres POI",
+      );
+      const repeated = await database.query<{ result: QuestAnswer }>(statement, [...params]);
+      equal(repeated.rows[0]!.result.attemptCount, 1);
+      const points = await database.query<{ komponen: string; nilai_poin: number }>(
+        "select komponen,nilai_poin from public.points where id_sesi=$1 and id_poi=$2 and komponen in ('kuis','foto') order by komponen",
+        [session, poiFotoId],
+      );
+      equal(points.rows.length, 2);
+      equal(points.rows[0]!.komponen, "foto");
+      equal(points.rows[0]!.nilai_poin, 20);
+      equal(points.rows[1]!.nilai_poin, 10);
+      await rejects(
+        database.query(statement, [userIdAdult, session, quest, crypto.randomUUID(), hash]),
+        /QUEST_ALREADY_COMPLETED/,
+      );
+    });
+    await test.step("anak: foto tepercaya menuntaskan POI, PG dewasa ditolak", async (): Promise<void> => {
+      const quest: string = "40000000-0000-4000-8000-000000000024";
+      await database.query("select public.tutup_kartu($1,$2,$3)", [userIdChild, visitIdChild, poiFotoId]);
+      await rejects(
+        database.query("select public.jawab_quest($1,$2,$3,'B',$4)", [
+          userIdChild, visitIdChild, questFotoId, crypto.randomUUID(),
+        ]),
+        /QUEST_NOT_FOR_PROFILE/,
+      );
+      await rejects(
+        database.query("select public.jawab_quest($1,$2,$3,null,$4,null,true)", [
+          userIdChild, visitIdChild, quest, crypto.randomUUID(),
+        ]),
+        /PHOTO_VALIDATION_REQUIRED/,
+      );
+      const request: string = crypto.randomUUID();
+      const statement: string = "select public.record_photo_quest($1,$2,$3,$4,$5,'accepted','smoke-v1','Objek sesuai',0.95,0.2) as result";
+      const parameters: string[] = [userIdChild, visitIdChild, quest, request, "c".repeat(64)];
+      const accepted = await database.query<{ result: QuestAnswer & { readonly poiCompleted: boolean } }>(statement, parameters);
+      equal(accepted.rows[0]!.result.completed, true);
+      equal(accepted.rows[0]!.result.poiCompleted, true);
+      equal(accepted.rows[0]!.result.pointsAwarded, 20);
+      const repeated = await database.query<{ result: QuestAnswer }>(statement, parameters);
+      equal(repeated.rows[0]!.result.attemptCount, 1);
     });
   } finally {
     await database.close();

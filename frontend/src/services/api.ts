@@ -1,5 +1,6 @@
 import { type Session, type SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import { type CapturedPhoto, photoForm } from "./photo";
 import type { Preferences } from "../features/preferences/usePreferences";
 import {
   type AccessDecision,
@@ -39,12 +40,12 @@ export class GeaServiceError extends Error {
   }
 }
 
-async function fetchWithRetry(request: Request): Promise<Response> {
+async function fetchWithRetry(request: Request, timeoutMs: number): Promise<Response> {
   for (let attempt: number = 0; attempt <= retryDelays.length; attempt += 1) {
     const controller: AbortController = new AbortController();
     const timeout: ReturnType<typeof setTimeout> = setTimeout(
       (): void => controller.abort(),
-      15000,
+      timeoutMs,
     );
     try {
       const response: Response = await fetch(request.clone(), {
@@ -94,8 +95,8 @@ async function fetchWithRetry(request: Request): Promise<Response> {
   );
 }
 
-async function responseData(request: Request): Promise<unknown> {
-  const response: Response = await fetchWithRetry(request);
+async function responseData(request: Request, timeoutMs: number): Promise<unknown> {
+  const response: Response = await fetchWithRetry(request, timeoutMs);
   const source: string = await response.text();
   let parsed: unknown;
   try {
@@ -144,7 +145,7 @@ export class GeaApi {
 
   async health(): Promise<BackendHealth> {
     return healthSchema.parse(
-      await responseData(new Request(`${this.baseUrl()}/health`)),
+      await responseData(new Request(`${this.baseUrl()}/health`), 15000),
     );
   }
 
@@ -256,6 +257,16 @@ export class GeaApi {
     );
   }
 
+  async answerPhotoQuest(idSesi: string, idQuest: string, requestId: string, photo: CapturedPhoto): Promise<ScoredAnswerResult> {
+    const headers: Headers = await this.authorizedHeaders();
+    headers.delete("content-type");
+    const form: FormData = await photoForm(requestId, photo);
+    return scoredAnswerResultSchema.parse(await responseData(new Request(
+      `${this.baseUrl()}/sessions/${encodeURIComponent(idSesi)}/quests/${encodeURIComponent(idQuest)}/photo-answers`,
+      { method: "POST", headers, body: form },
+    ), 90000));
+  }
+
   async progress(idSesi: string): Promise<VisitProgress> {
     return visitProgressSchema.parse(
       await this.get(`/sessions/${encodeURIComponent(idSesi)}/progress`),
@@ -271,7 +282,7 @@ export class GeaApi {
   private async get(path: string): Promise<unknown> {
     const headers: Headers = await this.authorizedHeaders();
     return await responseData(
-      new Request(`${this.baseUrl()}${path}`, { headers }),
+      new Request(`${this.baseUrl()}${path}`, { headers }), 15000,
     );
   }
 
@@ -282,7 +293,7 @@ export class GeaApi {
         method: "POST",
         headers,
         body: JSON.stringify(body),
-      }),
+      }), 15000,
     );
   }
 

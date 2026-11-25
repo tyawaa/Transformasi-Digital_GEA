@@ -17,6 +17,7 @@
       }
     },
     "android": {
+      "package": "com.gea.museum",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -26,6 +27,7 @@
       "predictiveBackGestureEnabled": false
     },
     "plugins": [
+      "./plugins/with-short-native-paths.js",
       [
         "expo-location",
         {
@@ -39,7 +41,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "GEA menggunakan kamera untuk membaca QR pintu masuk museum.",
+          "cameraPermission": "GEA menggunakan kamera untuk membaca QR museum dan memotret koleksi pada quest foto.",
           "recordAudioAndroid": false,
           "microphonePermission": false
         }

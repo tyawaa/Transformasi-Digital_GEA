@@ -7,7 +7,7 @@ import { colors } from "./src/design/tokens";
 import { GeaFontsProvider, GeaText } from "./src/design/typography";
 import type { PoiSummary, Visit } from "./src/domain/contracts";
 import { availableBadges, type BadgeContext, type BadgeDef, badgeBonus, type BadgeId, badges as badgeDefs, earnedBadges, poiStatus, type PoiRef, totalPoints } from "./src/domain/points";
-import { localActivityPoints } from "./src/features/stories/progress";
+import { devicePhotoPoints, localActivityPoints } from "./src/features/stories/progress";
 import { useQuestDays } from "./src/features/progress/useQuestDays";
 import { questKind, questPlan } from "./src/features/stories/questPlan";
 import {
@@ -231,13 +231,13 @@ function Home(): ReactElement {
   // konten POI-15 s.d. POI-20 belum ada. Ganti ke wingEnabled("right") setelah kontennya lengkap.
   const badgeContext: BadgeContext = { kid: profile === "anak", questDays, rightWing: false };
   const localBadges: readonly BadgeId[] = earnedBadges(refs, progress, badgeContext);
-  // Mode API: semua poin quest berasal dari Supabase. Bonus lencana lokal ditambahkan sekali.
+  // Kuis API memakai total server; hasil model APK disimpan dan dijumlahkan di perangkat.
   const badges: readonly BadgeId[] = storiesSource.kind === "api"
     ? [...new Set([...visitState.rewards.badges, ...localBadges])]
     : localBadges;
   // Poin aktivitas (check-in, cerita, percobaan pertama, POI tuntas) dihitung di aplikasi.
   const points: number = localActivityPoints(progress) + (storiesSource.kind === "api"
-    ? visitState.rewards.totalPoints + badgeBonus(
+    ? visitState.rewards.totalPoints + devicePhotoPoints(progress) + badgeBonus(
       localBadges.filter((id: BadgeId): boolean => !visitState.rewards.badges.includes(id)),
     )
     : totalPoints(refs, progress, badgeContext));

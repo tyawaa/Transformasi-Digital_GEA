@@ -38,7 +38,14 @@ async function route(request: Request, config: BackendConfig, headers: Headers):
     headers,
   );
   if (sessions !== null) return sessions;
-  const quests: Response | null = await routeQuests(request, path, gateway, userId, headers);
+  const quests: Response | null = await routeQuests(
+    request,
+    path,
+    config,
+    gateway,
+    userId,
+    headers,
+  );
   if (quests !== null) return quests;
   throw new ApiError(404, "ROUTE_NOT_FOUND", "Endpoint atau HTTP method tidak tersedia.");
 }

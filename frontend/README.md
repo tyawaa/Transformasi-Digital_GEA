@@ -223,3 +223,37 @@ Selama kunjungan aktif, aplikasi memantau GPS (±1 detik) bila izin lokasi sudah
 - Akurasi > 20 m: banner merah "GPS lemah" (ketuk untuk scan QR); posisi tidak dipakai.
 - "Saya di sini" di judul sayap: pilih ruang manual bila GPS tidak membantu.
 - Mode mock: tombol "Uji GPS ▾" di peta untuk simulasi posisi (luar museum, GPS lemah, zona, P01–P14).
+
+## APK dengan AI foto di perangkat
+
+Android memakai modul lokal `modules/gea-photo-model`: DINOv2 ONNX, fitur referensi,
+ambang penilaian, resize dan pemeriksaan kualitas dibundel ke APK. Foto tidak dikirim
+ke layanan model. Label tidak wajib terbaca; hasil yang tidak pasti meminta foto ulang
+tanpa mengurangi kesempatan. Metadata hasil dan poin foto disimpan di HP, terpisah
+dari hasil resmi API, dan dipertahankan saat progres API dipulihkan. Penghapusan data
+aplikasi atau uninstall menghapus progres lokal. Sesi, cerita dan sinkronisasi kuis pada
+mode API tetap memerlukan internet; Expo Go dan web tidak menjalankan model Android.
+
+Siapkan model dari direktori `backend` dengan environment Python proyek:
+
+```powershell
+.local/photohunt-venv/Scripts/python.exe -m pip install -e 'photo-model[dev,mobile]'
+npm run photo:mobile
+```
+
+Ekspor memeriksa kesesuaian fitur Torch/ONNX serta regresi referensi dan quest salah;
+laporannya di `backend/.local/photo-model/mobile/validation.json`. Aset model dan foto
+uji dihasilkan ulang oleh perintah tersebut dan tidak disimpan di Git. Dari `frontend`,
+gunakan PowerShell 7 (`pwsh`) dan Android SDK:
+
+```powershell
+npm run apk -- -AndroidSdkPath "$env:LOCALAPPDATA/Android/Sdk" -Architectures arm64-v8a
+```
+
+Hasilnya `dist/apk/GEA-photo-offline.apk`, ditandatangani dengan kunci development
+lokal untuk pengujian, bukan rilis Google Play. Gunakan arsitektur `x86_64` untuk
+emulator, atau `'arm64-v8a,x86_64'` untuk keduanya. Uji integrasi Android menjalankan
+decoder dan model ONNX asli melalui Gradle task
+`:gea-photo-model:connectedDebugAndroidTest`; fixture uji tidak masuk APK rilis.
+Bobot berasal dari sesi survei yang sama, sehingga hasil regresi belum menunjukkan
+akurasi terhadap foto pengunjung baru. Performa dan akurasi perlu diuji di HP fisik.

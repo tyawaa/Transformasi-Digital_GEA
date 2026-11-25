@@ -19,6 +19,7 @@ export type QuestState = {
 export type QuestProgress = QuestState & {
   readonly type: QuestType;
   readonly pointsAwarded: number;
+  readonly evaluationSource?: "device";
 };
 
 export type StoryState = QuestState & {

@@ -7,6 +7,13 @@ supabase/.branches/
 coverage/
 *.token.txt
 backend/.local/
+__pycache__/
+*.egg-info/
+.ruff_cache/
+.mypy_cache/
+/.cxx/
+frontend/modules/gea-photo-model/android/src/main/assets/gea_photo/
+frontend/modules/gea-photo-model/android/src/androidTest/assets/
 
 # Bahan desain dan foto survei lokal (tidak masuk Git)
 gambar_ui/

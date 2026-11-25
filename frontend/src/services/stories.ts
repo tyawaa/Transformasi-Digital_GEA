@@ -30,6 +30,9 @@ import {
   mockZoneToken,
 } from "../mocks/stories";
 import { type GeaApi, GeaServiceError, type QuestAnswerExtra } from "./api";
+import type { CapturedPhoto } from "./photo";
+import { answerDevicePhotoQuest } from "./devicePhotoQuest";
+import { withDevicePhotoQuests } from "./devicePhotoPlan";
 
 /**
  * Sumber data Stories/quest. Mock (E4/E14) dan API (E7/E20) punya method yang sama,
@@ -50,6 +53,7 @@ export interface StoriesSource {
     labelOpsi: OptionLabel | null,
     extra?: QuestAnswerExtra,
   ): Promise<AnswerResult>;
+  answerPhotoQuest(idSesi: string, idQuest: string, requestId: string, photo: CapturedPhoto): Promise<AnswerResult>;
   closeCard(idSesi: string, idPoi: string): Promise<ClosedCard>;
   /** Progres dari server untuk melanjutkan sesi; null = tidak ada data server (mock). */
   restore(idSesi: string): Promise<RestoredVisit | null>;
@@ -80,6 +84,15 @@ type MockState = {
  * force-close tetap konsisten.
  */
 export class MockStoriesSource implements StoriesSource {
+  async answerPhotoQuest(idSesi: string, idQuest: string, requestId: string, photo: CapturedPhoto): Promise<AnswerResult> {
+    const state: MockState = await this.load();
+    const quest = questCatalog.find((item): boolean => item.idQuest === idQuest && item.type === "foto");
+    if (quest === undefined) throw new GeaServiceError(404, "QUEST_NOT_FOUND", "Quest foto tidak ditemukan.");
+    if (state.closed[`${idSesi}:${quest.idPoi}`] !== true) throw new GeaServiceError(403, "STORY_COMPLETION_REQUIRED", "Selesaikan cerita sebelum mengerjakan quest.");
+    const until: number | undefined = state.verifiedUntil[`${idSesi}:${quest.idPoi}`];
+    if (until === undefined || until < Date.now()) throw new GeaServiceError(403, "CHECKPOINT_VERIFICATION_REQUIRED", "Periksa GPS atau scan QR koleksi sebelum menjawab.");
+    return answerDevicePhotoQuest(idSesi, idQuest, requestId, photo);
+  }
   readonly kind = "mock" as const;
   private state: MockState | null = null;
 
@@ -222,9 +235,13 @@ export class MockStoriesSource implements StoriesSource {
   }
 }
 
-/** E7/E20: sumber data asli. Aturan QR, penilaian, dan hint diputuskan backend. */
+/** API supplies visits, stories, and quiz results; the APK evaluates and stores photo results locally. */
 export class ApiStoriesSource implements StoriesSource {
   readonly kind = "api" as const;
+
+  answerPhotoQuest(idSesi: string, idQuest: string, requestId: string, photo: CapturedPhoto): Promise<AnswerResult> {
+    return answerDevicePhotoQuest(idSesi, idQuest, requestId, photo);
+  }
 
   constructor(private readonly api: GeaApi) {}
 
@@ -236,16 +253,18 @@ export class ApiStoriesSource implements StoriesSource {
     return this.api.pois();
   }
 
-  poiDetail(idPoi: string, language: Language, profile: Profile): Promise<PoiDetail> {
-    return this.api.poiDetail(idPoi, language, profile);
+  async poiDetail(idPoi: string, language: Language, profile: Profile): Promise<PoiDetail> {
+    return withDevicePhotoQuests(await this.api.poiDetail(idPoi, language, profile), profile);
   }
 
-  verifyPoiQr(idSesi: string, token: string, language: Language, profile: Profile): Promise<PoiVerification> {
-    return this.api.verifyPoiQr(idSesi, token, language, profile);
+  async verifyPoiQr(idSesi: string, token: string, language: Language, profile: Profile): Promise<PoiVerification> {
+    const result: PoiVerification = await this.api.verifyPoiQr(idSesi, token, language, profile);
+    return { ...result, poi: withDevicePhotoQuests(result.poi, profile) };
   }
 
-  verifyPoiGps(idSesi: string, idPoi: string, location: DeviceLocation, language: Language, profile: Profile): Promise<PoiVerification> {
-    return this.api.verifyPoiGps(idSesi, idPoi, location, language, profile);
+  async verifyPoiGps(idSesi: string, idPoi: string, location: DeviceLocation, language: Language, profile: Profile): Promise<PoiVerification> {
+    const result: PoiVerification = await this.api.verifyPoiGps(idSesi, idPoi, location, language, profile);
+    return { ...result, poi: withDevicePhotoQuests(result.poi, profile) };
   }
 
   answerQuest(

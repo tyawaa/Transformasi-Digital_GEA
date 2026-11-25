@@ -1,5 +1,6 @@
-import type { AnswerResult, BadgeId, Quest, Visit, VisitProgress } from "../../domain/contracts.ts";
+import type { AnswerResult, BadgeId, Profile, Quest, Visit, VisitProgress } from "../../domain/contracts.ts";
 import { activityPoints, type QuestProgress } from "../../domain/points.ts";
+import { questPlan } from "./questPlan.ts";
 
 /** Status satu POI pada sesi ini. Disimpan di perangkat agar bertahan setelah app ditutup. */
 export type PoiProgress = {
@@ -41,6 +42,13 @@ export function localActivityPoints(progress: ProgressMap): number {
   return Object.values(progress).reduce((sum: number, state: PoiProgress): number => sum + activityPoints(state), 0);
 }
 
+/** Photo points assessed by the APK stay separate from official server totals. */
+export function devicePhotoPoints(progress: ProgressMap): number {
+  return Object.values(progress).reduce((total: number, state: PoiProgress): number => total +
+    Object.values(state.quests ?? {}).reduce((sum: number, quest: QuestProgress): number =>
+      sum + (quest.type === "foto" && quest.evaluationSource === "device" ? quest.pointsAwarded : 0), 0), 0);
+}
+
 export const emptyProgress: PoiProgress = {
   closed: false,
   verifiedUntil: null,
@@ -63,6 +71,7 @@ export function recordQuestAnswer(state: PoiProgress, answer: AnswerResult, plan
     [answer.idQuest]: {
       type: quest.type, completed: answer.completed, failed: answer.failed,
       attempts: answer.attemptCount, pointsAwarded: answer.pointsAwarded,
+      ...(answer.evaluationSource === "device" && { evaluationSource: "device" }),
     },
   };
   const active: readonly QuestProgress[] = plan.flatMap((item: Quest): readonly QuestProgress[] => {
@@ -124,14 +133,28 @@ export function restoreServerVisit(server: VisitProgress): RestoredVisit {
 }
 
 /**
- * Server menentukan progres seluruh quest; perangkat mempertahankan verifikasi GPS/QR dan check-in.
+ * Restore official API results while preserving locally evaluated APK photos, GPS/QR, and check-in.
  */
-export function mergeServerProgress(local: ProgressMap, server: ProgressMap): ProgressMap {
+export function mergeServerProgress(local: ProgressMap, server: ProgressMap, profile: Profile): ProgressMap {
   const verified: ProgressMap = Object.fromEntries(Object.entries(local).map(([id, state]): [string, PoiProgress] => [
     id, { ...emptyProgress, verifiedUntil: state.verifiedUntil, ...localOnly(state) },
   ]));
   const restored: ProgressMap = Object.fromEntries(Object.entries(server).map(([id, state]): [string, PoiProgress] => [
     id, { ...state, verifiedUntil: local[id]?.verifiedUntil ?? null, ...localOnly(local[id]) },
   ]));
-  return { ...verified, ...restored };
+  const combined: ProgressMap = { ...verified, ...restored };
+  return Object.entries(local).reduce((output: ProgressMap, [poiId, state]): ProgressMap => {
+    const device: readonly [string, QuestProgress][] = Object.entries(state.quests ?? {}).filter(([id, quest]): boolean =>
+      quest.type === "foto" && quest.evaluationSource === "device" &&
+      !(server[poiId]?.quests?.[id]?.type === "foto" && server[poiId]?.quests?.[id]?.completed === true)
+    );
+    if (device.length === 0) return output;
+    const base: PoiProgress = output[poiId] ?? { ...emptyProgress, closed: state.closed };
+    const next: PoiProgress = device.reduce((current: PoiProgress, [idQuest, quest]): PoiProgress => recordQuestAnswer(current, {
+      idQuest, idPoi: poiId, answerCorrect: quest.completed, attemptCount: quest.attempts,
+      completed: quest.completed, failed: quest.failed, hint: null, pointsAwarded: quest.pointsAwarded,
+      evaluationSource: "device",
+    }, questPlan(poiId, profile)), base);
+    return { ...output, [poiId]: next };
+  }, combined);
 }

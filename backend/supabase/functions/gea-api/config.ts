@@ -10,7 +10,31 @@ export type BackendConfig = {
   readonly serviceRoleKey: string;
   readonly museumArea: MuseumArea | null;
   readonly allowedOrigins: readonly string[];
+  readonly photoModel?: { readonly url: string; readonly token: string } | null;
 };
+
+function photoModelConfig(
+  environment: Environment,
+): NonNullable<BackendConfig["photoModel"]> | null {
+  const url: string = environment.GEA_PHOTO_MODEL_URL?.trim() ?? "";
+  const token: string = environment.GEA_PHOTO_MODEL_TOKEN?.trim() ?? "";
+  if (url === "" && token === "") return null;
+  if (url === "" || token.length < 32) {
+    throw new ApiError(
+      503,
+      "PHOTO_MODEL_CONFIGURATION_INVALID",
+      "Isi GEA_PHOTO_MODEL_URL dan token minimal 32 karakter.",
+    );
+  }
+  const parsed: URL = new URL(url);
+  if (
+    parsed.protocol !== "https:" &&
+    !["localhost", "127.0.0.1", "host.docker.internal"].includes(parsed.hostname)
+  ) {
+    throw new ApiError(503, "PHOTO_MODEL_CONFIGURATION_INVALID", "Layanan model harus HTTPS.");
+  }
+  return { url: url.replace(/\/$/, ""), token };
+}
 
 function required(environment: Environment, key: string): string {
   const value: string | undefined = environment[key];
@@ -85,6 +109,7 @@ export function readConfig(environment: Environment): BackendConfig {
     supabaseUrl: url,
     anonKey: required(environment, "SUPABASE_ANON_KEY"),
     serviceRoleKey: required(environment, "SUPABASE_SERVICE_ROLE_KEY"),
+    photoModel: photoModelConfig(environment),
     museumArea: museumAreaFromEnvironment(environment),
     allowedOrigins: (environment.GEA_ALLOWED_ORIGINS ?? "").split(",").map(
       (origin: string): string => origin.trim(),

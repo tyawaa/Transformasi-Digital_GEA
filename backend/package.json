@@ -5,6 +5,11 @@
   "type": "module",
   "description": "Supabase backend untuk GEA Stories dan geofence museum",
   "scripts": {
+    "photo:build": ".\\.local\\photohunt-venv\\Scripts\\python.exe -m gea_photo.cli build --assets assets --artifacts .local/photo-model --cache .local/photo-model-cache",
+    "photo:mobile": ".\\.local\\photohunt-venv\\Scripts\\python.exe -m gea_photo.mobile --artifacts .local/photo-model --cache .local/photo-model-cache --assets assets --destination ../frontend/modules/gea-photo-model/android/src/main/assets/gea_photo --test-assets ../frontend/modules/gea-photo-model/android/src/androidTest/assets",
+    "photo:serve": "powershell -NoProfile -File scripts/serve-photo-model.ps1",
+    "photo:connect": "powershell -NoProfile -File scripts/connect-photo-model.ps1",
+    "photo:smoke": ".\\.local\\photohunt-venv\\Scripts\\python.exe -m gea_photo.smoke --artifacts .local/photo-model --cache .local/photo-model-cache --assets assets",
     "check": "deno check --config deno.json supabase/functions/gea-api/index.ts tests/backend.test.ts scripts/*.ts",
     "lint": "deno lint",
     "format": "deno fmt",

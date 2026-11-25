@@ -10,6 +10,7 @@ import {
 import { quizPoints } from "../../domain/points";
 import { readableError } from "../../services/api";
 import type { StoriesSource } from "../../services/stories";
+import { restoredDevicePhotoAnswers } from "../../services/devicePhotoQuest";
 import {
   emptyProgress,
   recordQuestAnswer,
@@ -81,13 +82,18 @@ export function useVisitProgress(source: StoriesSource): VisitProgressState {
           id, state.quests === undefined ? { ...state, pointsAwarded: quizPoints(state) } : state,
         ]));
       }
+      const photoAnswers: readonly AnswerResult[] = await restoredDevicePhotoAnswers(restoredVisit.id_sesi);
+      local = photoAnswers.reduce((current: ProgressMap, answer: AnswerResult): ProgressMap => ({
+        ...current,
+        [answer.idPoi]: recordQuestAnswer(current[answer.idPoi] ?? { ...emptyProgress, closed: true }, answer, questPlan(answer.idPoi, restoredVisit.profil)),
+      }), local);
       if (!active) return;
       setVisit(restoredVisit);
       const server: RestoredVisit | null = await source.restore(restoredVisit.id_sesi);
       if (!active) return;
       if (server !== null) {
         if (server.visit.start_time === undefined) throw new Error("Server tidak mengirim waktu mulai kunjungan.");
-        local = mergeServerProgress(local, server.progress);
+        local = mergeServerProgress(local, server.progress, server.visit.profil);
         setRewards(server.rewards);
         const authoritative: Visit = { ...server.visit, startedAt: Date.parse(server.visit.start_time) };
         await AsyncStorage.setItem(visitKey(source.kind), JSON.stringify(authoritative));
@@ -156,7 +162,7 @@ export function useVisitProgress(source: StoriesSource): VisitProgressState {
 
   /** Respons API mengganti total; kode lencana baru digabung tanpa memberikan bonus lokal. */
   function recordAnswer(answer: AnswerResult): void {
-    if (source.kind === "api") {
+    if (source.kind === "api" && answer.evaluationSource !== "device") {
       const scored: ScoredAnswerResult = scoredAnswerResultSchema.parse(answer);
       setRewards((current: VisitRewards): VisitRewards => ({
         totalPoints: scored.totalPoints,

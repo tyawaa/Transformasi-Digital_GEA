@@ -1,14 +1,34 @@
 import { jsonBody, success } from "../http.ts";
+import type { BackendConfig } from "../config.ts";
+import { answerPhoto } from "../photo.ts";
 import type { SupabaseGateway } from "../supabase.ts";
 import { type JsonObject, uuid } from "../validation.ts";
 
 export async function routeQuests(
   request: Request,
   path: string,
+  config: BackendConfig,
   gateway: SupabaseGateway,
   userId: string,
   headers: Headers,
 ): Promise<Response | null> {
+  const photo: RegExpMatchArray | null = path.match(
+    /^\/sessions\/([^/]+)\/quests\/([^/]+)\/photo-answers$/,
+  );
+  if (request.method === "POST" && photo !== null) {
+    return success(
+      await answerPhoto(
+        request,
+        config,
+        gateway,
+        userId,
+        uuid(photo[1], "idSesi"),
+        uuid(photo[2], "idQuest"),
+      ),
+      200,
+      headers,
+    );
+  }
   const answer: RegExpMatchArray | null = path.match(
     /^\/sessions\/([^/]+)\/quests\/([^/]+)\/answers$/,
   );

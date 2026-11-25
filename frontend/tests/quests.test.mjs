@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { questsForPoi } from "../src/data/quests.ts";
 import { earnedBadges } from "../src/domain/points.ts";
-import { emptyProgress, mergeServerProgress, recordQuestAnswer, restoreServerVisit } from "../src/features/stories/progress.ts";
+import { devicePhotoPoints, emptyProgress, mergeServerProgress, recordQuestAnswer, restoreServerVisit } from "../src/features/stories/progress.ts";
+import { withDevicePhotoQuests } from "../src/services/devicePhotoPlan.ts";
 
 const poiId = "30000000-0000-4000-8000-000000000002";
 const plan = questsForPoi(poiId, "dewasa");
@@ -51,8 +52,40 @@ test("progres server mengembalikan centang quest dan poin setelah aplikasi dibuk
     poiProgress: [{ id_poi: poiId, kartu_ditutup: true, kuis_selesai: false, kuis_gagal: false, jumlah_percobaan: 1, poin_kuis: 10 }],
     quests: [{ id_quest: pg.idQuest, id_poi: poiId, type: "pilgan", answer_correct: true, jumlah_percobaan: 1, hint_dipakai: false, failed: false, pointsAwarded: 10 }],
   });
-  const merged = mergeServerProgress({}, restored.progress)[poiId];
+  const merged = mergeServerProgress({}, restored.progress, "dewasa")[poiId];
   assert.equal(merged.quests[pg.idQuest].completed, true);
   assert.equal(merged.pointsAwarded, 10);
   assert.equal(merged.completed, false);
+});
+
+test("hasil foto APK bertahan saat progres API dipulihkan dan tidak dihitung ganda", () => {
+  const photo = plan.find((quest) => quest.type === "foto");
+  const photoAnswer = {
+    ...response, idQuest: photo.idQuest, pointsAwarded: photo.points,
+    photoDecision: "accepted", evaluationSource: "device",
+  };
+  const local = recordQuestAnswer({ ...emptyProgress, closed: true }, photoAnswer, plan);
+  const server = recordQuestAnswer({ ...emptyProgress, closed: true }, response, plan);
+  const merged = mergeServerProgress({ [poiId]: local }, { [poiId]: server }, "dewasa");
+  assert.equal(merged[poiId].completed, true);
+  assert.equal(merged[poiId].pointsAwarded, response.pointsAwarded + photo.points);
+  assert.equal(devicePhotoPoints(merged), photo.points);
+  assert.deepEqual(mergeServerProgress(merged, { [poiId]: server }, "dewasa"), merged);
+  const official = recordQuestAnswer(server, { ...photoAnswer, evaluationSource: undefined }, plan);
+  const reconciled = mergeServerProgress(merged, { [poiId]: official }, "dewasa");
+  assert.equal(devicePhotoPoints(reconciled), 0);
+  assert.equal(reconciled[poiId].pointsAwarded, official.pointsAwarded);
+  assert.equal(local.quests[pg.idQuest], undefined);
+});
+
+test("foto anak tetap tuntas setelah pemulihan API tanpa menunggu PG dewasa", () => {
+  const childPlan = questsForPoi(poiId, "anak").filter((quest) => !quest.isDisabled);
+  const photo = childPlan[0];
+  const answer = { ...response, idQuest: photo.idQuest, pointsAwarded: photo.points, evaluationSource: "device" };
+  const local = recordQuestAnswer({ ...emptyProgress, closed: true }, answer, childPlan);
+  const merged = mergeServerProgress({ [poiId]: local }, { [poiId]: { ...emptyProgress, closed: true } }, "anak");
+  assert.equal(merged[poiId].completed, true);
+  assert.equal(devicePhotoPoints(merged), photo.points);
+  const overlay = withDevicePhotoQuests({ id_poi: poiId, quests: plan }, "anak");
+  assert.deepEqual(overlay.quests.filter((quest) => !quest.isDisabled).map((quest) => quest.type), ["foto"]);
 });

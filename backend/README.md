@@ -513,3 +513,62 @@ Verifikasi di remote:
 select count(*) as total_konten from public.konten; -- 22 baris (11 dewasa, 11 anak)
 select count(*) as total_quest from public.quest;   -- 11 quest terpasang
 ```
+# Validasi AI Photo Hunt (prototipe lokal)
+
+Model memakai `facebook/dinov2-small` dengan revisi bobot terkunci dan PaddleOCR melalui
+RapidOCR. Foto asli tidak diubah. Orientasi, resize, penghapusan EXIF, hash duplikat,
+anotasi sudut, label terbaca, fitur dan laporan tersimpan di `.local/photo-model/`.
+P01 mengikuti label museum: tulang lengan/humerus Megalochelys.
+Kelulusan ditentukan oleh kecocokan objek dan kualitas foto. Label menjadi bukti tambahan
+dan tidak wajib terbaca; foto objek yang belum dapat dipastikan tetap diminta ulang.
+
+Dari direktori `backend` pada Windows:
+
+```powershell
+python -m venv --without-pip .local/photohunt-venv
+python -m pip --python .local/photohunt-venv/Scripts/python.exe install -e 'photo-model[dev]'
+npm run photo:build
+npm run photo:smoke
+npm run photo:serve
+```
+
+Buka `http://127.0.0.1:7860`. Kunci akses demo dibuat di `.local/photo-model.env` saat
+server pertama dijalankan. Model yang sudah dibangun dapat dijalankan offline. Untuk
+proxy perusahaan, pakai CA tepercaya melalui `REQUESTS_CA_BUNDLE`; jangan matikan TLS.
+
+Untuk memakai model laptop dari backend Supabase live tanpa Hugging Face, biarkan
+`npm run photo:serve` berjalan, lalu di terminal backend kedua jalankan
+`npm run photo:connect -- -ProjectRef rjlihrvudakfhehbkncw`. Skrip membuka Cloudflare
+Quick Tunnel melalui QUIC, memeriksa model lewat HTTPS, dan memperbarui dua secret
+model pada proyek tersebut. Memerlukan login CLI Supabase dan CA tepercaya pada
+`.local/trusted-roots.pem`. Tunnel hanya untuk pengujian; laptop harus tetap menyala
+dan tersambung internet. Jalankan ulang skrip ketika tunnel berhenti karena URL berubah.
+Integrasi live juga memerlukan deploy fungsi `gea-api`, migrasi quest/foto
+`20261124000200`–`20261124000500`, serta dependensi lencana
+`20261116000500_badges_sheet_sprint3.sql` dan `20261120000100_sheet_baru_sayap_kiri.sql`.
+
+Untuk layanan penilaian foto melalui API (terpisah dari model dalam APK), terapkan migrasi `20261124000400_photo_validation.sql` dan
+`20261124000500_optional_photo_labels.sql` pada Supabase lokal, salin dua variabel di `.local/photo-model.env` ke `.env` backend,
+lalu jalankan fungsi seperti biasa. Native/web memakai sumber Stories mode API;
+mode mock menolak penilaian AI. Endpoint foto adalah
+`POST /sessions/{id}/quests/{questId}/photo-answers` dengan multipart `requestId` dan
+`photo` JPEG/PNG maksimal 6 MiB. QR/GPS koleksi, sesi pemilik, dan cerita selesai wajib.
+Foto dikirim sementara tanpa disimpan; hanya hash dan keputusan model dicatat.
+`retake` tidak mengurangi kesempatan, `accepted` memberi poin sekali secara atomik.
+
+Untuk menyiapkan Hugging Face **Docker Space**, ekspor dari direktori backend:
+
+```powershell
+.local/photohunt-venv/Scripts/python.exe -m gea_photo.cli export --artifacts .local/photo-model --cache .local/photo-model-cache --destination .local/photo-model-release
+```
+
+Unggah isi direktori rilis ke Docker Space, atur secret `GEA_PHOTO_MODEL_TOKEN`
+minimal 32 karakter dan port 7860. Isi base URL HTTPS Space di `GEA_PHOTO_MODEL_URL`
+serta token yang sama pada secrets backend sebelum deploy fungsi dan migrasi.
+Ekspor hanya membawa fitur/referensi metadata dan cache model, bukan foto pengunjung.
+
+`validation.json` berisi diagnostik sudut dari sesi survei yang sama dan dipakai untuk
+kalibrasi ambang, **bukan akurasi test independen**. `smoke.json` menguji HTTP dan
+perilaku model nyata pada referensi dikenal serta input negatif sederhana. Prototipe
+belum menjamin penolakan foto layar, label yang ditempel pada objek lain, atau seluruh
+objek asing. Validasi lapangan diperlukan sebelum mengandalkan hasilnya untuk hadiah.
