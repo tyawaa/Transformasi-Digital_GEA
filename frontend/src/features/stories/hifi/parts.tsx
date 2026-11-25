@@ -10,7 +10,7 @@ import {
   View,
   type ViewStyle,
 } from "react-native";
-import { colors, componentColors, radius } from "../../../design/tokens";
+import { colors, componentColors, radius, shadows } from "../../../design/tokens";
 import { GeaText } from "../../../design/typography";
 import { mediaSource } from "../../../services/media";
 import { backArrow } from "./backgrounds";
@@ -138,6 +138,27 @@ export function BackButton(
   );
 }
 
+/** Tombol "Istirahat Dulu" (Figma 436:1753): pil krem di pojok kanan atas, sejajar BackButton. */
+export function PauseButton(
+  { onPress, label = "Istirahat Dulu" }: { readonly onPress: () => void; readonly label?: string },
+): ReactElement {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      hitSlop={8}
+      onPress={onPress}
+      style={({ pressed }) => [styles.pause, pressed && styles.pressed]}
+    >
+      <GeaText variant="body16" color={colors.primary[700]}>{label}</GeaText>
+      <View style={styles.pauseIcon}>
+        <View style={styles.pauseBar} />
+        <View style={styles.pauseBar} />
+      </View>
+    </Pressable>
+  );
+}
+
 /** Foto berbingkai hijau yang diputar, seperti "Frame 21" di Figma. */
 export function PhotoFrame(
   { photoUrl, label, left, top, box, size, border, rotate }: {
@@ -192,6 +213,22 @@ const styles = StyleSheet.create({
     backgroundColor: colors.secondaryYellow[100],
   },
   backIcon: { width: 24, height: 24, transform: [{ scaleX: -1 }] },
+  pause: {
+    position: "absolute",
+    right: 16,
+    top: 48,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: radius.pill,
+    backgroundColor: colors.secondaryYellow[0],
+    boxShadow: shadows.drop,
+    zIndex: 2,
+  },
+  pauseIcon: { flexDirection: "row", alignItems: "center", gap: 3, width: 24, height: 24, justifyContent: "center" },
+  pauseBar: { width: 4, height: 14, borderRadius: 2, backgroundColor: colors.primary[700] },
   pressed: { opacity: 0.7 },
   photoBox: { position: "absolute", alignItems: "center", justifyContent: "center" },
   photo: {

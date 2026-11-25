@@ -3,6 +3,7 @@ import { type ReactElement, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, useWindowDimensions, View } from "react-native";
 import { Toast } from "../../../design/Toast";
 import { AnimatedNotification } from "../../../design/AnimatedNotification";
+import { SheetModal } from "../../../design/SheetModal";
 import { colors, componentColors, radius, shadows, spacing } from "../../../design/tokens";
 import { GeaText } from "../../../design/typography";
 import type {
@@ -32,9 +33,9 @@ import { SceneLayer } from "../../onboarding/scene";
 import { type ParsedQr, qrErrorMessage } from "../../qr/qrPayload";
 import type { PoiProgress } from "../progress";
 import { isiPanelLayer, StoryBackground } from "./backgrounds";
-import { BackButton, FRAME_H, FrameStage, PhotoFrame, StoryButton } from "./parts";
+import { BackButton, FRAME_H, FrameStage, PauseButton, PhotoFrame, StoryButton } from "./parts";
 import { type DummyScan, ScanQrScreen, type ScanState } from "./ScanQrScreen";
-import { StoryAudio } from "./StoryAudio";
+import { NarrationButton } from "./StoryAudio";
 import { QuestListScreen, QuestTaskScreen } from "./QuestScreens";
 import { ExplorerResultScreen, StoryFinishedScreen } from "./StoryEndScreens";
 import { type AdventureSummary, ShareResultScreen, WellDoneScreen } from "./AdventureDoneScreens";
@@ -49,7 +50,6 @@ type Step =
   | "summary"
   | "story"
   | "story2"
-  | "narration"
   | "storyDone"
   | "quests"
   | "quest"
@@ -184,12 +184,15 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
     stepGeofence([], props.gpsFix, [{ ...checkpoint, id: poiId }]).inside.includes(poiId);
   // Kembali ke daftar quest setelah verifikasi lokasi diperbarui.
   const questPending = useRef<boolean>(false);
-  const [narrationFrom, setNarrationFrom] = useState<"story" | "story2">("story");
   // Tinggi isi cerita (judul + teks + tombol); menentukan apakah halaman perlu digulir.
   const [isiHeight, setIsiHeight] = useState<number>(0);
-  const isiStep: boolean = step === "story" || step === "story2" || step === "narration";
+  const isiStep: boolean = step === "story" || step === "story2";
   // Quest yang dibuka dari daftar setelah cerita.
   const [selectedQuestId, setSelectedQuestId] = useState<string | null>(null);
+  // "Istirahat Dulu": jeda cerita (dan narasi) sampai pengguna menekan "Siap" atau menutup modal.
+  const [paused, setPaused] = useState<boolean>(false);
+  // "Aktifkan Mode Audio" dari ringkasan: narasi langsung diputar begitu tiba di Story Isi.
+  const [autoPlayNarration, setAutoPlayNarration] = useState<boolean>(false);
 
   // Muat ulang cerita yang sudah selesai atau masih terverifikasi.
   useEffect((): (() => void) | undefined => {
@@ -384,11 +387,6 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
     setStep("result");
   }
 
-  function openNarration(from: "story" | "story2"): void {
-    setNarrationFrom(from);
-    setStep("narration");
-  }
-
   if (step === "storyDone") {
     return <StoryFinishedScreen poiName={poi.nama} hasActivity={quests.length > 0}
       actionLabel={quests.length > 0 ? "Lihat Daftar Quest" : "Lihat Hasil"}
@@ -476,56 +474,53 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
             <GeaText variant="body16Tight" color={componentColors.cardBody} numberOfLines={3}>{description.text}</GeaText>
             <StoryButton label="Mulai Cerita" onPress={(): void => setStep("story")} style={styles.summaryButton} />
           </View>
-          {narration !== null && <Pressable accessibilityRole="button" hitSlop={8} style={styles.audioMode} onPress={(): void => openNarration("story")}>
+          {narration !== null && <Pressable
+            accessibilityRole="button"
+            hitSlop={8}
+            style={styles.audioMode}
+            onPress={(): void => { setAutoPlayNarration(true); setStep("story"); }}
+          >
             <GeaText variant="body16" color={colors.primary[800]}>Aktifkan Mode Audio</GeaText>
-            <AudioCircle />
+            <AudioBadge />
           </Pressable>}
         </>
       )}
 
-      {(step === "story" || step === "story2" || step === "narration") && (
+      {(step === "story" || step === "story2") && (
         <>
           <BackButton onPress={props.onExit} />
+          <PauseButton onPress={(): void => setPaused(true)} />
           <PhotoFrame photoUrl={description.photoUrl} label={poi.nama} left={-21} top={86} box={301.076} size={{ width: 267.756, height: 267.756 }} border={12.551} rotate={-7.66} />
           <PhotoFrame photoUrl={secondPhoto} label={poi.nama} left={136} top={229} box={272.526} size={{ width: 267.756, height: 267.756 }} border={12.551} rotate={1.03} />
           <SceneLayer layer={isiPanelLayer} />
           {/* Panel cokelat diperpanjang ke bawah saat cerita panjang dan halaman digulir. */}
           <View style={[styles.isiFill, { height: Math.max(0, ISI_TOP + isiHeight + ISI_BOTTOM - ISI_FILL_TOP) }]} />
-          {narration !== null && <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={step === "narration" ? "Tutup narasi" : "Dengarkan narasi"}
-            hitSlop={8}
+          {narration !== null && <NarrationButton
+            narration={narration}
+            autoPlay={autoPlayNarration}
+            onAutoPlayed={(): void => setAutoPlayNarration(false)}
+            suspend={paused}
             style={styles.audioButton}
-            onPress={(): void => {
-              if (step === "narration") setStep(narrationFrom);
-              else openNarration(step === "story2" ? "story2" : "story");
-            }}
-          >
-            <AudioCircle active={step === "narration"} />
-          </Pressable>}
+          />}
           <View
             style={styles.isiContent}
             onLayout={(event): void => setIsiHeight(event.nativeEvent.layout.height)}
           >
             <View style={styles.isiTexts}>
               <GeaText variant="heading28" color={colors.secondaryYellow[100]} numberOfLines={2}>
-                {step === "narration" ? "Dengarkan Narasi" : step === "story2" ? pageTwoTitle : judul ?? poi.nama}
+                {step === "story2" ? pageTwoTitle : judul ?? poi.nama}
               </GeaText>
-              {step === "narration" && narration !== null
-                ? <StoryAudio key={narration.key} source={narration.source} durationSeconds={narration.seconds} />
-                : (
-                  <View>
-                    <GeaText variant="body16Tight" color={colors.secondaryYellow[0]}>
-                      {step === "story2" ? pageTwoText : description.text}
-                    </GeaText>
-                    {step === "story" && pageCount === 1 && fakta !== undefined && (
-                      <View style={styles.fact}>
-                        <GeaText variant="bold16" color={colors.primary[900]}>Fakta menarik</GeaText>
-                        <GeaText variant="body14" color={componentColors.bodyDark}>{fakta}</GeaText>
-                      </View>
-                    )}
+              <View>
+                <GeaText variant="body16Tight" color={colors.secondaryYellow[0]}>
+                  {step === "story2" ? pageTwoText : description.text}
+                </GeaText>
+                {step === "story" && pageCount === 1 && fakta !== undefined && (
+                  <View style={styles.fact}>
+                    <GeaText variant="bold16" color={colors.primary[900]}>Fakta menarik</GeaText>
+                    <GeaText variant="body14" color={componentColors.bodyDark}>{fakta}</GeaText>
                   </View>
                 )}
+              </View>
             </View>
             {error !== null && <GeaText variant="body14" color={colors.danger[100]} accessibilityRole="alert">{error}</GeaText>}
             <View style={styles.isiNav}>
@@ -533,10 +528,7 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
                 accessibilityRole="button"
                 hitSlop={10}
                 style={styles.flex}
-                onPress={(): void => {
-                  if (step === "narration") setStep(narrationFrom);
-                  else setStep(step === "story2" ? "story" : "summary");
-                }}
+                onPress={(): void => setStep(step === "story2" ? "story" : "summary")}
               >
                 <GeaText variant="body16Tight" color={colors.secondaryYellow[100]} style={styles.link}>Kembali</GeaText>
               </Pressable>
@@ -544,8 +536,7 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
                 label="Lanjut"
                 style={styles.shadowed}
                 onPress={(): void => {
-                  const from: "story" | "story2" = step === "narration" ? narrationFrom : step === "story2" ? "story2" : "story";
-                  if (from === "story" && pageCount > 1) setStep("story2");
+                  if (step === "story" && pageCount > 1) setStep("story2");
                   else void finishStory();
                 }}
               />
@@ -554,13 +545,22 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
         </>
       )}
 
+      <SheetModal
+        visible={paused}
+        onClose={(): void => setPaused(false)}
+        title="Sudah siap untuk melanjutkan perjalanan?"
+        description="Istirahat dulu nggak masalah. Ketuk Siap kalau kamu sudah mau lanjut membaca dan mengerjakan quest-nya."
+        actionLabel="Siap"
+        onAction={(): void => setPaused(false)}
+      />
     </FrameStage>
   );
 }
 
-function AudioCircle({ active = false }: { readonly active?: boolean }): ReactElement {
+/** Ikon speaker dekoratif di tombol "Aktifkan Mode Audio" (ringkasan); kontrol sebenarnya ada di NarrationButton. */
+function AudioBadge(): ReactElement {
   return (
-    <View style={[styles.audioIcon, active && styles.audioIconActive]}>
+    <View style={styles.audioIcon}>
       <Image accessible={false} source={speakerIcon} style={styles.icon24} />
     </View>
   );
@@ -618,7 +618,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: colors.secondaryYellow[100],
   },
-  audioIconActive: { backgroundColor: colors.secondaryGreen[300] },
   icon24: { width: 24, height: 24 },
   icon28: { width: 28, height: 28 },
   isiContent: {
