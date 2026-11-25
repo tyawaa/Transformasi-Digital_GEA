@@ -7,7 +7,7 @@ import { colors } from "./src/design/tokens";
 import { GeaFontsProvider, GeaText } from "./src/design/typography";
 import type { PoiSummary, Visit } from "./src/domain/contracts";
 import { preferencesSchema } from "./src/domain/contracts";
-import { availableBadges, type BadgeContext, type BadgeDef, badgeBonus, type BadgeId, badges as badgeDefs, earnedBadges, poiStatus, type PoiRef, totalPoints } from "./src/domain/points";
+import { availableBadges, type BadgeContext, type BadgeDef, badgeBonus, badgeProgress, type BadgeId, badges as badgeDefs, earnedBadges, poiStatus, type PoiRef, totalPoints } from "./src/domain/points";
 import { devicePhotoPoints, localActivityPoints, type PoiProgress } from "./src/features/stories/progress";
 import { useQuestDays } from "./src/features/progress/useQuestDays";
 import { questKind, questPlan } from "./src/features/stories/questPlan";
@@ -617,14 +617,11 @@ function Home(): ReactElement {
   if (screen.name === "progress") {
     return (
       <>
-        <StatusBar style="dark" />
+        <StatusBar style="light" />
         <ProgressScreen
-          pois={mapPois}
-          progressOf={progressOf}
-          totalPoints={points}
           earned={badges}
           available={availableBadges(badgeContext)}
-          durationText={adventure.durationText}
+          progress={badgeProgress(refs, progress, badgeContext)}
           onBack={(): void => setScreen({ name: "map" })}
           onEndVisit={(): void => { setRequestedPanel("finish"); setScreen({ name: "map" }); }}
         />
