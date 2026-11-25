@@ -1,7 +1,7 @@
 import { useCameraPermissions } from "expo-camera";
 import { Image } from "expo-image";
 import * as Location from "expo-location";
-import { type ReactElement, useEffect, useMemo, useRef, useState } from "react";
+import { type ComponentRef, type ReactElement, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Easing,
@@ -52,7 +52,7 @@ export function OnboardingScreen(
 
   // Web: browser menggulir kontainer ber-overflow hidden agar tombol yang difokus terlihat,
   // sehingga adegan bergeser. Kunci posisi gulirnya di 0 (tidak terjadi di HP).
-  const rootRef = useRef<View>(null);
+  const rootRef = useRef<ComponentRef<typeof Animated.View>>(null);
   useEffect((): (() => void) | undefined => {
     if (Platform.OS !== "web") return undefined;
     const node = rootRef.current as unknown as HTMLElement | null;

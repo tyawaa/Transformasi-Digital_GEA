@@ -2,7 +2,7 @@
 import { Image } from "expo-image";
 import { Asset } from "expo-asset";
 import * as Sharing from "expo-sharing";
-import { type ReactElement, useRef, useState } from "react";
+import { type ComponentRef, type ReactElement, useRef, useState } from "react";
 import { Linking, Platform, Pressable, Share, StyleSheet, View } from "react-native";
 import { captureRef } from "react-native-view-shot";
 import { colors, componentColors, shadows, spacing } from "../../../design/tokens";
@@ -274,7 +274,7 @@ export function ShareResultScreen(
 ): ReactElement {
   const percent: number = summary.poisTotal === 0 ? 0 : Math.round((summary.poisDone / summary.poisTotal) * 100);
   const badge: string = summary.badgeName ?? "Penjelajah Bumi";
-  const cardRef = useRef<View>(null);
+  const cardRef = useRef<ComponentRef<typeof View>>(null);
   const [sharing, setSharing] = useState<boolean>(false);
   const [shareStatus, setShareStatus] = useState<string | null>(null);
 

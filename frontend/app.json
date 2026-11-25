@@ -54,7 +54,9 @@
       ],
       "expo-asset",
       "expo-image",
-      "expo-font"
+      "expo-font",
+      "expo-sharing",
+      "expo-status-bar"
     ],
     "web": {
       "favicon": "./assets/favicon.png"

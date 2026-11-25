@@ -1,5 +1,5 @@
 import { Image } from "expo-image";
-import { type ReactElement, type ReactNode, useEffect, useRef } from "react";
+import { type ComponentRef, type ReactElement, type ReactNode, useEffect, useRef } from "react";
 import {
   Platform,
   Pressable,
@@ -34,8 +34,8 @@ export function FrameStage(
 ): ReactElement {
   const { width, height } = useWindowDimensions();
   const scale: number = Math.min(width / FRAME_W, height / FRAME_H);
-  const rootRef = useRef<View>(null);
-  const scrollRef = useRef<ScrollView>(null);
+  const rootRef = useRef<ComponentRef<typeof View>>(null);
+  const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
   const frameH: number = Math.max(FRAME_H, frameHeight);
   // Jarak atas sama seperti frame 844 yang ditengahkan; transform scale berpusat di tengah frame.
   const offsetTop: number = (height - FRAME_H * scale) / 2;

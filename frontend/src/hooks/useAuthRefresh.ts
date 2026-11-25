@@ -1,11 +1,11 @@
 import { useEffect } from "react";
-import { AppState, type AppStateStatus, Platform } from "react-native";
+import { AppState, Platform } from "react-native";
 import { supabase } from "../services/supabase";
 
 export function useAuthRefresh(): void {
   useEffect((): (() => void) | undefined => {
     if (Platform.OS === "web") return undefined;
-    function syncRefresh(state: AppStateStatus): void {
+    function syncRefresh(state: string | null | undefined): void {
       if (state === "active") supabase.auth.startAutoRefresh();
       else supabase.auth.stopAutoRefresh();
     }
