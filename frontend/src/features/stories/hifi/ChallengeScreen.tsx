@@ -10,6 +10,7 @@ import type { PoiDetail } from "../../../domain/contracts";
 import { StoryBackground } from "./backgrounds";
 import { BackButton, FrameStage, StoryButton } from "./parts";
 import { PhotoTaskScreen } from "./PhotoTaskScreen";
+import { useLanguage } from "../../preferences/LanguageSettings";
 
 type Props = {
   readonly challenge: Tantangan;
@@ -45,6 +46,7 @@ function normalize(text: string): string {
 }
 
 export function ChallengeScreen({ challenge, onBack, onDone, testMode = false, references, photoUrl, grade }: Props): ReactElement {
+  const { t } = useLanguage();
   const [outcome, setOutcome] = useState<boolean | null>(null);
   const [serverPoints, setServerPoints] = useState<number | null>(null);
   const [serverHint, setServerHint] = useState<string | null>(null);
@@ -140,9 +142,9 @@ export function ChallengeScreen({ challenge, onBack, onDone, testMode = false, r
       <BackButton onPress={onBack} />
       <View style={styles.card} onLayout={(event): void => setHeight(event.nativeEvent.layout.height)}>
         <View style={styles.header}>
-          <GeaText variant="label16" color={colors.primary[700]}>TANTANGAN</GeaText>
+          <GeaText variant="label16" color={colors.primary[700]}>{t("TANTANGAN", "CHALLENGE")}</GeaText>
           {(!photoType || !warmupDone) && outcome === null && (
-            <GeaText variant="label16" color={colors.primary[700]} accessibilityLabel={`Sisa ${left} kesempatan`}>
+            <GeaText variant="label16" color={colors.primary[700]} accessibilityLabel={t(`Sisa ${left} kesempatan`, `${left} attempts left`)}>
               {"●".repeat(left)}{"○".repeat(attempts)}
             </GeaText>
           )}
@@ -181,7 +183,7 @@ export function ChallengeScreen({ challenge, onBack, onDone, testMode = false, r
                         setAnswer(text);
                         setWrong(false);
                       }}
-                      placeholder="Tulis jawabanmu"
+                      placeholder={t("Tulis jawabanmu", "Enter your answer")}
                       autoCapitalize="none"
                       autoCorrect={false}
                       returnKeyType="done"
@@ -189,12 +191,12 @@ export function ChallengeScreen({ challenge, onBack, onDone, testMode = false, r
                         if (answer.trim() !== "") check(answer);
                       }}
                     />
-                    <StoryButton label="Kirim Jawaban" disabled={answer.trim() === ""} onPress={(): void => check(answer)} />
+                    <StoryButton label={t("Kirim Jawaban", "Submit Answer")} disabled={answer.trim() === ""} onPress={(): void => check(answer)} />
                   </>
                 )}
               {wrong && (
                 <View accessibilityLiveRegion="polite" style={styles.hint}>
-                  <GeaText variant="bold16" color={colors.warning[500]}>Belum tepat · sisa {left} kesempatan</GeaText>
+                  <GeaText variant="bold16" color={colors.warning[500]}>{t("Belum tepat · sisa", "Not quite · remaining")} {left} {t("kesempatan", "attempts")}</GeaText>
                   {(serverHint ?? challenge.hint) != null && (
                     <GeaText variant="body14" color={componentColors.bodyDark}>{serverHint ?? challenge.hint}</GeaText>
                   )}
@@ -210,18 +212,18 @@ export function ChallengeScreen({ challenge, onBack, onDone, testMode = false, r
               <View style={[styles.result, outcome ? styles.resultOk : styles.resultFail]}>
                 <GeaText variant="bold16" color={outcome ? colors.success[500] : colors.danger[500]}>
                   {photoType
-                    ? "Foto berhasil diambil!"
+                    ? t("Foto berhasil diambil!", "Photo captured!")
                     : outcome
-                    ? `Benar! +${serverPoints ?? challenge.poin} poin`
-                    : "Kesempatan habis"}
+                    ? t(`Benar! +${serverPoints ?? challenge.poin} poin`, `Correct! +${serverPoints ?? challenge.poin} points`)
+                    : t("Kesempatan habis", "No attempts left")}
                 </GeaText>
-                {photoType && <GeaText variant="body14" color={componentColors.bodyDark}>+{serverPoints ?? challenge.poin} poin</GeaText>}
+                {photoType && <GeaText variant="body14" color={componentColors.bodyDark}>+{serverPoints ?? challenge.poin} {t("poin", "pts")}</GeaText>}
               </View>
               {challenge.penjelasan !== undefined && (
                 <GeaText variant="body16" color={componentColors.bodyDark}>{challenge.penjelasan}</GeaText>
               )}
               <StoryButton
-                label="Lanjut"
+                label={t("Lanjut", "Continue")}
                 onPress={(): void => onDone({
                   success: outcome,
                   // Poin dari server sudah masuk pointsAwarded.

@@ -1,6 +1,10 @@
 import { registerRootComponent } from 'expo';
 import './src/features/eyesfree/background';
 import { Platform } from 'react-native';
+import { createElement, type ReactElement } from 'react';
+import App from './App';
+import DesignSystemPreview from './src/design/DesignSystemPreview';
+import { LanguageSettingsProvider } from './src/features/preferences/LanguageSettings';
 
 // Aplikasi ini untuk HP. Di browser layar lebar, buka di dalam bingkai HP (public/demo.html)
 // agar semua layar tampil seukuran HP. Tambahkan ?full ke URL untuk melewati bingkai.
@@ -14,13 +18,14 @@ if (
   window.location.replace('/demo.html' + window.location.search);
 }
 
-import App from './App';
-import DesignSystemPreview from './src/design/DesignSystemPreview';
+function LocalizedDesignPreview(): ReactElement {
+  return createElement(LanguageSettingsProvider, { children: createElement(DesignSystemPreview) });
+}
 
 // registerRootComponent calls AppRegistry.registerComponent('main', () => App);
 // It also ensures that whether you load the app in Expo Go or in a native build,
 // the environment is set up appropriately
 // EXPO_PUBLIC_SCREEN=design-system membuka halaman uji design system (hanya untuk pengembangan).
 registerRootComponent(
-  process.env.EXPO_PUBLIC_SCREEN === 'design-system' ? DesignSystemPreview : App,
+  process.env.EXPO_PUBLIC_SCREEN === 'design-system' ? LocalizedDesignPreview : App,
 );

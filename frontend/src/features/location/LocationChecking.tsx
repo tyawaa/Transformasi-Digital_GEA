@@ -5,6 +5,7 @@ import { colors, componentColors } from "../../design/tokens";
 import { GeaText } from "../../design/typography";
 import { onboardingAssets as img, SceneLayer } from "../onboarding/scene";
 import { FrameStage } from "../stories/hifi/parts";
+import { useLanguage } from "../preferences/LanguageSettings";
 
 const branch = require("../../../assets/onboarding/v1561.svg") as number;
 const leaf = require("../../../assets/onboarding/v1557.svg") as number;
@@ -13,6 +14,7 @@ const leaf = require("../../../assets/onboarding/v1557.svg") as number;
 export function LocationCheckingContent(
   { top, active }: { readonly top: number; readonly active: boolean },
 ): ReactElement {
+  const { t } = useLanguage();
   const pulse = useRef<Animated.Value>(new Animated.Value(0)).current;
 
   useEffect((): (() => void) | undefined => {
@@ -40,7 +42,7 @@ export function LocationCheckingContent(
       <View style={[styles.dot, styles.dotLeft]} />
       <View style={[styles.dot, styles.dotRight]} />
       <GeaText variant="display42" color={colors.secondaryGreen[100]} accessibilityRole="header" style={styles.title}>
-        {"Sedang\nmengecek\nlokasimu"}
+        {t("Sedang\nmengecek\nlokasimu", "Checking\nyour\nlocation")}
       </GeaText>
       <Image accessible={false} source={img.map} contentFit="fill" style={styles.map} />
       <Animated.View style={[styles.pulse, { transform: [{ scale: ringScale }] }]}>
@@ -50,7 +52,7 @@ export function LocationCheckingContent(
       <Image accessible={false} source={img.ring1116} style={styles.innerRing} />
       <Image accessible={false} source={img.pin} style={styles.pin} />
       <GeaText variant="body16" color={componentColors.bodyDark} accessibilityLiveRegion="polite" style={styles.description}>
-        {"Sebentar ya, pastikan GPS\nkamu aktif."}
+        {t("Sebentar ya, pastikan GPS\nkamu aktif.", "Please wait and make sure\nyour GPS is on.")}
       </GeaText>
     </View>
   );

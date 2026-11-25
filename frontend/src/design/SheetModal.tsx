@@ -4,6 +4,7 @@ import { Modal, Pressable, StyleSheet, View } from "react-native";
 import { Button } from "./Button";
 import { colors, radius, spacing } from "./tokens";
 import { GeaText } from "./typography";
+import { useLanguage } from "../features/preferences/LanguageSettings";
 
 type SheetContentProps = {
   readonly title: string;
@@ -59,12 +60,13 @@ type SheetModalProps = SheetContentProps & {
 
 /** Modal bawah layar. Figma tidak mendefinisikan latar gelap, jadi area di atasnya transparan. */
 export function SheetModal({ visible, onClose, ...content }: SheetModalProps): ReactElement {
+  const { t } = useLanguage();
   return (
     <Modal transparent visible={visible} animationType="slide" onRequestClose={onClose}>
       <View style={styles.overlay}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Tutup"
+          accessibilityLabel={t("Tutup", "Close")}
           style={styles.dismiss}
           onPress={onClose}
         />

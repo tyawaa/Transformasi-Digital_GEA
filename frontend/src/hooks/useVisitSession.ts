@@ -12,6 +12,8 @@ import {
 } from "../domain/contracts";
 import type { RunOperation } from "./useOperation";
 import { GeaApi } from "../services/api";
+import { localizeCopy } from "../data/localizedCopy";
+import { useLanguage } from "../features/preferences/LanguageSettings";
 import {
   type LocationReading,
   type LocationIssue,
@@ -75,6 +77,7 @@ export function useVisitSession(
   /** Kategori pengunjung dari preferensi usia (anak / dewasa = Umum). */
   profile: Profile,
 ): VisitSessionState {
+  const { language, t } = useLanguage();
   const [notice, setNotice] = useState<DecisionMessage | null>(null);
   const [decision, setDecision] = useState<AccessDecision | null>(null);
   const [visit, setVisit] = useState<Visit | null>(null);
@@ -86,23 +89,23 @@ export function useVisitSession(
 
   async function openAppSettings(): Promise<void> {
     await runOperation("connection", async (): Promise<void> => {
-      setLocationLabel("Membuka pengaturan izin...");
+      setLocationLabel(t("Membuka pengaturan izin...", "Opening permission settings…"));
       await Linking.openSettings();
     });
   }
 
   async function openGpsSettings(): Promise<void> {
     await runOperation("connection", async (): Promise<void> => {
-      setLocationLabel("Membuka pengaturan lokasi...");
+      setLocationLabel(t("Membuka pengaturan lokasi...", "Opening location settings…"));
       await openLocationServicesSettings();
     });
   }
 
   const locationSettingsAction: LocationSettingsAction | null =
     locationIssue === "permission_blocked"
-      ? { label: "Buka pengaturan izin", onPress: openAppSettings }
+      ? { label: localizeCopy("Buka pengaturan izin", language), onPress: openAppSettings }
       : locationIssue === "disabled" && Platform.OS === "android"
-      ? { label: "Aktifkan lokasi HP", onPress: openGpsSettings }
+      ? { label: localizeCopy("Aktifkan lokasi HP", language), onPress: openGpsSettings }
       : null;
 
   async function checkConnection(): Promise<void> {
@@ -131,21 +134,21 @@ export function useVisitSession(
     setLocationIssue(null);
     setCurrentLocation(null);
     await runOperation("location", async (): Promise<void> => {
-      const reading: LocationReading = await readVisitorLocation(setLocationLabel);
+      const reading: LocationReading = await readVisitorLocation((id: string, en: string): void => setLocationLabel(t(id, en)));
       if (reading.status !== "available") {
         setLocationIssue(reading.status);
         setNotice(locationMessages[reading.status]);
         return;
       }
       setCurrentLocation(reading.location);
-      setLocationLabel("Memeriksa area museum...");
+      setLocationLabel(t("Memeriksa area museum...", "Checking the museum area…"));
       const result: AccessDecision = await api.evaluateLocation(
         reading.location,
       );
       setDecision(result);
       setNotice(decisionMessage(result));
       if (result.status === "inside" && result.accessAllowed) {
-        setLocationLabel("Lokasi cocok. Memulai kunjungan...");
+        setLocationLabel(t("Lokasi cocok. Memulai kunjungan...", "Location verified. Starting your visit…"));
         const created: Visit = await api.startGpsVisit(
           randomUUID(),
           reading.location,
@@ -178,11 +181,11 @@ export function useVisitSession(
     setScannerOpen(false);
   }
   return {
-    notice,
+    notice: notice === null ? null : { title: localizeCopy(notice.title, language), description: localizeCopy(notice.description, language) },
     decision,
     visit,
     scannerOpen,
-    connection,
+    connection: localizeCopy(connection, language),
     locationLabel,
     currentLocation,
     locationSettingsAction,

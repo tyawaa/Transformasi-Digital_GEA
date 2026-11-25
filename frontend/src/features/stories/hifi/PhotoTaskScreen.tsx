@@ -11,6 +11,7 @@ import { mediaSource } from "../../../services/media";
 import { SceneLayer } from "../../onboarding/scene";
 import { isiPanelLayer, ScanBackground, StoryBackground } from "./backgrounds";
 import { BackButton, FrameStage, PhotoFrame, StoryButton } from "./parts";
+import { useLanguage } from "../../preferences/LanguageSettings";
 
 type Props = {
   /** Judul besar, mis. "Cari & foto koleksi ini" atau judul tantangan. */
@@ -34,6 +35,7 @@ type Props = {
 export function PhotoTaskScreen(
   { title, instruction, target, hint, onBack, onDone, testMode = false, references = [], photoUrl }: Props,
 ): ReactElement {
+  const { t } = useLanguage();
   const [stage, setStage] = useState<"find" | "camera">(references.length > 0 || photoUrl !== undefined ? "find" : "camera");
   const [refIndex, setRefIndex] = useState<number>(0);
   const [findHeight, setFindHeight] = useState<number>(0);
@@ -76,7 +78,7 @@ export function PhotoTaskScreen(
         <SceneLayer layer={isiPanelLayer} />
         <View style={[styles.findFill, { height: Math.max(0, FIND_TOP + findHeight + 40 - 860) }]} />
         <View style={styles.find} onLayout={(event): void => setFindHeight(event.nativeEvent.layout.height)}>
-          <GeaText variant="heading28" color={colors.secondaryYellow[100]}>Temukan gambar ini</GeaText>
+          <GeaText variant="heading28" color={colors.secondaryYellow[100]}>{t("Temukan gambar ini", "Find this object")}</GeaText>
           <GeaText variant="body16" color={colors.white} style={styles.findText}>{text}</GeaText>
           {references.length > 1 && (
             <Pressable
@@ -85,13 +87,13 @@ export function PhotoTaskScreen(
               onPress={(): void => setRefIndex((refIndex + 1) % references.length)}
             >
               <GeaText variant="label16" color={colors.secondaryYellow[100]} style={styles.link}>
-                Gambar {refIndex + 1} dari {references.length} · lihat berikutnya
+                {t("Gambar", "Image")} {refIndex + 1} {t("dari", "of")} {references.length} {t("· lihat berikutnya", "· view next")}
               </GeaText>
             </Pressable>
           )}
-          <StoryButton label="Upload Foto" onPress={(): void => setStage("camera")} style={styles.button} />
+          <StoryButton label={t("Upload Foto", "Upload Photo")} onPress={(): void => setStage("camera")} style={styles.button} />
           <Pressable accessibilityRole="button" hitSlop={8} onPress={onBack}>
-            <GeaText variant="body16" color={colors.white} style={[styles.link, styles.center]}>Kembali</GeaText>
+            <GeaText variant="body16" color={colors.white} style={[styles.link, styles.center]}>{t("Kembali", "Back")}</GeaText>
           </Pressable>
         </View>
       </FrameStage>
@@ -105,7 +107,7 @@ export function PhotoTaskScreen(
       <View style={styles.topBar}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Kembali"
+          accessibilityLabel={t("Kembali", "Back")}
           hitSlop={8}
           onPress={(): void => {
             if (references.length > 0 || photoUrl !== undefined) setStage("find");
@@ -114,7 +116,7 @@ export function PhotoTaskScreen(
           style={({ pressed }) => [styles.pill, pressed && styles.pressed]}
         >
           <GeaText variant="bold16" color={colors.primary[900]}>‹</GeaText>
-          <GeaText variant="label16" color={colors.primary[900]}>Kembali</GeaText>
+          <GeaText variant="label16" color={colors.primary[900]}>{t("Kembali", "Back")}</GeaText>
         </Pressable>
       </View>
 
@@ -126,16 +128,16 @@ export function PhotoTaskScreen(
       <View style={styles.cameraBox}>
         <View style={styles.camera}>
           {photo !== null
-            ? <Image accessibilityLabel="Foto yang baru diambil" source={{ uri: photo }} contentFit="cover" style={styles.fill} />
+            ? <Image accessibilityLabel={t("Foto yang baru diambil", "Your captured photo")} source={{ uri: photo }} contentFit="cover" style={styles.fill} />
             : granted
             ? <CameraView ref={camera} style={styles.fill} facing="back" />
             : (
               <View style={styles.permission}>
                 <GeaText variant="body16" color={colors.secondaryYellow[0]} style={styles.center}>
-                  Izin kamera diperlukan untuk memotret koleksi. Foto hanya ada di HP-mu dan tidak dikirim.
+                  {t("Izin kamera diperlukan untuk memotret koleksi. Foto hanya ada di HP-mu dan tidak dikirim.", "Camera access is needed to photograph the collection. Photos stay on your device and are not uploaded.")}
                 </GeaText>
                 <StoryButton
-                  label={permission?.canAskAgain === false ? "Buka pengaturan" : "Izinkan kamera"}
+                  label={permission?.canAskAgain === false ? t("Buka pengaturan", "Open settings") : t("Izinkan kamera", "Allow camera access")}
                   onPress={(): void => {
                     if (permission?.canAskAgain === false) void Linking.openSettings();
                     else void requestPermission();
@@ -149,17 +151,17 @@ export function PhotoTaskScreen(
       {/* Info + tombol: ikut memanjang, halaman digulir bila tidak muat */}
       <View style={styles.info} onLayout={(event): void => setBoxHeight(event.nativeEvent.layout.height)}>
         <View style={styles.card}>
-          <GeaText variant="label16" color={colors.primary[700]}>CARI &amp; FOTO</GeaText>
+          <GeaText variant="label16" color={colors.primary[700]}>{t("CARI &amp; FOTO", "FIND & PHOTOGRAPH")}</GeaText>
           <GeaText variant="bold16" color={componentColors.bodyDark}>{instruction}</GeaText>
           {target !== undefined && (
-            <GeaText variant="body14" color={componentColors.cardCaption}>Yang harus terlihat: {target}</GeaText>
+            <GeaText variant="body14" color={componentColors.cardCaption}>{t("Yang harus terlihat:", "What must be visible:")} {target}</GeaText>
           )}
           {hint !== undefined && (
             showHint
-              ? <GeaText variant="body14" color={colors.warning[500]}>Petunjuk: {hint}</GeaText>
+              ? <GeaText variant="body14" color={colors.warning[500]}>{t("Petunjuk:", "Hint:")} {hint}</GeaText>
               : (
                 <Pressable accessibilityRole="button" hitSlop={8} onPress={(): void => setShowHint(true)}>
-                  <GeaText variant="label16" color={colors.primary[800]} style={styles.link}>Lihat petunjuk</GeaText>
+                  <GeaText variant="label16" color={colors.primary[800]} style={styles.link}>{t("Lihat petunjuk", "Show hint")}</GeaText>
                 </Pressable>
               )
           )}
@@ -170,7 +172,7 @@ export function PhotoTaskScreen(
         {photo === null
           ? (
             <StoryButton
-              label={busy ? "Mengambil foto..." : "Ambil Foto"}
+              label={busy ? t("Mengambil foto...", "Taking photo…") : t("Ambil Foto", "Take Photo")}
               disabled={!granted || busy}
               onPress={(): void => void capture()}
               style={styles.button}
@@ -179,16 +181,16 @@ export function PhotoTaskScreen(
           : (
             <View style={styles.row}>
               <Pressable accessibilityRole="button" hitSlop={8} onPress={(): void => setPhoto(null)} style={styles.flex}>
-                <GeaText variant="label16" color={colors.primary[900]} style={[styles.link, styles.center]}>Ulangi</GeaText>
+                <GeaText variant="label16" color={colors.primary[900]} style={[styles.link, styles.center]}>{t("Ulangi", "Try again")}</GeaText>
               </Pressable>
-              <StoryButton label="Pakai Foto" onPress={onDone} style={[styles.button, styles.flex2]} />
+              <StoryButton label={t("Pakai Foto", "Use Photo")} onPress={onDone} style={[styles.button, styles.flex2]} />
             </View>
           )}
         {busy && <ActivityIndicator color={colors.primary[900]} />}
         {testMode && (
           <Pressable accessibilityRole="button" hitSlop={8} onPress={onDone}>
             <GeaText variant="caption12" color={colors.primary[900]} style={[styles.link, styles.center]}>
-              Mode uji: anggap sudah difoto
+              {t("Mode uji: anggap sudah difoto", "Test mode: mark photo as taken")}
             </GeaText>
           </Pressable>
         )}

@@ -1,5 +1,6 @@
 import dataset from "../../../backend/data/quests.json" with { type: "json" };
 import { type Language, type Profile, type Quest, questSchema } from "../domain/contracts.ts";
+import { localizeCopy } from "./localizedCopy.ts";
 
 /** Konten quest POI-01–11 dari sheet Quest dan Quest_Anak; kunci hanya dipakai sumber data mock. */
 export const questCatalog = dataset;
@@ -274,8 +275,8 @@ export function localizedQuestsForPoi(poiId: string, profile: Profile, language:
       pertanyaan: english?.pertanyaan ?? kid?.question ?? entry.question,
       options: english?.options ?? entry.options,
       target_foto: kid?.photoTarget ?? entry.photoTarget,
-      penjelasan: kid?.explanation ?? entry.explanation,
-      hint: kid?.hint ?? entry.hint,
+      penjelasan: localizeCopy(kid?.explanation ?? entry.explanation, language),
+      hint: localizeCopy(kid?.hint ?? entry.hint, language),
       points: entry.points,
       maxAttempts: entry.maxAttempts,
       requiredForBadge: entry.requiredForBadge,

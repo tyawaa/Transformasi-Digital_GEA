@@ -5,10 +5,34 @@ import { test } from "node:test";
 import photoHunt from "../assets/daftar_pencarian/photo-hunt/catalog.json" with { type: "json" };
 import { museumPois } from "../src/data/museum.ts";
 import { questCatalog } from "../src/data/quests.ts";
-import { buildSearchIndex, editDistance, searchMuseum } from "../src/features/search/search.ts";
+import { buildLocalizedSearchIndex, buildSearchIndex, editDistance, searchMuseum } from "../src/features/search/search.ts";
+import { localizeCopy, localizedPoiName, localizedDuration } from "../src/data/localizedCopy.ts";
+import { badges } from "../src/domain/points.ts";
+import { ageOptions, topics } from "../src/features/preferences/recommend.ts";
+import { durationOptions } from "../src/features/preferences/visitTiming.ts";
 
 const index = buildSearchIndex(museumPois);
 const first = (query, room = null) => searchMuseum(index, query, room)[0];
+
+test("pencarian Inggris mempertahankan tujuan navigasi dan alias katalog Indonesia", () => {
+  const english = buildLocalizedSearchIndex(museumPois, "en");
+  for (const [query, code] of [["meteorite", "P09"], ["dacite", "P07"], ["tulang lengan", "P01"]]) {
+    assert.equal(searchMuseum(english, query, null)[0].roomCode, code);
+  }
+  assert.deepEqual(english.map(({ kind, roomCode }) => ({ kind, roomCode })), index.map(({ kind, roomCode }) => ({ kind, roomCode })));
+});
+
+test("katalog lencana, ruangan, dan pilihan personalisasi memiliki terjemahan Inggris", () => {
+  for (const badge of badges) {
+    assert.notEqual(localizeCopy(badge.name, "en"), badge.name);
+    assert.notEqual(localizeCopy(badge.description, "en"), badge.description);
+  }
+  for (const poi of museumPois) assert.ok(localizedPoiName(poi, "en").length > 0);
+  for (const value of [...ageOptions, ...durationOptions, ...topics.map(({ label }) => label)]) {
+    assert.notEqual(localizeCopy(value, "en"), value);
+  }
+  assert.equal(localizedDuration("1 jam 15 menit", "en"), "1 hr 15 min");
+});
 
 test("hasil baru muncul setelah 3 huruf", () => {
   assert.equal(searchMuseum(index, "").length, 0);

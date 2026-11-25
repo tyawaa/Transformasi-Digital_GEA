@@ -28,6 +28,8 @@ import {
   type PlanPoint,
   type RouteLeg,
 } from "./navigation";
+import { useLanguage } from "../preferences/LanguageSettings";
+import { localizedPoiName } from "../../data/localizedCopy";
 
 const floor: number = require("../../../assets/design/startmap-floor.svg") as number;
 const pinImage: number = require("../../../assets/design/map-pin.svg") as number;
@@ -136,6 +138,7 @@ function routeSvg(legs: readonly RouteLeg[]): string {
 }
 
 export function PlanViewport(props: Props): ReactElement {
+  const { language, t } = useLanguage();
   const { width, height } = useWindowDimensions();
   const screenScale: number = Math.min(width / 390, height / 844);
   const { bleed, span } = useFrameBleed();
@@ -305,12 +308,12 @@ export function PlanViewport(props: Props): ReactElement {
   const pivotX: number = rotationAnchor.current === null ? VIEW_WIDTH / 2 : camera.x + rotationAnchor.current.x * camera.zoom;
   const pivotY: number = rotationAnchor.current === null ? VIEW_HEIGHT / 2 : camera.y + rotationAnchor.current.y * camera.zoom;
   const headingHint: string = props.orientation.state.status === "simulated" && compassActive
-    ? `Uji arah · ${Math.round(props.orientation.state.degrees ?? 0)}°`
-    : props.orientation.state.status === "requesting" ? "Menunggu kompas…"
-    : props.orientation.state.message !== null ? "Kompas belum siap · lihat keterangan di bawah"
-    : compassActive && following ? "Mengikuti perkiraan arah hadap"
-    : following && props.location !== null ? "Mengikuti lokasi · ↑ untuk arah hadap"
-    : "Geser peta · ◎ untuk mengikuti";
+    ? t(`Uji arah · ${Math.round(props.orientation.state.degrees ?? 0)}°`, `Test heading · ${Math.round(props.orientation.state.degrees ?? 0)}°`)
+    : props.orientation.state.status === "requesting" ? t("Menunggu kompas…", "Waiting for compass…")
+    : props.orientation.state.message !== null ? t("Kompas belum siap · lihat keterangan di bawah", "Compass not ready · see details below")
+    : compassActive && following ? t("Mengikuti perkiraan arah hadap", "Following estimated heading")
+    : following && props.location !== null ? t("Mengikuti lokasi · ↑ untuk arah hadap", "Following location · ↑ for heading")
+    : t("Geser peta · ◎ untuk mengikuti", "Drag map · ◎ to follow");
 
   return (
     <>
@@ -338,7 +341,7 @@ export function PlanViewport(props: Props): ReactElement {
               <Pressable
                 key={pin.code}
                 accessibilityRole="button"
-                accessibilityLabel={`${pin.code}, ${poi.museum.name}${poi.id === null ? ", segera hadir" : ""}${next ? ", tujuan berikutnya" : ""}`}
+                accessibilityLabel={`${pin.code}, ${localizedPoiName(poi.museum, language)}${poi.id === null ? t(", segera hadir", ", coming soon") : ""}${next ? t(", tujuan berikutnya", ", next destination") : ""}`}
                 accessibilityState={{ selected }}
                 onPress={(): void => { setFollowing(false); props.onSelect(pin.code); }}
                 style={StyleSheet.absoluteFill}
@@ -366,12 +369,12 @@ export function PlanViewport(props: Props): ReactElement {
             <Image draggable={false} source={pinImage} style={styles.pinImage} />
             <View style={styles.pinLabel}><GeaText variant="heading24" color={colors.primary[900]}>S</GeaText></View>
           </Animated.View>
-          {props.destination === "exit" && <View accessibilityLabel="Pintu keluar museum" pointerEvents="none"
+          {props.destination === "exit" && <View accessibilityLabel={t("Pintu keluar museum", "Museum exit")} pointerEvents="none"
             style={{ position: "absolute", left: ENTRANCE.x - 110, top: ENTRANCE.y - 45, width: 220, padding: 14, borderRadius: 12, backgroundColor: colors.secondaryGreen[100], borderWidth: 3, borderColor: colors.primary[800] }}>
-            <GeaText variant="heading24" color={colors.primary[900]} style={{ textAlign: "center" }}>Pintu keluar ↓</GeaText>
+            <GeaText variant="heading24" color={colors.primary[900]} style={{ textAlign: "center" }}>{t("Pintu keluar ↓", "Exit ↓")}</GeaText>
           </View>}
           {props.location !== null && (
-            <Animated.View accessibilityLabel="Perkiraan posisimu dari GPS" pointerEvents="none" style={[styles.you, { left: dot.x, top: dot.y, transform: [{ rotate: counterRotationStyle }] }]}>
+            <Animated.View accessibilityLabel={t("Perkiraan posisimu dari GPS", "Estimated GPS position")} pointerEvents="none" style={[styles.you, { left: dot.x, top: dot.y, transform: [{ rotate: counterRotationStyle }] }]}>
               {compassActive && following && <View style={styles.youDirection} />}
               <View style={styles.youHalo}><View style={styles.youDot} /></View>
             </Animated.View>
@@ -381,32 +384,32 @@ export function PlanViewport(props: Props): ReactElement {
         </View>
         <View style={[styles.controls, { right: 16 + bleed }]}>
           {toolsOpen && <View style={styles.toolsTray}>
-            <MapControl label="Lihat seluruh denah" text="▣" onPress={showPlan} active={false} />
-            <MapControl label={props.legs.length === 0 ? "Lihat denah lantai 1" : "Lihat jalur menuju tujuan"}
+            <MapControl label={t("Lihat seluruh denah", "View full map")} text="▣" onPress={showPlan} active={false} />
+            <MapControl label={props.legs.length === 0 ? t("Lihat denah lantai 1", "View ground floor map") : t("Lihat jalur menuju tujuan", "View route to destination")}
               text="↗" onPress={props.legs.length === 0 ? showPlan : showRoute} active={false} />
-            <Pressable accessibilityRole="button" accessibilityLabel={compassActive ? "Kembali ke orientasi denah" : "Aktifkan peta mengikuti arah hadap HP"}
+            <Pressable accessibilityRole="button" accessibilityLabel={compassActive ? t("Kembali ke orientasi denah", "Reset map orientation") : t("Aktifkan peta mengikuti arah hadap HP", "Rotate map with phone heading")}
               accessibilityState={{ selected: compassActive, disabled: props.location === null || props.planBearing === null }}
               disabled={props.location === null || props.planBearing === null} onPress={toggleHeading}
               style={[styles.control, compassActive && styles.controlActive, (props.location === null || props.planBearing === null) && styles.unavailable]}>
               <GeaText variant="bold16" color={compassActive ? colors.white : colors.primary[800]}>↑</GeaText>
             </Pressable>
-            {props.onOpenTests !== null && <MapControl label="Buka mode uji GPS" text="T"
+            {props.onOpenTests !== null && <MapControl label={t("Buka mode uji GPS", "Open GPS test mode")} text="T"
               onPress={(): void => { setToolsOpen(false); props.onOpenTests?.(); }} active={false} />}
             <View style={styles.toolsHint} pointerEvents="none">
-              <GeaText variant="caption12" color={colors.primary[800]}>{props.orientation.state.message ?? headingHint}</GeaText>
+              <GeaText variant="caption12" color={colors.primary[800]}>{language === "en" && props.orientation.state.message !== null ? t("Kompas belum siap. Periksa izin sensor dan coba lagi.", "Compass not ready. Check sensor permissions and try again.") : props.orientation.state.message ?? headingHint}</GeaText>
             </View>
           </View>}
           <View style={styles.zoomGroup}>
             <Image accessible={false} source={zoomImage} style={StyleSheet.absoluteFill} contentFit="fill" pointerEvents="none" />
-            <Pressable accessibilityRole="button" accessibilityLabel="Perbesar peta" onPress={(): void => zoomBy(1.3)} style={styles.zoomHit} />
-            <Pressable accessibilityRole="button" accessibilityLabel="Perkecil peta" onPress={(): void => zoomBy(1 / 1.3)} style={styles.zoomHit} />
+            <Pressable accessibilityRole="button" accessibilityLabel={t("Perbesar peta", "Zoom in")} onPress={(): void => zoomBy(1.3)} style={styles.zoomHit} />
+            <Pressable accessibilityRole="button" accessibilityLabel={t("Perkecil peta", "Zoom out")} onPress={(): void => zoomBy(1 / 1.3)} style={styles.zoomHit} />
           </View>
-          <Pressable accessibilityRole="button" accessibilityLabel={following ? "Mengikuti lokasimu" : "Ikuti lokasi saya"}
+          <Pressable accessibilityRole="button" accessibilityLabel={following ? t("Mengikuti lokasimu", "Following your location") : t("Ikuti lokasi saya", "Follow my location")}
             accessibilityState={{ selected: following }} onPress={locate} style={({ pressed }) => [styles.locateControl, pressed && styles.pressed]}>
             <Image accessible={false} source={locateImage} style={StyleSheet.absoluteFill} contentFit="fill" />
           </Pressable>
           <View style={styles.moreControl}>
-            <MapControl label={toolsOpen ? "Tutup kontrol peta" : "Buka kontrol peta"} text="⋯"
+            <MapControl label={toolsOpen ? t("Tutup kontrol peta", "Close map controls") : t("Buka kontrol peta", "Open map controls")} text="⋯"
               onPress={(): void => setToolsOpen(!toolsOpen)} active={toolsOpen} />
           </View>
         </View>

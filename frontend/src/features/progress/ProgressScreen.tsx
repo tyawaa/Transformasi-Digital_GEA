@@ -5,6 +5,8 @@ import { colors, shadows } from "../../design/tokens";
 import { GeaText } from "../../design/typography";
 import type { BadgeDef, BadgeId, BadgeProgress, BadgeProgressMap } from "../../domain/points";
 import { FrameStage, useFrameBleed } from "../stories/hifi/parts";
+import { useLanguage } from "../preferences/LanguageSettings";
+import { localizeCopy } from "../../data/localizedCopy";
 
 type Props = {
   readonly earned: readonly BadgeId[];
@@ -32,6 +34,7 @@ const badgeIcons: Readonly<Record<BadgeId, number>> = {
 
 /** Kartu memakai data kunjungan; gambar referensi hanya menyediakan ilustrasi. */
 export function ProgressScreen({ earned, available, progress, onBack, onEndVisit }: Props): ReactElement {
+  const { t } = useLanguage();
   const [bodyHeight, setBodyHeight] = useState<number>(0);
   const { span } = useFrameBleed();
   const earnedCount: number = available.filter((badge: BadgeDef): boolean => earned.includes(badge.id)).length;
@@ -53,29 +56,29 @@ export function ProgressScreen({ earned, available, progress, onBack, onEndVisit
       <View pointerEvents="none" accessible={false} style={[styles.background, span]}>
         <Image source={background} style={styles.backgroundImage} contentFit="fill" />
       </View>
-      <Pressable accessibilityRole="button" accessibilityLabel="Kembali ke peta"
+      <Pressable accessibilityRole="button" accessibilityLabel={t("Kembali ke peta", "Back to map")}
         onPress={onBack} hitSlop={8} style={({ pressed }) => [styles.back, pressed && styles.pressed]}>
-        <GeaText variant="bold16" color={colors.secondaryYellow[0]}>‹  Peta</GeaText>
+        <GeaText variant="bold16" color={colors.secondaryYellow[0]}>{t("‹ Peta", "‹ Map")}</GeaText>
       </Pressable>
       <View style={styles.body} onLayout={(event): void => setBodyHeight(event.nativeEvent.layout.height)}>
         <View style={styles.heading}>
-          <GeaText variant="display42" color={colors.secondaryGreen[0]} style={styles.title}>Daftar Lencana!</GeaText>
+          <GeaText variant="display42" color={colors.secondaryGreen[0]} style={styles.title}>{t("Daftar Lencana!", "Your Badges!")}</GeaText>
           <GeaText variant="body14" color={colors.secondaryYellow[0]} style={styles.intro}>
-            {"Jelajahi museum dan kumpulkan\ncerita di balik setiap lencana."}
+            {t("Jelajahi museum dan kumpulkan\ncerita di balik setiap lencana.", "Explore the museum and discover\nthe story behind every badge.")}
           </GeaText>
         </View>
         <View style={styles.summary}>
-          <GeaText variant="bold16" color={colors.black}>{earnedCount} dari {available.length} lencana didapat</GeaText>
+          <GeaText variant="bold16" color={colors.black}>{earnedCount} {t("dari", "of")} {available.length} {t("lencana didapat", "badges earned")}</GeaText>
           <GeaText variant="caption12" color={colors.primary[900]}>
             {earnedCount === available.length && available.length > 0
-              ? "Hebat! Semua lencana sudah terkumpul!"
-              : earnedCount === 0 ? "Petualanganmu baru dimulai!" : "Terus jelajahi, masih ada lencana menantimu!"}
+              ? t("Hebat! Semua lencana sudah terkumpul!", "Amazing! You have earned every badge!")
+              : earnedCount === 0 ? t("Petualanganmu baru dimulai!", "Your adventure is just beginning!") : t("Terus jelajahi, masih ada lencana menantimu!", "Keep exploring. More badges await!")}
           </GeaText>
-          <ProgressBar current={earnedCount} target={available.length} label="Lencana terkumpul" />
+          <ProgressBar current={earnedCount} target={available.length} label={t("Lencana terkumpul", "Badges earned")} />
         </View>
         <View style={styles.sectionHeading}>
-          <GeaText variant="heading24" color={colors.secondaryGreen[0]}>Semua Lencana</GeaText>
-          <GeaText variant="caption12" color={colors.secondaryYellow[0]}>{available.length} lencana</GeaText>
+          <GeaText variant="heading24" color={colors.secondaryGreen[0]}>{t("Semua Lencana", "All Badges")}</GeaText>
+          <GeaText variant="caption12" color={colors.secondaryYellow[0]}>{available.length} {t("lencana", "badges")}</GeaText>
         </View>
         <View style={styles.grid}>
           {orderedBadges.map((badge: BadgeDef): ReactElement => (
@@ -83,7 +86,7 @@ export function ProgressScreen({ earned, available, progress, onBack, onEndVisit
           ))}
         </View>
         <Pressable accessibilityRole="button" onPress={onEndVisit} style={({ pressed }) => [styles.finish, pressed && styles.pressed]}>
-          <GeaText variant="bold16" color={colors.primary[900]}>Selesaikan kunjungan</GeaText>
+          <GeaText variant="bold16" color={colors.primary[900]}>{t("Selesaikan kunjungan", "Finish visit")}</GeaText>
         </Pressable>
       </View>
     </FrameStage>
@@ -95,6 +98,7 @@ function BadgeCard({ badge, earned, progress }: {
   readonly earned: boolean;
   readonly progress: BadgeProgress;
 }): ReactElement {
+  const { language, t } = useLanguage();
   const current: number = earned ? progress.target : progress.current;
   return (
     <View style={[styles.card, earned && styles.cardEarned]}>
@@ -106,18 +110,18 @@ function BadgeCard({ badge, earned, progress }: {
           tintColor={earned ? colors.tertiary[300] : colors.greys[300]} accessible={false} />
       </View>
       <GeaText variant="heading20" color={earned ? colors.tertiary[300] : colors.primary[900]} style={styles.badgeName}>
-        {badge.name}
+        {localizeCopy(badge.name, language)}
       </GeaText>
       <GeaText variant="caption12" color={earned ? colors.primary[900] : colors.greys[300]} style={styles.description}>
-        {badge.description}
+        {localizeCopy(badge.description, language)}
       </GeaText>
       <View style={styles.cardFooter}>
-        {!earned && <ProgressBar current={current} target={progress.target} label={badge.name} />}
+        {!earned && <ProgressBar current={current} target={progress.target} label={localizeCopy(badge.name, language)} />}
         <View style={[styles.status, earned && styles.statusEarned]}>
           <Image source={earned ? check : lock} style={styles.statusIcon} contentFit="contain"
             tintColor={earned ? colors.primary[900] : colors.greys[300]} accessible={false} />
           <GeaText variant="caption12" color={earned ? colors.primary[900] : colors.greys[300]} style={styles.statusText}>
-            {earned ? "Sudah didapat" : "Belum didapat"}
+            {earned ? t("Sudah didapat", "Earned") : t("Belum didapat", "Not earned yet")}
           </GeaText>
         </View>
       </View>

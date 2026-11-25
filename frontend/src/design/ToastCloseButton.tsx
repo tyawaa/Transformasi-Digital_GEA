@@ -1,6 +1,7 @@
 import { type ReactElement, useEffect, useRef } from "react";
 import { Animated, Easing, Pressable, StyleSheet, View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
+import { useLanguage } from "../features/preferences/LanguageSettings";
 
 export type ToastCountdown = {
   readonly id: number | string;
@@ -18,6 +19,7 @@ export function ToastCloseButton({ color, countdown, onClose }: {
   readonly countdown: ToastCountdown | null;
   readonly onClose: () => void;
 }): ReactElement {
+  const { t } = useLanguage();
   const remaining: Animated.Value = useRef<Animated.Value>(new Animated.Value(1)).current;
   const close = useRef<() => void>(onClose);
   const durationMs: number | null = countdown === null ? null : countdown.durationMs;
@@ -47,7 +49,7 @@ export function ToastCloseButton({ color, countdown, onClose }: {
   }
 
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel="Tutup notifikasi" testID="notification-close-button"
+    <Pressable accessibilityRole="button" accessibilityLabel={t("Tutup notifikasi", "Close notification")} testID="notification-close-button"
       hitSlop={8} onPress={dismiss} style={styles.button}>
       <View pointerEvents="none" style={StyleSheet.absoluteFill}>
         <Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} testID="notification-countdown">

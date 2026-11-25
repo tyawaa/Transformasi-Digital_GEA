@@ -59,11 +59,12 @@ export function ChallengeDoneScreen(
     readonly onSkip: () => void;
   },
 ): ReactElement {
+  const { t } = useLanguage();
   return (
     <MascotSplash
-      title={success ? "Yeay! Kamu berhasil menyelesaikan tantangan" : "Tantangan selesai. Tetap semangat!"}
-      description={`Sebelum mengakhiri perjalanan di ${poiName}, buktikan pengetahuanmu dulu yuk!`}
-      actionLabel="Lanjut ke Mini Quiz"
+      title={success ? t("Yeay! Kamu berhasil menyelesaikan tantangan", "You completed the challenge!") : t("Tantangan selesai. Tetap semangat!", "Challenge complete. Keep going!")}
+      description={t(`Sebelum mengakhiri perjalanan di ${poiName}, buktikan pengetahuanmu dulu yuk!`, `Before leaving ${poiName}, put your knowledge to the test!`)}
+      actionLabel={t("Lanjut ke Mini Quiz", "Continue to Mini Quiz")}
       onAction={onQuiz}
       onSkip={onSkip}
     />
@@ -193,6 +194,7 @@ export function StoryFinalScreen(
     readonly onHome: () => void;
   },
 ): ReactElement {
+  const { t } = useLanguage();
   async function share(): Promise<void> {
     const message = `Aku baru saja menamatkan cerita tentang ${poiName} di Museum Geologi Bandung bersama GEA!`;
     try {
@@ -208,20 +210,20 @@ export function StoryFinalScreen(
       <FinishedBackground />
       <View style={splash.card}>
         <GeaText variant="heading28" color={colors.tertiary[100]} style={splash.center}>
-          Kisah selesai. Lanjutkan penjelajahanmu!
+          {t("Kisah selesai. Lanjutkan penjelajahanmu!", "Story complete. Keep exploring!")}
         </GeaText>
         <GeaText variant="body16" color={componentColors.bodyDark} style={splash.center}>
-          Selamat explorer, kamu baru saja menamatkan cerita tentang {poiName}. Bagikan petualanganmu dan lanjutkan ke koleksi berikutnya!
+          {t("Selamat explorer, kamu baru saja menamatkan cerita tentang", "Well done, explorer! You have finished the story of")} {poiName}{t(". Bagikan petualanganmu dan lanjutkan ke koleksi berikutnya!", ". Share your adventure and continue to the next collection!")}
         </GeaText>
         {nextStop !== null && (
           <GeaText variant="label16" color={colors.secondaryGreen[900]} style={splash.center}>
-            Berikutnya di rutemu: {nextStop}
+            {t("Berikutnya di rutemu:", "Next on your route:")} {nextStop}
           </GeaText>
         )}
       </View>
-      <StoryButton label="Bagikan ke Instagram" onPress={(): void => void share()} style={splash.button} />
+      <StoryButton label={t("Bagikan ke Instagram", "Share to Instagram")} onPress={(): void => void share()} style={splash.button} />
       <View style={splash.homeButton}>
-        <Button appearance="outline" tone="primary" label="Kembali ke Halaman Utama" onPress={onHome} style={splash.stretch} />
+        <Button appearance="outline" tone="primary" label={t("Kembali ke Halaman Utama", "Back to Home")} onPress={onHome} style={splash.stretch} />
       </View>
     </FrameStage>
   );

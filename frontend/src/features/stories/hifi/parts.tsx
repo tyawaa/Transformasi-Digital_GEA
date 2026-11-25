@@ -14,6 +14,7 @@ import { colors, componentColors, radius, shadows } from "../../../design/tokens
 import { GeaText } from "../../../design/typography";
 import { mediaSource } from "../../../services/media";
 import { backArrow } from "./backgrounds";
+import { useLanguage } from "../../preferences/LanguageSettings";
 
 export const FRAME_W = 390;
 export const FRAME_H = 844;
@@ -135,17 +136,18 @@ export function StoryButton(
 
 /** Tombol kembali desain terbaru: lingkaran krem berisi panah + tulisan "Keluar". */
 export function BackButton(
-  { onPress, label = "Keluar", labelColor = colors.primary[700] }: {
+  { onPress, label, labelColor = colors.primary[700] }: {
     readonly onPress: () => void;
     readonly label?: string | null;
     /** Warna teks label di latar gelap. */
     readonly labelColor?: string;
   },
 ): ReactElement {
+  const { t } = useLanguage();
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={label ?? "Kembali"}
+      accessibilityLabel={label === undefined ? t("Keluar", "Exit") : label ?? t("Kembali", "Back")}
       hitSlop={8}
       onPress={onPress}
       style={({ pressed }) => [styles.back, pressed && styles.pressed]}
@@ -153,24 +155,26 @@ export function BackButton(
       <View style={styles.backCircle}>
         <Image accessible={false} source={backArrow} style={styles.backIcon} />
       </View>
-      {label !== null && <GeaText variant="body16" color={labelColor}>{label}</GeaText>}
+      {label !== null && <GeaText variant="body16" color={labelColor}>{label === undefined ? t("Keluar", "Exit") : label}</GeaText>}
     </Pressable>
   );
 }
 
 /** Tombol "Istirahat Dulu" (Figma 436:1753): pil krem di pojok kanan atas, sejajar BackButton. */
 export function PauseButton(
-  { onPress, label = "Istirahat Dulu" }: { readonly onPress: () => void; readonly label?: string },
+  { onPress, label }: { readonly onPress: () => void; readonly label?: string },
 ): ReactElement {
+  const { t } = useLanguage();
+  const displayLabel: string = label === undefined ? t("Istirahat Dulu", "Take a Break") : label;
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={displayLabel}
       hitSlop={8}
       onPress={onPress}
       style={({ pressed }) => [styles.pause, pressed && styles.pressed]}
     >
-      <GeaText variant="body16" color={colors.primary[700]}>{label}</GeaText>
+      <GeaText variant="body16" color={colors.primary[700]}>{displayLabel}</GeaText>
       <View style={styles.pauseIcon}>
         <View style={styles.pauseBar} />
         <View style={styles.pauseBar} />

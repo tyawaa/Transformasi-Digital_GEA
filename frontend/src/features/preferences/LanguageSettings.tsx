@@ -23,6 +23,8 @@ type LanguageSettings = {
 };
 type ModeSettings = {
   readonly enabled: boolean;
+  readonly loaded: boolean;
+  readonly description: string;
   readonly select: (enabled: boolean) => void;
 };
 const LanguageContext = createContext<LanguageSettings | null>(null);
@@ -93,7 +95,7 @@ export function LanguageButton({ expanded, onPress }: {
 }
 
 export function SettingsPanel({ eyesFree }: {
-  readonly eyesFree: ModeSettings | null;
+  readonly eyesFree: ModeSettings;
 }): ReactElement {
   const { language, loaded, saving, error, select, t } = useLanguage();
   return (
@@ -105,12 +107,13 @@ export function SettingsPanel({ eyesFree }: {
           <SettingsOption key={value} label={label} selected={language === value} disabled={!loaded || saving} onPress={(): void => select(value)} />
         ))}
       </View>
-      {eyesFree && <View accessibilityRole="radiogroup" accessibilityLabel={t("Pilih mode", "Choose mode")} style={styles.group}>
+      <View accessibilityRole="radiogroup" accessibilityLabel={t("Pilih mode", "Choose mode")} style={styles.group}>
         <GeaText variant="bold16" color={colors.primary[900]} style={styles.heading}>{t("Pilih mode", "Choose mode")}</GeaText>
         <View style={styles.divider} />
-        <SettingsOption label="Normal mode" selected={!eyesFree.enabled} disabled={false} onPress={(): void => eyesFree.select(false)} />
-        <SettingsOption label="Eyes free mode" selected={eyesFree.enabled} disabled={false} onPress={(): void => eyesFree.select(true)} />
-      </View>}
+        <SettingsOption label={t("Mode normal", "Normal mode")} selected={!eyesFree.enabled} disabled={!eyesFree.loaded} onPress={(): void => eyesFree.select(false)} />
+        <SettingsOption label={t("Mode tanpa layar", "Eyes free mode")} selected={eyesFree.enabled} disabled={!eyesFree.loaded} onPress={(): void => eyesFree.select(true)} />
+      </View>
+      <GeaText variant="caption12" color={colors.primary[900]} style={styles.modeDescription}>{eyesFree.description}</GeaText>
       {error !== null && <GeaText variant="body14" color={colors.danger[100]} accessibilityRole="alert">
         {t(error, "Language preference could not be read or saved. Select your language again.")}
       </GeaText>}
@@ -136,6 +139,7 @@ function SettingsOption({ label, selected, disabled, onPress }: {
 const styles = StyleSheet.create({
   panel: { width: 246, maxWidth: "100%", gap: 8, borderRadius: 16, borderWidth: 1.5, borderColor: colors.primary[900], paddingHorizontal: 7, paddingVertical: 10, backgroundColor: colors.secondaryYellow[0], boxShadow: shadows.drop },
   group: { gap: 4 },
+  modeDescription: { paddingHorizontal: 4, lineHeight: 16 },
   heading: { marginHorizontal: 4, marginBottom: 4, fontSize: 14, lineHeight: 20 },
   divider: { height: 1, backgroundColor: colors.primary[100], marginBottom: 4 },
   option: { minHeight: 44, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderRadius: 10, paddingLeft: 12, paddingRight: 16 },

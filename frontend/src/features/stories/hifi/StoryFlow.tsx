@@ -29,6 +29,7 @@ import { type StoriesSource } from "../../../services/stories";
 import type { CapturedPhoto } from "../../../services/photo";
 import { museumPoiById, type StoryContent } from "../../../data/museum";
 import { storyRecording } from "../../../data/poiAudio";
+import { localizeCopy, localizedPoiName } from "../../../data/localizedCopy";
 import { localizedQuestsForPoi, normalizeLocalQuestAnswer } from "../../../data/quests";
 import { audioSource } from "../../../services/media";
 import { SceneLayer } from "../../onboarding/scene";
@@ -158,10 +159,10 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
     earnedBefore.current = now;
     if (before === null || before.poiId !== poiId) return;
     const items: { points: number; label: string }[] = [];
-    if (now.quiz > before.quiz) items.push({ points: now.quiz - before.quiz, label: "Jawaban benar" });
-    if (now.challenge > before.challenge) items.push({ points: now.challenge - before.challenge, label: "Tantangan selesai" });
+    if (now.quiz > before.quiz) items.push({ points: now.quiz - before.quiz, label: t("Jawaban benar", "Correct answer") });
+    if (now.challenge > before.challenge) items.push({ points: now.challenge - before.challenge, label: t("Tantangan selesai", "Challenge completed") });
     for (const id of now.activities) {
-      if (!before.activities.includes(id)) items.push({ points: ACTIVITIES[id].points, label: ACTIVITIES[id].label });
+      if (!before.activities.includes(id)) items.push({ points: ACTIVITIES[id].points, label: localizeCopy(ACTIVITIES[id].label, language) });
     }
     if (items.length > 0) props.onRewards(items);
   });
@@ -173,7 +174,7 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
     );
     badgesSeen.current = props.earnedBadges;
     if (fresh.length > 0) {
-      props.onRewards(fresh.map((badge: BadgeDef) => ({ points: badge.bonus, label: `Lencana ${badge.name}` })));
+      props.onRewards(fresh.map((badge: BadgeDef) => ({ points: badge.bonus, label: t(`Lencana ${badge.name}`, `Badge ${localizeCopy(badge.name, language)}`) })));
     }
   }, [props.earnedBadges]);
   const verified: boolean = isVerified(progress);
@@ -392,6 +393,7 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
       </View>
     </FrameStage>;
   }
+  const poiName: string = museumPoi === undefined ? poi.nama : localizedPoiName(museumPoi, language);
   const secondPhoto: string = description.secondPhotoUrl;
   // Halaman ke-2 isi cerita ("Story Isi 2"): kartu koleksi yang disorot + fakta menarik.
   const highlights: readonly string[] = splitHighlights(description.highlights ?? undefined);
@@ -406,13 +408,13 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
   const judul: string | undefined = (kid ? local?.judulAnak : undefined) ?? description.title ?? local?.judul;
   const fakta: string | undefined = (kid ? local?.faktaAnak : undefined) ?? description.fact ?? local?.fakta;
   const pageTwoTitle: string = fakta !== undefined ? t("Fakta Menarik", "Fun Fact") : t("Cari di Ruangan Ini", "Find in This Room");
-  const pageTwoText: string = [fakta, highlights.length > 0 ? `Koleksi di ruangan ini: ${highlights.join(", ")}.` : undefined].filter((value: string | undefined): boolean => value !== undefined).join("\n\n");
+  const pageTwoText: string = [fakta, highlights.length > 0 ? t(`Koleksi di ruangan ini: ${highlights.join(", ")}.`, `Collections in this room: ${highlights.join(", ")}.`) : undefined].filter((value: string | undefined): boolean => value !== undefined).join("\n\n");
   const englishQuests: readonly Quest[] = language === "en" ? localizedQuestsForPoi(poiId, visit.profil, "en") : [];
   const quests: readonly Quest[] = poi.quests.filter((quest: Quest): boolean => quest.isDisabled !== true).map((quest: Quest): Quest => {
     const translation = englishQuests.find((entry) => entry.idQuest === quest.idQuest);
     if (translation === undefined) return quest;
     const { title, instruksi, pertanyaan, options } = translation;
-    return { ...quest, title, instruksi, pertanyaan, options, hint: null, penjelasan: null, target_foto: null };
+    return { ...quest, title, instruksi, pertanyaan, options, hint: translation.hint, penjelasan: translation.penjelasan };
   });
   const selectedQuest: Quest | undefined = quests.find((quest: Quest): boolean => quest.idQuest === selectedQuestId);
 
@@ -439,14 +441,14 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
   }
 
   if (step === "storyDone") {
-    return <StoryFinishedScreen poiName={poi.nama} hasActivity={quests.length > 0}
+    return <StoryFinishedScreen poiName={poiName} hasActivity={quests.length > 0}
       actionLabel={quests.length > 0 ? t("Lihat Daftar Quest", "View Quests") : t("Lihat Hasil", "View Results")}
       onAction={(): void => { if (quests.length > 0) setStep("quests"); else showResult(); }}
       onSkip={(): void => setStep("quests")} />;
   }
 
   if (step === "quests") {
-    return <QuestListScreen poiName={poi.nama} quests={quests} results={progress.quests ?? {}}
+    return <QuestListScreen poiName={poiName} quests={quests} results={progress.quests ?? {}}
       onPick={(quest: Quest): void => { setSelectedQuestId(quest.idQuest); setStep("quest"); }}
       onResult={showResult} onBack={props.onExit} />;
   }
@@ -490,7 +492,7 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
     const stars: number = quests.length === 0 ? (progress.completed ? 3 : 0) : Math.round(3 * completedCount / quests.length);
     return (
       <ExplorerResultScreen
-        poiName={poi.nama}
+        poiName={poiName}
         stars={stars}
         conquered={progress.completed}
         score={progress.pointsAwarded + (progress.challengePoints ?? 0)}
@@ -521,11 +523,11 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
       {step === "summary" && (
         <>
           <BackButton onPress={props.onExit} />
-          <PhotoFrame photoUrl={description.photoUrl} label={poi.nama} left={10} top={150} box={352} size={{ width: 330, height: 322 }} border={14} rotate={-1.6} />
+          <PhotoFrame photoUrl={description.photoUrl} label={poiName} left={10} top={150} box={352} size={{ width: 330, height: 322 }} border={14} rotate={-1.6} />
           {/* "Story Summary (2)": kartu putih di bawah foto, tombol Mulai Cerita di kanan. */}
           <View style={styles.summaryCard}>
-            <GeaText variant={poi.nama.length > 24 ? "heading24" : "heading28"} color={colors.primary[900]} numberOfLines={2}>
-              {poi.nama}
+            <GeaText variant={poiName.length > 24 ? "heading24" : "heading28"} color={colors.primary[900]} numberOfLines={2}>
+              {poiName}
             </GeaText>
             <GeaText variant="body16Tight" color={componentColors.cardBody} numberOfLines={3}>{description.text}</GeaText>
             <StoryButton label={t("Mulai Cerita", "Start Story")} onPress={(): void => setStep("story")} style={styles.summaryButton} />
@@ -546,8 +548,8 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
         <>
           <BackButton onPress={props.onExit} />
           <PauseButton onPress={(): void => setPaused(true)} label={t("Istirahat Dulu", "Take a Break")} />
-          <PhotoFrame photoUrl={description.photoUrl} label={poi.nama} left={-21} top={86} box={301.076} size={{ width: 267.756, height: 267.756 }} border={12.551} rotate={-7.66} />
-          <PhotoFrame photoUrl={secondPhoto} label={poi.nama} left={136} top={229} box={272.526} size={{ width: 267.756, height: 267.756 }} border={12.551} rotate={1.03} />
+          <PhotoFrame photoUrl={description.photoUrl} label={poiName} left={-21} top={86} box={301.076} size={{ width: 267.756, height: 267.756 }} border={12.551} rotate={-7.66} />
+          <PhotoFrame photoUrl={secondPhoto} label={poiName} left={136} top={229} box={272.526} size={{ width: 267.756, height: 267.756 }} border={12.551} rotate={1.03} />
           <SceneLayer layer={isiPanelLayer} />
           {/* Panel cokelat diperpanjang ke bawah saat cerita panjang dan halaman digulir. */}
           <View style={[styles.isiFill, span, { height: Math.max(0, ISI_TOP + isiHeight + ISI_BOTTOM - ISI_FILL_TOP) }]} />
@@ -565,7 +567,7 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
           >
             <View style={styles.isiTexts}>
               <GeaText variant="heading28" color={colors.secondaryYellow[100]} numberOfLines={2}>
-                {step === "story2" ? pageTwoTitle : judul ?? poi.nama}
+                {step === "story2" ? pageTwoTitle : judul ?? poiName}
               </GeaText>
               <View>
                 <GeaText variant="body16Tight" color={colors.secondaryYellow[0]}>

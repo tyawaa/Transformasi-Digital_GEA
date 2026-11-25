@@ -2,6 +2,7 @@
 // (diimpor dari index.ts), bukan di dalam komponen.
 // Catatan: Expo Go tidak mendukung lokasi latar belakang; uji layar terkunci memakai development build.
 import * as Location from "expo-location";
+import type { Language } from "../../domain/contracts";
 import * as TaskManager from "expo-task-manager";
 import { Platform } from "react-native";
 import { handleEyesFreeFix } from "./engine";
@@ -30,7 +31,7 @@ if (Platform.OS !== "web") {
 
 export type BackgroundResult = "running" | "denied" | "unsupported";
 
-export async function startBackgroundGuidance(): Promise<BackgroundResult> {
+export async function startBackgroundGuidance(language: Language): Promise<BackgroundResult> {
   if (Platform.OS === "web") return "unsupported";
   try {
     const permission = await Location.requestBackgroundPermissionsAsync();
@@ -44,8 +45,8 @@ export async function startBackgroundGuidance(): Promise<BackgroundResult> {
       activityType: Location.ActivityType.Fitness,
       showsBackgroundLocationIndicator: true,
       foregroundService: {
-        notificationTitle: "GEA · mode tanpa layar",
-        notificationBody: "Petunjuk arah tetap dibacakan saat layar terkunci.",
+        notificationTitle: language === "en" ? "GEA · eyes free mode" : "GEA · mode tanpa layar",
+        notificationBody: language === "en" ? "Guidance continues while your screen is locked." : "Petunjuk arah tetap dibacakan saat layar terkunci.",
         notificationColor: "#2F5D3A",
       },
     });

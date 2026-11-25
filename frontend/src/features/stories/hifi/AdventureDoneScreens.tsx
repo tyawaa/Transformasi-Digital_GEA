@@ -10,6 +10,9 @@ import { GeaText } from "../../../design/typography";
 import { ScanBackground } from "./backgrounds";
 import { formatVisitDuration } from "../../../domain/points";
 import { FrameStage, StoryButton } from "./parts";
+import { useLanguage } from "../../preferences/LanguageSettings";
+import type { Language } from "../../../domain/contracts";
+import { localizeCopy, localizedDuration } from "../../../data/localizedCopy";
 
 export { formatVisitDuration };
 
@@ -47,8 +50,8 @@ function WellDoneRibbon({ top }: { readonly top: number }): ReactElement {
   );
 }
 
-function formatPoints(points: number): string {
-  return points.toLocaleString("id-ID");
+function formatPoints(points: number, language: Language): string {
+  return points.toLocaleString(language === "en" ? "en-GB" : "id-ID");
 }
 
 export function WellDoneScreen(
@@ -58,6 +61,7 @@ export function WellDoneScreen(
     readonly onHome: () => void;
   },
 ): ReactElement {
+  const { language, t } = useLanguage();
   const [howTo, setHowTo] = useState<boolean>(false);
   return (
     <FrameStage background={colors.primary[200]}>
@@ -68,10 +72,10 @@ export function WellDoneScreen(
       <Image accessible={false} source={mascot} style={done.mascot} contentFit="contain" />
       <View style={done.card}>
         <GeaText variant="bold16" color={colors.primary[200]}>REWARD</GeaText>
-        <View style={done.pointBox} accessibilityLabel={`${summary.totalPoints} poin`}>
+        <View style={done.pointBox} accessibilityLabel={t(`${summary.totalPoints} poin`, `${summary.totalPoints} points`)}>
           <GeaText variant="bold16" color={colors.primary[800]}>
             <GeaText variant="bold16" color={colors.primary[800]} style={done.pointNumber}>
-              {formatPoints(summary.totalPoints)}{" "}
+              {formatPoints(summary.totalPoints, language)}{" "}
             </GeaText>
             POINTS
           </GeaText>
@@ -79,21 +83,21 @@ export function WellDoneScreen(
         <View style={done.statsRow}>
           <View style={done.statItem}>
             <GeaText variant="bold16" color={colors.primary[900]}>{summary.poisDone}/{summary.poisTotal}</GeaText>
-            <GeaText variant="caption12" color={colors.primary[700]}>Koleksi</GeaText>
+            <GeaText variant="caption12" color={colors.primary[700]}>{t("Koleksi", "Collections")}</GeaText>
           </View>
           <View style={done.statDivider} />
           <View style={done.statItem}>
-            <GeaText variant="bold16" color={colors.primary[900]}>{summary.durationText ?? "15 menit"}</GeaText>
-            <GeaText variant="caption12" color={colors.primary[700]}>Durasi</GeaText>
+            <GeaText variant="bold16" color={colors.primary[900]}>{localizedDuration(summary.durationText, language)}</GeaText>
+            <GeaText variant="caption12" color={colors.primary[700]}>{t("Durasi", "Duration")}</GeaText>
           </View>
           <View style={done.statDivider} />
           <View style={done.statItem}>
             <GeaText variant="bold16" color={colors.primary[900]}>{summary.questsDone}/{summary.questsTotal}</GeaText>
-            <GeaText variant="caption12" color={colors.primary[700]}>Misi</GeaText>
+            <GeaText variant="caption12" color={colors.primary[700]}>{t("Misi", "Quests")}</GeaText>
           </View>
         </View>
         <GeaText variant="body14" color={colors.black} style={done.howText}>
-          Tukarkan Reward dengan merchandise Museum Geologi Bandung.{" "}
+          {t("Tukarkan Reward dengan merchandise Museum Geologi Bandung.", "Redeem your reward for Museum Geologi Bandung merchandise.")}{" "}
           <GeaText
             variant="bold16"
             color={colors.black}
@@ -101,22 +105,22 @@ export function WellDoneScreen(
             accessibilityRole="link"
             onPress={(): void => setHowTo((open: boolean): boolean => !open)}
           >
-            Lihat tatacara penukaran Reward
+            {t("Lihat tatacara penukaran Reward", "See how to redeem your reward")}
           </GeaText>
         </GeaText>
         {howTo && (
           <GeaText variant="body14" color={componentColors.bodyDark} style={done.howText} accessibilityLiveRegion="polite">
-            Tunjukkan layar ini ke petugas Museum Geologi Bandung untuk menanyakan penukaran reward.
+            {t("Tunjukkan layar ini ke petugas Museum Geologi Bandung untuk menanyakan penukaran reward.", "Show this screen to museum staff to ask about redeeming your reward.")}
           </GeaText>
         )}
         <View style={done.buttons}>
-          <StoryButton label="Bagikan Hasil Penjelajahan" onPress={onShare} style={done.stretch} />
+          <StoryButton label={t("Bagikan Hasil Penjelajahan", "Share Your Adventure")} onPress={onShare} style={done.stretch} />
           <Pressable
             accessibilityRole="button"
             onPress={onHome}
             style={({ pressed }) => [done.secondary, pressed && done.pressed]}
           >
-            <GeaText variant="button16" color={colors.primary[800]}>Kembali ke Halaman Utama</GeaText>
+            <GeaText variant="button16" color={colors.primary[800]}>{t("Kembali ke Halaman Utama", "Back to Home")}</GeaText>
           </Pressable>
         </View>
       </View>
@@ -124,7 +128,8 @@ export function WellDoneScreen(
   );
 }
 
-async function renderSummaryCardToBlob(summary: AdventureSummary): Promise<{ blob: Blob; dataUrl: string }> {
+async function renderSummaryCardToBlob(summary: AdventureSummary, language: Language): Promise<{ blob: Blob; dataUrl: string }> {
+  const t = (id: string, en: string): string => language === "en" ? en : id;
   if (typeof document === "undefined") {
     throw new Error("DOM document tidak tersedia");
   }
@@ -185,9 +190,9 @@ async function renderSummaryCardToBlob(summary: AdventureSummary): Promise<{ blo
 
   ctx.font = `bold ${11 * scale}px sans-serif`;
   ctx.textAlign = "left";
-  ctx.fillText("AKU ADALAH", 138 * scale, 68 * scale);
+  ctx.fillText(t("AKU ADALAH", "I AM AN"), 138 * scale, 68 * scale);
   ctx.font = `bold ${24 * scale}px sans-serif`;
-  ctx.fillText("Penjelajah Bumi!", 138 * scale, 98 * scale);
+  ctx.fillText(t("Penjelajah Bumi!", "Earth Explorer!"), 138 * scale, 98 * scale);
 
   // Pill status
   const pillY = 175 * scale;
@@ -205,16 +210,16 @@ async function renderSummaryCardToBlob(summary: AdventureSummary): Promise<{ blo
   ctx.fillStyle = "#FEEBB5";
   ctx.font = `bold ${13 * scale}px sans-serif`;
   ctx.textAlign = "center";
-  ctx.fillText(`✓  ${percent}% PETUALANGAN TUNTAS`, w / 2, pillY + 23 * scale);
+  ctx.fillText(t(`✓  ${percent}% PETUALANGAN TUNTAS`, `✓  ${percent}% ADVENTURE COMPLETE`), w / 2, pillY + 23 * scale);
 
   // Stats row
   const statsY = 250 * scale;
   const colW = (310 * scale) / 4;
   const stats = [
-    { val: `${summary.poisDone}/${summary.poisTotal}`, lbl: "Koleksi" },
-    { val: summary.durationText ?? "15 mnt", lbl: "Durasi" },
-    { val: `${summary.questsDone}/${summary.questsTotal}`, lbl: "Misi" },
-    { val: summary.totalPoints.toLocaleString("id-ID"), lbl: "Poin" },
+    { val: `${summary.poisDone}/${summary.poisTotal}`, lbl: t("Koleksi", "Collections") },
+    { val: localizedDuration(summary.durationText, language), lbl: t("Durasi", "Duration") },
+    { val: `${summary.questsDone}/${summary.questsTotal}`, lbl: t("Misi", "Quests") },
+    { val: formatPoints(summary.totalPoints, language), lbl: t("Poin", "Points") },
   ];
 
   stats.forEach((item, idx) => {
@@ -252,9 +257,9 @@ async function renderSummaryCardToBlob(summary: AdventureSummary): Promise<{ blo
   ctx.fillStyle = "#FFFFFF";
   ctx.font = `bold ${10 * scale}px sans-serif`;
   ctx.textAlign = "left";
-  ctx.fillText("★  REWARD TERBUKA", 38 * scale, rewY + 24 * scale);
+  ctx.fillText(t("★  REWARD TERBUKA", "★  REWARD UNLOCKED"), 38 * scale, rewY + 24 * scale);
   ctx.font = `bold ${14 * scale}px sans-serif`;
-  ctx.fillText(`Lencana ${summary.badgeName ?? "Penjelajah Bumi"}`, 38 * scale, rewY + 46 * scale);
+  ctx.fillText(t(`Lencana ${summary.badgeName ?? "Penjelajah Bumi"}`, `Badge: ${localizeCopy(summary.badgeName ?? "Penjelajah Bumi", language)}`), 38 * scale, rewY + 46 * scale);
 
   ctx.fillStyle = "#0F3224";
   ctx.font = `${11 * scale}px sans-serif`;
@@ -272,8 +277,9 @@ async function renderSummaryCardToBlob(summary: AdventureSummary): Promise<{ blo
 export function ShareResultScreen(
   { summary, onBack }: { readonly summary: AdventureSummary; readonly onBack: () => void },
 ): ReactElement {
+  const { language, t } = useLanguage();
   const percent: number = summary.poisTotal === 0 ? 0 : Math.round((summary.poisDone / summary.poisTotal) * 100);
-  const badge: string = summary.badgeName ?? "Penjelajah Bumi";
+  const badge: string = localizeCopy(summary.badgeName ?? "Penjelajah Bumi", language);
   const cardRef = useRef<View>(null);
   const [sharing, setSharing] = useState<boolean>(false);
   const [shareStatus, setShareStatus] = useState<string | null>(null);
@@ -281,17 +287,17 @@ export function ShareResultScreen(
   async function share(): Promise<void> {
     setSharing(true);
     setShareStatus(null);
-    const duration = summary.durationText ?? "15 menit";
+    const duration: string = localizedDuration(summary.durationText, language);
     const message = [
-      "Aku adalah Penjelajah Bumi! 🌏",
-      `${summary.poisDone}/${summary.poisTotal} koleksi · ${summary.questsDone}/${summary.questsTotal} misi · durasi ${duration} · ${formatPoints(summary.totalPoints)} poin`,
-      `Reward terbuka: Lencana ${badge}`,
+      t("Aku adalah Penjelajah Bumi! 🌏", "I am an Earth Explorer! 🌏"),
+      t(`${summary.poisDone}/${summary.poisTotal} koleksi · ${summary.questsDone}/${summary.questsTotal} misi · durasi ${duration} · ${formatPoints(summary.totalPoints, language)} poin`, `${summary.poisDone}/${summary.poisTotal} collections · ${summary.questsDone}/${summary.questsTotal} quests · duration ${duration} · ${formatPoints(summary.totalPoints, language)} points`),
+      t(`Reward terbuka: Lencana ${badge}`, `Reward unlocked: Badge ${badge}`),
       "#JelajahMuseumGeologi",
     ].join("\n");
 
     try {
       if (Platform.OS === "web") {
-        const { blob } = await renderSummaryCardToBlob(summary);
+        const { blob } = await renderSummaryCardToBlob(summary, language);
         const fileName = "GEA-Hasil-Penjelajahan.png";
 
         // Deteksi iframe: di dalam iframe navigator.share/canShare bisa return true
@@ -308,11 +314,11 @@ export function ShareResultScreen(
         if (canWebShare) {
           try {
             await navigator.share({
-              title: "Hasil Penjelajahan Museum Geologi",
+              title: t("Hasil Penjelajahan Museum Geologi", "My Museum Geologi Adventure"),
               text: message,
               files: [file],
             });
-            setShareStatus("✓ Berhasil dibagikan!");
+            setShareStatus(t("✓ Berhasil dibagikan!", "✓ Shared successfully!"));
             return;
           } catch {
             // Fallthrough ke download jika share gagal
@@ -332,7 +338,7 @@ export function ShareResultScreen(
           URL.revokeObjectURL(objectUrl);
         }, 1500);
 
-        setShareStatus("✓ Gambar tersimpan!");
+        setShareStatus(t("✓ Gambar tersimpan!", "✓ Image saved!"));
         return;
       }
 
@@ -345,10 +351,10 @@ export function ShareResultScreen(
         if (await Sharing.isAvailableAsync()) {
           await Sharing.shareAsync(uri, {
             mimeType: "image/png",
-            dialogTitle: "Bagikan Hasil Penjelajahan",
+            dialogTitle: t("Bagikan Hasil Penjelajahan", "Share Your Adventure"),
             UTI: "public.png",
           });
-          setShareStatus("✓ Berhasil dibagikan!");
+          setShareStatus(t("✓ Berhasil dibagikan!", "✓ Shared successfully!"));
           return;
         }
       }
@@ -373,40 +379,40 @@ export function ShareResultScreen(
       <View ref={cardRef} collapsable={false} style={share_.card}>
         <GeaText variant="bold16" color={colors.primary[900]} style={share_.museum}>MUSEUM GEOLOGI BANDUNG</GeaText>
         <Image accessible={false} source={mascot} style={share_.mascot} contentFit="contain" />
-        <GeaText variant="bold16" color={colors.primary[900]} style={share_.iam}>AKU ADALAH</GeaText>
-        <GeaText variant="heading28" color={colors.primary[900]} style={share_.headline}>Penjelajah Bumi!</GeaText>
+        <GeaText variant="bold16" color={colors.primary[900]} style={share_.iam}>{t("AKU ADALAH", "I AM AN")}</GeaText>
+        <GeaText variant="heading28" color={colors.primary[900]} style={share_.headline}>{t("Penjelajah Bumi!", "Earth Explorer!")}</GeaText>
         <View style={share_.status}>
           <Image accessible={false} source={tick} style={share_.tick} />
           <GeaText variant="bold16" color={colors.secondaryYellow[0]} style={share_.statusText}>
-            {percent}% PETUALANGAN TUNTAS
+            {percent}{t("% PETUALANGAN TUNTAS", "% ADVENTURE COMPLETE")}
           </GeaText>
         </View>
         <View style={share_.stats}>
-          <Stat value={`${summary.poisDone}/${summary.poisTotal}`} label="Koleksi" />
+          <Stat value={`${summary.poisDone}/${summary.poisTotal}`} label={t("Koleksi", "Collections")} />
           <View style={share_.divider} />
-          <Stat value={summary.durationText ?? "15 mnt"} label="Durasi" />
+          <Stat value={localizedDuration(summary.durationText, language)} label={t("Durasi", "Duration")} />
           <View style={share_.divider} />
-          <Stat value={`${summary.questsDone}/${summary.questsTotal}`} label="Misi" />
+          <Stat value={`${summary.questsDone}/${summary.questsTotal}`} label={t("Misi", "Quests")} />
           <View style={share_.divider} />
-          <Stat value={formatPoints(summary.totalPoints)} label="Poin" />
+          <Stat value={formatPoints(summary.totalPoints, language)} label={t("Poin", "Points")} />
         </View>
         <View style={share_.reward}>
           <Image accessible={false} source={medal} style={share_.medal} />
           <View style={share_.rewardText}>
-            <GeaText variant="bold16" color={colors.white} style={share_.rewardLabel}>REWARD TERBUKA</GeaText>
-            <GeaText variant="bold16" color={colors.white}>Lencana {badge}</GeaText>
+            <GeaText variant="bold16" color={colors.white} style={share_.rewardLabel}>{t("REWARD TERBUKA", "REWARD UNLOCKED")}</GeaText>
+            <GeaText variant="bold16" color={colors.white}>{t("Lencana", "Badge")} {badge}</GeaText>
           </View>
         </View>
         <GeaText variant="caption12" color={colors.primary[900]} style={share_.tag}>#JelajahMuseumGeologi</GeaText>
       </View>
       <StoryButton
-        label={sharing ? "Menyiapkan Gambar..." : shareStatus ?? "Bagikan Gambar"}
+        label={sharing ? t("Menyiapkan Gambar...", "Preparing Image…") : shareStatus ?? t("Bagikan Gambar", "Share Image")}
         disabled={sharing}
         onPress={(): void => void share()}
         style={share_.button}
       />
       <Pressable accessibilityRole="button" hitSlop={8} onPress={onBack} style={share_.back}>
-        <GeaText variant="label16" color={colors.primary[900]} style={share_.underline}>Kembali</GeaText>
+        <GeaText variant="label16" color={colors.primary[900]} style={share_.underline}>{t("Kembali", "Back")}</GeaText>
       </Pressable>
     </FrameStage>
   );

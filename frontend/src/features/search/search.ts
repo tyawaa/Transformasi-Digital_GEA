@@ -2,6 +2,8 @@
 // jadi tetap jalan tanpa internet. Fungsi murni, diuji di tests/search.test.mjs.
 import photoHunt from "../../../assets/daftar_pencarian/photo-hunt/catalog.json" with { type: "json" };
 import type { MuseumPoi } from "../../data/museum.ts";
+import type { Language } from "../../domain/contracts.ts";
+import { localizeCopy, localizedPoiName } from "../../data/localizedCopy.ts";
 
 export const MIN_QUERY_LENGTH = 3;
 
@@ -45,6 +47,21 @@ export function buildSearchIndex(pois: readonly MuseumPoi[]): readonly SearchEnt
     entry("ruang", poi.name, poi, []),
     entry("poi", `POI ${poi.number} · ${poi.code} · ${poi.name}`, poi, []),
   ]);
+}
+
+/** English labels retain Indonesian aliases and canonical room codes for navigation. */
+export function buildLocalizedSearchIndex(pois: readonly MuseumPoi[], language: Language): readonly SearchEntry[] {
+  const original: readonly SearchEntry[] = buildSearchIndex(pois);
+  if (language === "id") return original;
+  return original.map((item: SearchEntry): SearchEntry => {
+    const poi: MuseumPoi | undefined = pois.find((candidate: MuseumPoi): boolean => candidate.code === item.roomCode);
+    if (poi === undefined) throw new RangeError(`Ruang pencarian tidak terdaftar: code=${item.roomCode}`);
+    const roomName: string = localizedPoiName(poi, language);
+    const label: string = item.kind === "koleksi" ? localizeCopy(item.label, language)
+      : item.kind === "ruang" ? roomName : `POI ${poi.number} · ${poi.code} · ${roomName}`;
+    const text: string = normalize(`${label} ${roomName} ${item.text}`);
+    return { ...item, label, roomName, text, words: text.split(" ").filter((word: string): boolean => word.length > 0) };
+  });
 }
 
 /** Jarak edit dengan pertukaran dua huruf bersebelahan dihitung satu kesalahan. */

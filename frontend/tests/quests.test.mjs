@@ -26,6 +26,8 @@ test("bahasa Inggris mempertahankan identitas quest, penilaian, dan aturan profi
       );
       for (const quest of translated.filter((quest) => !quest.isDisabled)) {
         assert.notEqual(quest.pertanyaan, original.find((item) => item.idQuest === quest.idQuest).pertanyaan);
+        assert.notEqual(quest.hint, original.find((item) => item.idQuest === quest.idQuest).hint);
+        assert.notEqual(quest.penjelasan, original.find((item) => item.idQuest === quest.idQuest).penjelasan);
       }
     }
   }

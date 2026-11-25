@@ -384,7 +384,7 @@ function Home(): ReactElement {
   }
 
   async function handleScan(result: ParsedQr): Promise<void> {
-    if (visitEnded) { failScan("Kunjungan sudah selesai. Buka ringkasan kunjunganmu."); return; }
+    if (visitEnded) { failScan(t("Kunjungan sudah selesai. Buka ringkasan kunjunganmu.", "Your visit has ended. Open your visit summary.")); return; }
     if (scanPending.current) return;
     if (!result.ok) {
       failScan(qrErrorMessage(result.reason, language));
@@ -438,10 +438,10 @@ function Home(): ReactElement {
   if (visitState.error !== null) {
     return (
       <View style={{ flex: 1, justifyContent: "center", padding: 24, gap: 16, backgroundColor: colors.primary[300] }}>
-        <GeaText variant="heading24" color={colors.primary[900]}>Progres kunjungan belum dapat dimuat</GeaText>
+        <GeaText variant="heading24" color={colors.primary[900]}>{t("Progres kunjungan belum dapat dimuat", "Could not load visit progress")}</GeaText>
         <GeaText variant="body16" color={colors.primary[900]} accessibilityRole="alert">{visitState.error}</GeaText>
-        <StoryButton label="Coba lagi" onPress={visitState.retry} />
-        <StoryButton label="Akhiri kunjungan ini" onPress={visitState.endVisit} />
+        <StoryButton label={t("Coba lagi", "Try again")} onPress={visitState.retry} />
+        <StoryButton label={t("Akhiri kunjungan ini", "End this visit")} onPress={visitState.endVisit} />
       </View>
     );
   }
@@ -471,10 +471,10 @@ function Home(): ReactElement {
         <StatusBar style="light" />
         <LocationFailedSplash
           message={operationError !== null
-            ? { title: "Lokasi belum dapat diperiksa", description: operationError }
+            ? { title: t("Lokasi belum dapat diperiksa", "Could not check location"), description: operationError }
             : session.notice ?? {
-              title: "Lokasi belum dapat diperiksa",
-              description: "Periksa izin dan layanan lokasi, lalu coba lagi atau pindai QR pintu masuk.",
+              title: t("Lokasi belum dapat diperiksa", "Could not check location"),
+              description: t("Periksa izin dan layanan lokasi, lalu coba lagi atau pindai QR pintu masuk.", "Check location permissions and services, then try again or scan the entrance QR code."),
             }}
           decision={operationError === null ? session.decision : null}
           settingsAction={session.locationSettingsAction}
@@ -632,7 +632,7 @@ function Home(): ReactElement {
   }
 
   const notice = operationError !== null
-    ? { title: "Belum berhasil", description: operationError }
+    ? { title: t("Belum berhasil", "Could not complete the action"), description: operationError }
     : session.notice;
 
   return (
@@ -644,16 +644,16 @@ function Home(): ReactElement {
         visitEnded={visitEnded}
         recommendedCode={recommendedCode}
         timeTests={storiesSource.kind !== "mock" || endsAtMs === null || closingAtMs === null ? [] : [
-          { label: "Waktu uji: durasi tinggal 4 menit", onPress: (): void => setDemoOffsetMs(endsAtMs - 4 * MINUTE_MS - Date.now()) },
-          { label: "Waktu uji: durasi habis", onPress: (): void => setDemoOffsetMs(endsAtMs + 1000 - Date.now()) },
-          { label: "Waktu uji: museum tutup 14 menit lagi", onPress: (): void => setDemoOffsetMs(closingAtMs - 14 * MINUTE_MS - Date.now()) },
-          { label: "Waktu uji: museum tutup 4 menit lagi", onPress: (): void => setDemoOffsetMs(closingAtMs - 4 * MINUTE_MS - Date.now()) },
-          { label: "Waktu uji: museum sudah tutup", onPress: (): void => setDemoOffsetMs(closingAtMs + 1000 - Date.now()) },
-          { label: "Waktu uji: kembali ke jam asli", onPress: (): void => setDemoOffsetMs(0) },
+          { label: t("Waktu uji: durasi tinggal 4 menit", "Test time: 4 minutes remaining"), onPress: (): void => setDemoOffsetMs(endsAtMs - 4 * MINUTE_MS - Date.now()) },
+          { label: t("Waktu uji: durasi habis", "Test time: plan expired"), onPress: (): void => setDemoOffsetMs(endsAtMs + 1000 - Date.now()) },
+          { label: t("Waktu uji: museum tutup 14 menit lagi", "Test time: museum closes in 14 minutes"), onPress: (): void => setDemoOffsetMs(closingAtMs - 14 * MINUTE_MS - Date.now()) },
+          { label: t("Waktu uji: museum tutup 4 menit lagi", "Test time: museum closes in 4 minutes"), onPress: (): void => setDemoOffsetMs(closingAtMs - 4 * MINUTE_MS - Date.now()) },
+          { label: t("Waktu uji: museum sudah tutup", "Test time: museum closed"), onPress: (): void => setDemoOffsetMs(closingAtMs + 1000 - Date.now()) },
+          { label: t("Waktu uji: kembali ke jam asli", "Test time: restore actual time"), onPress: (): void => setDemoOffsetMs(0) },
         ]}
-        visitTimeLabel={visit === null || endsAtMs === null || closingAtMs === null ? null : visitEnded ? "Kunjungan selesai"
-          : closingAtMs - clock.nowMs <= 15 * MINUTE_MS ? `Museum tutup dalam ${formatCountdown(Math.max(0, closingAtMs - clock.nowMs))}`
-          : `Rencana ${formatCountdown(clock.remainingMs ?? 0)} · tutup ${closingTimeLabel(closingAtMs)}`}
+        visitTimeLabel={visit === null || endsAtMs === null || closingAtMs === null ? null : visitEnded ? t("Kunjungan selesai", "Visit ended")
+          : closingAtMs - clock.nowMs <= 15 * MINUTE_MS ? t(`Museum tutup dalam ${formatCountdown(Math.max(0, closingAtMs - clock.nowMs))}`, `Museum closes in ${formatCountdown(Math.max(0, closingAtMs - clock.nowMs))}`)
+          : t(`Rencana ${formatCountdown(clock.remainingMs ?? 0)} · tutup ${closingTimeLabel(closingAtMs)}`, `Plan ${formatCountdown(clock.remainingMs ?? 0)} · closes ${closingTimeLabel(closingAtMs)}`)}
         onExtendTime={options.length === 0 ? null : (): void => setRequestedPanel("extend")}
         remainingMs={clock.remainingMs}
         routeToast={routeToast}
@@ -662,7 +662,7 @@ function Home(): ReactElement {
         pois={mapPois}
         loading={(summaries === null && poisError === null) || savingPlan}
         error={planError ?? poisError ?? (summaries !== null && summaries.length === 0
-          ? "Data koleksi belum tersedia di server. Hubungi tim untuk mengisi data POI."
+          ? t("Data koleksi belum tersedia di server. Hubungi tim untuk mengisi data POI.", "Collection data is not available on the server. Contact the team to add POI data.")
           : null)}
         hasVisit={visit !== null}
         totalPoints={points}

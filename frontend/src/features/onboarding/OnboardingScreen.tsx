@@ -20,6 +20,7 @@ import { GeaText } from "../../design/typography";
 import { LocationCheckingContent } from "../location/LocationChecking";
 import { useFrameBleed } from "../stories/hifi/parts";
 import { onboardingAssets as img, SceneIllustrations, SceneLayer } from "./scene";
+import { useLanguage } from "../preferences/LanguageSettings";
 
 // Ukuran frame Figma.
 const FRAME_W = 390;
@@ -42,6 +43,7 @@ type Props = {
 export function OnboardingScreen(
   { onCheckLocation, checkingLocation }: Props,
 ): ReactElement {
+  const { t } = useLanguage();
   const { width, height } = useWindowDimensions();
   const scale: number = Math.min(width / FRAME_W, height / FRAME_H);
   const { span } = useFrameBleed();
@@ -104,18 +106,18 @@ export function OnboardingScreen(
     const needLocation: boolean = location?.granted !== true;
     const needCamera: boolean = camera?.granted !== true;
     const blocked: boolean = (needLocation && location?.canAskAgain === false) || (needCamera && camera?.canAskAgain === false);
-    const what: string = needLocation && needCamera ? "lokasi dan kamera" : needLocation ? "lokasi" : "kamera";
+    const what: string = needLocation && needCamera ? t("lokasi dan kamera", "location and camera") : needLocation ? t("lokasi", "location") : t("kamera", "camera");
     const why: string = needLocation && needCamera
-      ? "Lokasi dipakai untuk tahu kamu sudah tiba di museum, kamera untuk scan QR koleksi."
+      ? t("Lokasi dipakai untuk tahu kamu sudah tiba di museum, kamera untuk scan QR koleksi.", "Location detects when you arrive at the museum, and the camera scans collection QR codes.")
       : needLocation
-      ? "Lokasi dipakai untuk tahu kamu sudah tiba di museum."
-      : "Kamera dipakai untuk scan QR koleksi.";
+      ? t("Lokasi dipakai untuk tahu kamu sudah tiba di museum.", "Location detects when you arrive at the museum.")
+      : t("Kamera dipakai untuk scan QR koleksi.", "The camera scans collection QR codes.");
     setWarning({
       id: Date.now(),
-      title: `Izinkan ${what} dulu, ya!`,
+      title: t(`Izinkan ${what} dulu, ya!`, `Please allow ${what} access first.`),
       description: blocked
-        ? `${why} Izinnya sempat ditolak, buka pengaturan HP untuk mengaktifkannya.`
-        : `${why} Ketuk kotak di kartu yang bertanda WAJIB.`,
+        ? t(`${why} Izinnya sempat ditolak, buka pengaturan HP untuk mengaktifkannya.`, `${why} Access was previously denied. Enable it in your device settings.`)
+        : t(`${why} Ketuk kotak di kartu yang bertanda WAJIB.`, `${why} Tap the checkbox on each REQUIRED card.`),
     });
   }
 
@@ -210,16 +212,16 @@ export function OnboardingScreen(
           <SceneLayer layer={{ src: img.welcomeBone, left: 278, top: 216, width: 77.572, height: 75.212, inner: { width: 30.357, height: 77.745 }, rotate: 132.98 }} />
           <View style={styles.welcomeText}>
             <GeaText variant="display42" color={colors.tertiary[300]} style={styles.welcomeTitle}>
-              Selamat Datang di GEA!
+              {t("Selamat Datang di GEA!", "Welcome to GEA!")}
             </GeaText>
             <GeaText variant="body16" color={componentColors.bodyDark} style={styles.center}>
-              Teman jalan-jalanmu keliling Museum Geologi Bandung.
+              {t("Teman jalan-jalanmu keliling Museum Geologi Bandung.", "Your companion for exploring Museum Geologi Bandung.")}
             </GeaText>
           </View>
           <NextButton
             top={734}
             left={86.5}
-            label="Jelajah lebih jauh!"
+            label={t("Jelajah lebih jauh!", "Explore further!")}
             arrow
             disabled={step !== 0}
             onPress={(): void => goTo(1)}
@@ -242,6 +244,7 @@ function NextButton(
     readonly onLocked?: (() => void) | undefined;
   },
 ): ReactElement {
+  const { t } = useLanguage();
   const locked: boolean = onLocked !== undefined;
   return (
     <View style={[styles.buttonGroup, { top, left }]}>
@@ -256,7 +259,7 @@ function NextButton(
       {locked && !disabled && (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`${label} (belum bisa)`}
+          accessibilityLabel={t(`${label} (belum bisa)`, `${label} (unavailable)`)}
           accessibilityState={{ disabled: true }}
           onPress={onLocked}
           style={styles.lockedCover}
@@ -273,24 +276,25 @@ function NextButton(
 function PathTexts(
   { onNext, disabled }: { readonly onNext: () => void; readonly disabled: boolean },
 ): ReactElement {
+  const { t } = useLanguage();
   return (
     <>
       <GeaText variant="display42" color={colors.tertiary[300]} style={[styles.abs, { left: 151, top: 1095, width: 196, textAlign: "right" }]}>
-        JELAJAHI
+        {t("JELAJAHI", "EXPLORE")}
       </GeaText>
       <GeaText variant="display42" color={colors.tertiary[300]} style={[styles.abs, { left: 31, top: 1278, width: 196 }]}>
-        Jejak
+        {t("Jejak", "The traces of")}
       </GeaText>
       <GeaText variant="display42" color={colors.tertiary[300]} style={[styles.abs, { left: 193, top: 1464, width: 154, textAlign: "right" }]}>
-        WAKTU
+        {t("WAKTU", "TIME")}
       </GeaText>
       <GeaText variant="display42" color={colors.tertiary[300]} style={[styles.abs, { left: 55, top: 1611, width: 154 }]}>
-        BUMI
+        {t("BUMI", "EARTH")}
       </GeaText>
       <GeaText variant="body16" color={componentColors.bodyDark} style={[styles.abs, styles.center, { left: 34, top: 1671, width: 323 }]}>
-        Ikuti rute sesuai waktumu, buka cerita tiap ruangan, dan selesaikan misi untuk mengumpulkan lencana.
+        {t("Ikuti rute sesuai waktumu, buka cerita tiap ruangan, dan selesaikan misi untuk mengumpulkan lencana.", "Follow a route that fits your time, discover stories in each room, and complete quests to earn badges.")}
       </GeaText>
-      <NextButton top={1755} left={89} label="Lanjut" arrow disabled={disabled} onPress={onNext} />
+      <NextButton top={1755} left={89} label={t("Lanjut", "Continue")} arrow disabled={disabled} onPress={onNext} />
     </>
   );
 }
@@ -313,52 +317,53 @@ type PermissionProps = {
 
 /** Onboarding #3: izin. */
 function PermissionStep(props: PermissionProps): ReactElement {
+  const { t } = useLanguage();
   const { top, disabled } = props;
   return (
     <>
       <GeaText variant="display42" color={colors.tertiary[300]} style={[styles.abs, styles.upper, { left: 39, top: top + 89, width: 321 }]}>
-        IZINKAN GEA membantu perjalanAN mu!
+        {t("IZINKAN GEA membantu perjalanAN mu!", "LET GEA guide your adventure!")}
       </GeaText>
       <View style={[styles.cards, { top: top + 238 }]}>
         <PoiCard
-          title="LOKASI"
-          badge="WAJIB"
+          title={t("LOKASI", "LOCATION")}
+          badge={t("WAJIB", "REQUIRED")}
           icon={img.permLocation}
-          description="Mendeteksi saat kamu tiba di museum dan mendekati ruangan"
+          description={t("Mendeteksi saat kamu tiba di museum dan mendekati ruangan", "Detect when you arrive at the museum and approach a room")}
           checked={props.location}
-          actionLabel="Izinkan lokasi"
+          actionLabel={t("Izinkan lokasi", "Allow location access")}
           onPressAction={disabled ? undefined : props.onLocation}
         />
         <PoiCard
-          title="KAMERA"
-          badge="WAJIB"
+          title={t("KAMERA", "CAMERA")}
+          badge={t("WAJIB", "REQUIRED")}
           icon={img.permCamera}
-          description="Scan QR ruangan dan misi scan item koleksi"
+          description={t("Scan QR ruangan dan misi scan item koleksi", "Scan room QR codes and collection items for quests")}
           checked={props.camera}
-          actionLabel="Izinkan kamera"
+          actionLabel={t("Izinkan kamera", "Allow camera access")}
           onPressAction={disabled ? undefined : props.onCamera}
         />
         <PoiCard
-          title="mikrofon"
+          title={t("mikrofon", "microphone")}
           icon={img.permMicrophone}
-          description="Perintah suara saat kamu tidak ingin menyentuh layar"
+          description={t("Perintah suara saat kamu tidak ingin menyentuh layar", "Voice commands when you prefer hands-free interaction")}
           checked={props.microphone}
-          actionLabel="Izinkan mikrofon"
+          actionLabel={t("Izinkan mikrofon", "Allow microphone access")}
           onPressAction={disabled ? undefined : props.onMicrophone}
         />
         <PoiCard
-          title="notifikasi"
+          title={t("notifikasi", "notifications")}
           icon={img.permNotification}
-          description="Memberi tahu saat kamu mendekati koleksi atau rute berubah"
+          description={t("Memberi tahu saat kamu mendekati koleksi atau rute berubah", "Get notified when you approach a collection or your route changes")}
           checked={props.notification}
-          actionLabel="Izinkan notifikasi"
+          actionLabel={t("Izinkan notifikasi", "Allow notifications")}
           onPressAction={disabled ? undefined : props.onNotification}
         />
       </View>
       <NextButton
         top={top + 728}
         left={89}
-        label="Lanjut"
+        label={t("Lanjut", "Continue")}
         arrow
         disabled={disabled}
         onPress={props.onNext}

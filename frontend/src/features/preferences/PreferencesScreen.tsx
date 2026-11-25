@@ -10,6 +10,8 @@ import { ageOptions, topics } from "./recommend";
 import { durationOptions } from "./visitTiming";
 import type { Preferences } from "./usePreferences";
 import { type ExploreMode, readExploreMode, saveExploreMode } from "../eyesfree/mode";
+import { useLanguage } from "./LanguageSettings";
+import { localizeCopy } from "../../data/localizedCopy";
 
 // Figma "Preferensi - Usia / Waktu / Minat".
 type Question = {
@@ -67,6 +69,7 @@ export function PreferencesScreen(
     readonly onDismissError: () => void;
   },
 ): ReactElement {
+  const { language, t } = useLanguage();
   const [step, setStep] = useState<0 | 1 | 2 | 3>(0);
   // Mode jelajah tidak ikut personalisasi server; disimpan di perangkat (lihat eyesfree/mode.ts).
   const [mode, setMode] = useState<ExploreMode | null>(null);
@@ -132,13 +135,13 @@ export function PreferencesScreen(
       <StoryBackground />
       <View style={[styles.header, span, { paddingHorizontal: spacing[16] + bleed }]}>
         <GeaText variant="display42" color={colors.secondaryGreen[100]} style={[styles.center, styles.upper]}>
-          {question.title}
+          {localizeCopy(question.title, language)}
         </GeaText>
         <GeaText variant="body16" color={componentColors.textWhite} style={styles.center}>
-          {question.hint}
+          {localizeCopy(question.hint, language)}
         </GeaText>
       </View>
-      <BackButton onPress={back} label="Kembali" labelColor={colors.secondaryGreen[100]} />
+      <BackButton onPress={back} label={t("Kembali", "Back")} labelColor={colors.secondaryGreen[100]} />
       <View style={[styles.list, { top: listTop }]}>
         {question.options.map((option: string, index: number): ReactElement => {
           const checked: boolean = selected.includes(option);
@@ -153,9 +156,9 @@ export function PreferencesScreen(
             >
               <View style={styles.optionBody}>
                 <GeaText variant="label16" color={colors.tertiary[300]} style={styles.optionLabel}>
-                  {option}
+                  {localizeCopy(option, language)}
                 </GeaText>
-                {detail !== undefined && <GeaText variant="body14" color={colors.primary[800]}>{detail}</GeaText>}
+                {detail !== undefined && <GeaText variant="body14" color={colors.primary[800]}>{localizeCopy(detail, language)}</GeaText>}
               </View>
               <View style={[styles.box, checked && styles.boxChecked]}>
                 {checked && <GeaText variant="bold16" color={colors.secondaryGreen[900]}>✓</GeaText>}
@@ -164,16 +167,16 @@ export function PreferencesScreen(
           );
         })}
       </View>
-      <StoryButton label={saving ? "Menyimpan…" : "Lanjut"} disabled={saving} onPress={next} style={styles.button} />
+      <StoryButton label={saving ? t("Menyimpan…", "Saving…") : t("Lanjut", "Continue")} disabled={saving} onPress={next} style={styles.button} />
       <AnimatedNotification style={styles.toast}>
-        {error !== null ? <Toast tone="danger" title="Personalisasi belum tersimpan" description={error} countdown={null} onClose={onDismissError} /> : null}
+        {error !== null ? <Toast tone="danger" title={t("Personalisasi belum tersimpan", "Preferences could not be saved")} description={error} countdown={null} onClose={onDismissError} /> : null}
       </AnimatedNotification>
       <AnimatedNotification style={styles.toast}>
         {warning !== null ? (
           <Toast
             tone="danger"
-            title="Belum ada pilihan"
-            description={question.multiple ? "Pilih minimal satu topik dulu untuk melanjutkan." : "Pilih salah satu jawaban dulu untuk melanjutkan."}
+            title={t("Belum ada pilihan", "No options available")}
+            description={question.multiple ? t("Pilih minimal satu topik dulu untuk melanjutkan.", "Choose at least one topic to continue.") : t("Pilih salah satu jawaban dulu untuk melanjutkan.", "Choose an answer to continue.")}
             countdown={{ id: warning, durationMs: 5000 }}
             onClose={(): void => setWarning(null)}
           />

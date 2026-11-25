@@ -8,6 +8,7 @@ import { GeaText } from "../../design/typography";
 import type { AccessDecision, DecisionMessage } from "../../domain/contracts";
 import type { LocationSettingsAction } from "../../hooks/useVisitSession";
 import { FrameStage, StoryButton } from "../stories/hifi/parts";
+import { useLanguage } from "../preferences/LanguageSettings";
 
 const okEllipse = require("../../../assets/design/loc-ok-ellipse.svg") as number;
 const okGroup = require("../../../assets/design/loc-ok-group.svg") as number;
@@ -20,6 +21,7 @@ const mascotSad = require("../../../assets/design/mascot-sad.svg") as number;
 const MUSEUM_DIRECTIONS = "https://www.google.com/maps/dir/?api=1&destination=Museum+Geologi+Bandung";
 
 export function LocationSuccessSplash({ onContinue }: { readonly onContinue: () => void }): ReactElement {
+  const { t } = useLanguage();
   return (
     <FrameStage background={colors.success[500]}>
       <Image accessible={false} source={okEllipse} style={styles.ellipse} />
@@ -29,13 +31,13 @@ export function LocationSuccessSplash({ onContinue }: { readonly onContinue: () 
       </View>
       <View style={[styles.content, { top: 268 }]}>
         <GeaText variant="display42" color={colors.secondaryGreen[100]} style={styles.title} accessibilityRole="header">
-          Kamu sudah berada di area museum!
+          {t("Kamu sudah berada di area museum!", "You are at the museum!")}
         </GeaText>
         <View style={styles.body}>
           <GeaText variant="body16" color={colors.white} style={styles.text}>
-            Selamat datang di Museum Geologi Bandung. Jejak bumi jutaan tahun sudah menunggumu.
+            {t("Selamat datang di Museum Geologi Bandung. Jejak bumi jutaan tahun sudah menunggumu.", "Welcome to Museum Geologi Bandung. Millions of years of Earth history await you.")}
           </GeaText>
-          <StoryButton label="Lanjutkan petualangan" onPress={onContinue} style={styles.stretch} />
+          <StoryButton label={t("Lanjutkan petualangan", "Continue your adventure")} onPress={onContinue} style={styles.stretch} />
         </View>
       </View>
     </FrameStage>
@@ -51,6 +53,7 @@ export function LocationFailedSplash(
     readonly onScanQr: () => void;
   },
 ): ReactElement {
+  const { t } = useLanguage();
   return (
     <FrameStage background={colors.danger[500]}>
       <Image accessible={false} source={failEllipse} style={styles.ellipse} />
@@ -70,7 +73,7 @@ export function LocationFailedSplash(
           {decision?.status === "outside" && <Button
             appearance="fill"
             tone="danger"
-            label="Yuk lihat arah ke museum!"
+            label={t("Yuk lihat arah ke museum!", "Find your way to the museum!")}
             onPress={(): void => void Linking.openURL(MUSEUM_DIRECTIONS)}
             style={styles.stretch}
           />}
@@ -85,12 +88,12 @@ export function LocationFailedSplash(
             style={({ pressed }) => [styles.outline, pressed && styles.pressed]}
           >
             <GeaText variant="button16" color={colors.secondaryGreen[200]}>
-              Cek ulang lokasi
+              {t("Cek ulang lokasi", "Check location again")}
             </GeaText>
           </Pressable>
           <Pressable accessibilityRole="button" onPress={onScanQr} style={styles.stretch}>
             <GeaText variant="button16" color={colors.white} style={styles.text}>
-              Lokasi belum tersedia? Pindai QR pintu masuk
+              {t("Lokasi belum tersedia? Pindai QR pintu masuk", "Location unavailable? Scan the entrance QR code")}
             </GeaText>
           </Pressable>
         </View>

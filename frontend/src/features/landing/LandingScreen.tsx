@@ -10,6 +10,7 @@ import type { BusyOperation } from "../../hooks/useOperation";
 import { colors } from "../../theme/colors";
 import { styles } from "../../theme/styles";
 import type { LocationSettingsAction } from "../../hooks/useVisitSession";
+import { useLanguage } from "../preferences/LanguageSettings";
 
 type LandingScreenProps = {
   readonly visit: Visit | null;
@@ -39,11 +40,12 @@ export function LandingScreen(
     onCheckConnection,
   }: LandingScreenProps,
 ): ReactElement {
+  const { t } = useLanguage();
   return (
     <>
       <View style={styles.hero}>
         <View style={styles.heroTop}>
-          <Text style={styles.heroLabel}>LIHAT LEBIH DEKAT</Text>
+          <Text style={styles.heroLabel}>{t("LIHAT LEBIH DEKAT", "TAKE A CLOSER LOOK")}</Text>
           <Text style={styles.heroMark}>01 / GEA</Text>
         </View>
         <View accessible={false} style={styles.museum}>
@@ -56,22 +58,21 @@ export function LandingScreen(
           <View style={styles.museumBase} />
         </View>
         <Text style={styles.heroTitle}>
-          Setiap koleksi{"\n"}punya cerita.
+          {t("Setiap koleksi", "Every collection")}{"\n"}{t("punya cerita.", "has a story.")}
         </Text>
         <Text style={styles.heroDescription}>
-          Temukan cerita, dengarkan narasi, dan amati koleksi di sekitarmu.
+          {t("Temukan cerita, dengarkan narasi, dan amati koleksi di sekitarmu.", "Discover stories, listen to narration, and explore the collections around you.")}
         </Text>
       </View>
       <View style={styles.intro}>
-        <Text style={styles.eyebrow}>MULAI DARI SINI</Text>
-        <Text style={styles.title}>Sudah sampai di museum?</Text>
+        <Text style={styles.eyebrow}>{t("MULAI DARI SINI", "START HERE")}</Text>
+        <Text style={styles.title}>{t("Sudah sampai di museum?", "Have you arrived at the museum?")}</Text>
         <Text style={styles.body}>
-          Izinkan lokasi saat aplikasi digunakan untuk memastikan kamu berada di
-          area museum. Aktifkan GPS dan pilih lokasi akurat saat diminta.
+          {t("Izinkan lokasi saat aplikasi digunakan untuk memastikan kamu berada di area museum. Aktifkan GPS dan pilih lokasi akurat saat diminta.", "Allow location access while using the app to check that you are at the museum. Enable GPS and precise location when prompted.")}
         </Text>
       </View>
       <View style={styles.steps}>
-        {["Periksa area", "Buka cerita", "Jelajahi koleksi"].map((
+        {[t("Periksa area", "Check the area"), t("Buka cerita", "Read story"), t("Jelajahi koleksi", "Explore collections")].map((
           step: string,
           index: number,
         ): ReactElement => (
@@ -107,12 +108,12 @@ export function LandingScreen(
           {busy === "location"
             ? locationLabel
             : busy === "qr"
-            ? "Memeriksa QR..."
+            ? t("Memeriksa QR...", "Checking QR code…")
             : busy === "stories"
-            ? "Memuat koleksi..."
+            ? t("Memuat koleksi...", "Loading collections…")
             : visit === null
-            ? "Periksa lokasi saya"
-            : "Buka koleksi"}
+            ? t("Periksa lokasi saya", "Check my location")
+            : t("Buka koleksi", "Open collections")}
         </Text>
         {busy === null && <Text style={styles.buttonArrow}>→</Text>}
       </Pressable>
@@ -126,7 +127,7 @@ export function LandingScreen(
           }}
         >
           <Text style={styles.secondaryText}>
-            Gunakan QR pintu masuk
+            {t("Gunakan QR pintu masuk", "Use entrance QR code")}
           </Text>
         </Pressable>
       )}
@@ -144,7 +145,7 @@ export function LandingScreen(
           }}
         >
           <Text style={styles.checkText}>
-            {busy === "connection" ? "Memeriksa..." : "Cek layanan"}
+            {busy === "connection" ? t("Memeriksa...", "Checking…") : t("Cek layanan", "Check connection")}
           </Text>
         </Pressable>
       </View>
