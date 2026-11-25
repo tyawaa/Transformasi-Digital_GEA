@@ -391,16 +391,13 @@ function Home(): ReactElement {
     scanPending.current = true;
     setScanState("detected");
     try {
-      // QR pintu masuk / zona: kunjungan dimulai, tetap di layar scan untuk QR koleksi berikutnya.
+      // QR pintu masuk: kunjungan dimulai (atau sudah aktif), langsung ke peta.
       if (result.kind === "entrance" || (result.kind === null && visit === null)) {
-        if (visit === null) {
-          await beginVisit(result.token);
-          setScanNotice("Kunjungan dimulai! Kembali ke peta atau scan QR koleksi di sini.");
-        } else {
-          setScanNotice("Kunjunganmu masih aktif. Kembali ke peta atau scan QR koleksi untuk melanjutkan.");
-        }
+        if (visit === null) await beginVisit(result.token);
+        setScreen({ name: "map" });
         return;
       }
+      // QR zona: tetap di layar scan untuk QR koleksi berikutnya.
       if (result.kind === "zone") {
         if (visit === null) await beginVisit(result.token);
         const info: ZoneInfo | undefined = zones.find((z: ZoneInfo): boolean => z.code === result.code);

@@ -5,7 +5,7 @@ import { AnimatedNotification } from "../../design/AnimatedNotification";
 import { colors, componentColors, shadows, spacing } from "../../design/tokens";
 import { GeaText } from "../../design/typography";
 import { StoryBackground } from "../stories/hifi/backgrounds";
-import { BackButton, FrameStage, StoryButton } from "../stories/hifi/parts";
+import { BackButton, FrameStage, StoryButton, useFrameBleed } from "../stories/hifi/parts";
 import { ageOptions, topics } from "./recommend";
 import { durationOptions } from "./visitTiming";
 import type { Preferences } from "./usePreferences";
@@ -83,6 +83,7 @@ export function PreferencesScreen(
   const question: Question = questions[step];
   const selected: readonly string[] = answers[step];
   const [warning, setWarning] = useState<number | null>(null);
+  const { bleed, span } = useFrameBleed();
 
   function toggle(option: string): void {
     const next: readonly string[] = question.multiple
@@ -129,7 +130,7 @@ export function PreferencesScreen(
   return (
     <FrameStage background={colors.primary[300]}>
       <StoryBackground />
-      <View style={styles.header}>
+      <View style={[styles.header, span, { paddingHorizontal: spacing[16] + bleed }]}>
         <GeaText variant="display42" color={colors.secondaryGreen[100]} style={[styles.center, styles.upper]}>
           {question.title}
         </GeaText>

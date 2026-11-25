@@ -10,13 +10,33 @@ import {
   View,
   type ViewStyle,
 } from "react-native";
-import { colors, componentColors, radius } from "../../../design/tokens";
+import { colors, componentColors, radius, shadows } from "../../../design/tokens";
 import { GeaText } from "../../../design/typography";
 import { mediaSource } from "../../../services/media";
 import { backArrow } from "./backgrounds";
 
 export const FRAME_W = 390;
 export const FRAME_H = 844;
+
+// Web: kontainer "hidden" masih digulir browser saat elemen difokus (mis. fokus kembali ke tombol
+// setelah modal ditutup) sehingga layar bergeser ke samping; "clip" tidak bisa digulir.
+const CONTENT_OVERFLOW = (Platform.OS === "web" ? "clip" : "hidden") as "hidden";
+
+/**
+ * Ruang kosong kiri/kanan di luar frame, terjadi bila layar lebih lebar dari rasio 390 × 844.
+ * `bleed` = lebar satu sisi dalam satuan frame; `span` = posisi mendatar untuk latar atau panel
+ * absolut selebar frame agar ikut mengisi ruang itu.
+ */
+export function useFrameBleed(): {
+  readonly bleed: number;
+  readonly span: { readonly left: number; readonly width: number };
+} {
+  const { width, height } = useWindowDimensions();
+  const scale: number = Math.min(width / FRAME_W, height / FRAME_H);
+  // Dibulatkan ke atas agar tidak tersisa garis tipis di tepi layar.
+  const bleed: number = Math.max(0, Math.ceil((width / scale - FRAME_W) / 2));
+  return { bleed, span: { left: -bleed, width: FRAME_W + 2 * bleed } };
+}
 
 /**
  * Frame Figma 390 × 844 yang diskalakan agar muat di layar. Bila isi lebih panjang
@@ -63,8 +83,8 @@ export function FrameStage(
         ref={scrollRef}
         scrollEnabled={frameH > FRAME_H}
         showsVerticalScrollIndicator={false}
-        // overflow hidden: hiasan yang menjulur melewati bawah frame tidak ikut bisa digulir.
-        contentContainerStyle={{ height: Math.max(height, offsetTop * 2 + frameH * scale), overflow: "hidden" }}
+        // Hiasan yang menjulur melewati tepi frame dipotong, tidak ikut bisa digulir.
+        contentContainerStyle={{ height: Math.max(height, offsetTop * 2 + frameH * scale), overflow: CONTENT_OVERFLOW }}
       >
         <View
           style={[
@@ -138,6 +158,27 @@ export function BackButton(
   );
 }
 
+/** Tombol "Istirahat Dulu" (Figma 436:1753): pil krem di pojok kanan atas, sejajar BackButton. */
+export function PauseButton(
+  { onPress, label = "Istirahat Dulu" }: { readonly onPress: () => void; readonly label?: string },
+): ReactElement {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      hitSlop={8}
+      onPress={onPress}
+      style={({ pressed }) => [styles.pause, pressed && styles.pressed]}
+    >
+      <GeaText variant="body16" color={colors.primary[700]}>{label}</GeaText>
+      <View style={styles.pauseIcon}>
+        <View style={styles.pauseBar} />
+        <View style={styles.pauseBar} />
+      </View>
+    </Pressable>
+  );
+}
+
 /** Foto berbingkai hijau yang diputar, seperti "Frame 21" di Figma. */
 export function PhotoFrame(
   { photoUrl, label, left, top, box, size, border, rotate }: {
@@ -192,6 +233,22 @@ const styles = StyleSheet.create({
     backgroundColor: colors.secondaryYellow[100],
   },
   backIcon: { width: 24, height: 24, transform: [{ scaleX: -1 }] },
+  pause: {
+    position: "absolute",
+    right: 16,
+    top: 48,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: radius.pill,
+    backgroundColor: colors.secondaryYellow[0],
+    boxShadow: shadows.drop,
+    zIndex: 2,
+  },
+  pauseIcon: { flexDirection: "row", alignItems: "center", gap: 3, width: 24, height: 24, justifyContent: "center" },
+  pauseBar: { width: 4, height: 14, borderRadius: 2, backgroundColor: colors.primary[700] },
   pressed: { opacity: 0.7 },
   photoBox: { position: "absolute", alignItems: "center", justifyContent: "center" },
   photo: {

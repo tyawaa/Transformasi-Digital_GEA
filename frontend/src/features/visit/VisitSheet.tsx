@@ -9,7 +9,7 @@ import { GeaText } from "../../design/typography";
 import { photoHuntPhoto } from "../../data/photoHuntPhotos";
 import { poiStoryPhoto } from "../../data/poiMedia";
 import photoHunt from "../../../assets/daftar_pencarian/photo-hunt/catalog.json";
-import { FrameStage } from "../stories/hifi/parts";
+import { FrameStage, useFrameBleed } from "../stories/hifi/parts";
 import { closingTimeLabel, type VisitPrompt, type VisitSuggestion } from "./lifecycle";
 
 export type VisitPanel = VisitPrompt | "finish" | "extend" | "closed" | "finished";
@@ -49,6 +49,7 @@ function sheetCopy(panel: VisitPanel, closingAtMs: number): Copy {
 /** Sheet akhir kunjungan mengikuti warna, font, dan lengkung desain GEA; semua teks tetap native. */
 export function VisitSheet(props: Props): ReactElement | null {
   const [selectedMinutes, setSelectedMinutes] = useState<number | null>(null);
+  const { bleed, span } = useFrameBleed();
   if (props.panel === null) return null;
   const copy: Copy = sheetCopy(props.panel, props.closingAtMs);
   const completed: boolean = props.panel === "closed" || props.panel === "finished";
@@ -59,12 +60,12 @@ export function VisitSheet(props: Props): ReactElement | null {
       <FrameStage background="rgba(31,26,22,0.42)">
         {!completed && <Pressable accessibilityRole="button" accessibilityLabel="Tutup pemberitahuan kunjungan"
           style={StyleSheet.absoluteFill} onPress={props.busy ? undefined : props.onDismiss} />}
-        <View style={styles.sheet} accessibilityViewIsModal>
-          <Svg width={390} height={54} viewBox="0 0 390 54" style={styles.curve} accessible={false}>
+        <View style={[styles.sheet, span]} accessibilityViewIsModal>
+          <Svg width={span.width} height={54} viewBox="0 0 390 54" preserveAspectRatio="none" style={styles.curve} accessible={false}>
             <Path d="M0 9 Q190 -9 390 54 L390 55 L0 55Z" fill={colors.secondaryYellow[0]} />
           </Svg>
           <View style={styles.handle} />
-          <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <ScrollView contentContainerStyle={[styles.content, { paddingHorizontal: 24 + bleed }]} showsVerticalScrollIndicator={false}>
             <SheetHeading title={copy.title} description={copy.description} />
             {canSuggest && props.suggestion !== null && <SuggestionCard suggestion={props.suggestion} />}
             {props.panel === "extend" && <View style={styles.options}>
@@ -118,7 +119,7 @@ function SuggestionCard({ suggestion }: { readonly suggestion: VisitSuggestion }
 }
 
 const styles = StyleSheet.create({
-  sheet: { position: "absolute", bottom: 0, left: 0, right: 0, maxHeight: 680, paddingTop: 4, backgroundColor: colors.secondaryYellow[0] },
+  sheet: { position: "absolute", bottom: 0, maxHeight: 680, paddingTop: 4, backgroundColor: colors.secondaryYellow[0] },
   curve: { position: "absolute", left: 0, top: -53 },
   handle: { width: 46, height: 4, borderRadius: 2, backgroundColor: colors.greys[300], alignSelf: "center", marginBottom: 12 },
   content: { paddingHorizontal: 24, paddingBottom: 32, gap: 18 },

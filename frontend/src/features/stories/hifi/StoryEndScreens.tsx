@@ -7,12 +7,18 @@ import { Linking, Pressable, Share, StyleSheet, View } from "react-native";
 import { Button } from "../../../design/Button";
 import { colors, componentColors, radius, shadows, spacing } from "../../../design/tokens";
 import { GeaText } from "../../../design/typography";
-import { FrameStage, StoryButton } from "./parts";
+import { FrameStage, StoryButton, useFrameBleed } from "./parts";
 
 const mascot = require("../../../../assets/design/mascot.svg") as number;
 const background = require("../../../../assets/design/finished-bg.svg") as number;
 // Rasio maskot di Figma (200 × 214.85).
 const MASCOT_RATIO = 214.85 / 200;
+
+/** Latar cokelat layar akhir cerita, selebar layar. */
+function FinishedBackground(): ReactElement {
+  const { span } = useFrameBleed();
+  return <Image accessible={false} source={background} style={[splash.bg, span]} contentFit="fill" />;
+}
 
 /** "Kisah selesai. Lanjutkan penjelajahanmu!" setelah Story Isi. */
 export function StoryFinishedScreen(
@@ -72,7 +78,7 @@ function MascotSplash(
 ): ReactElement {
   return (
     <FrameStage background={colors.primary[800]}>
-      <Image accessible={false} source={background} style={splash.bg} contentFit="fill" />
+      <FinishedBackground />
       <Pressable accessibilityRole="button" hitSlop={12} onPress={onSkip} style={splash.skip}>
         <GeaText variant="label16" color={colors.secondaryYellow[0]} style={splash.underline}>Skip</GeaText>
       </Pressable>
@@ -108,12 +114,13 @@ export function ExplorerResultScreen(
 ): ReactElement {
   // Lembar putih ikut memanjang (penjelasan, lencana baru); halaman digulir bila tidak muat.
   const [sheetHeight, setSheetHeight] = useState<number>(0);
+  const { bleed, span } = useFrameBleed();
   return (
     <FrameStage background={colors.primary[800]} frameHeight={Math.max(RESULT_BASE, SHEET_TOP + sheetHeight)}>
-      <Image accessible={false} source={background} style={splash.bg} contentFit="fill" />
+      <FinishedBackground />
       <Image accessible={false} source={mascot} style={result.mascot} contentFit="contain" />
       <View
-        style={[result.sheet, { minHeight: RESULT_BASE - SHEET_TOP }]}
+        style={[result.sheet, span, { paddingHorizontal: spacing[16] + bleed, minHeight: RESULT_BASE - SHEET_TOP }]}
         onLayout={(event): void => setSheetHeight(event.nativeEvent.layout.height)}
       >
         <View accessibilityLabel={`${stars} dari 3 bintang`} style={result.stars}>
@@ -193,7 +200,7 @@ export function StoryFinalScreen(
 
   return (
     <FrameStage background={colors.primary[800]}>
-      <Image accessible={false} source={background} style={splash.bg} contentFit="fill" />
+      <FinishedBackground />
       <View style={splash.card}>
         <GeaText variant="heading28" color={colors.tertiary[100]} style={splash.center}>
           Kisah selesai. Lanjutkan penjelajahanmu!

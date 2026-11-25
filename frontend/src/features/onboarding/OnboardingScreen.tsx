@@ -18,6 +18,7 @@ import { AnimatedNotification } from "../../design/AnimatedNotification";
 import { colors, componentColors, spacing } from "../../design/tokens";
 import { GeaText } from "../../design/typography";
 import { LocationCheckingContent } from "../location/LocationChecking";
+import { useFrameBleed } from "../stories/hifi/parts";
 import { onboardingAssets as img, SceneIllustrations, SceneLayer } from "./scene";
 
 // Ukuran frame Figma.
@@ -43,6 +44,7 @@ export function OnboardingScreen(
 ): ReactElement {
   const { width, height } = useWindowDimensions();
   const scale: number = Math.min(width / FRAME_W, height / FRAME_H);
+  const { span } = useFrameBleed();
   const [step, setStep] = useState<Step>(0);
   const scroll = useRef(new Animated.Value(0)).current;
   // Warna latar ikut bergeser bersama adegan (0 = Selamat datang, 1 = langkah lain).
@@ -203,7 +205,7 @@ export function OnboardingScreen(
             accessible={false}
             source={img.welcomeBackground}
             contentFit="fill"
-            style={styles.welcomeBackground}
+            style={[styles.welcomeBackground, span]}
           />
           <SceneLayer layer={{ src: img.welcomeBone, left: 278, top: 216, width: 77.572, height: 75.212, inner: { width: 30.357, height: 77.745 }, rotate: 132.98 }} />
           <View style={styles.welcomeText}>
@@ -387,7 +389,7 @@ const styles = StyleSheet.create({
     height: FRAME_H,
     backgroundColor: componentColors.welcomeBackground,
   },
-  welcomeBackground: { position: "absolute", left: 0, top: -230, width: FRAME_W, height: 1143 },
+  welcomeBackground: { position: "absolute", top: -230, height: 1143 },
   welcomeText: {
     position: "absolute",
     left: 0,

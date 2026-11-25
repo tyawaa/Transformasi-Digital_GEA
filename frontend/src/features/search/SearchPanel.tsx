@@ -6,7 +6,7 @@ import { photoHuntPhoto } from "../../data/photoHuntPhotos";
 import { poiStoryPhoto } from "../../data/poiMedia";
 import { colors, shadows } from "../../design/tokens";
 import { GeaText, useFont } from "../../design/typography";
-import { FrameStage } from "../stories/hifi/parts";
+import { FrameStage, useFrameBleed } from "../stories/hifi/parts";
 import { buildSearchIndex, MIN_QUERY_LENGTH, normalize, type SearchEntry, type SearchKind, searchMuseum } from "./search";
 
 type Props = {
@@ -36,6 +36,7 @@ export function SearchPanel({ pois, onPick, onClose }: Props): ReactElement {
   const [filtersOpen, setFiltersOpen] = useState<boolean>(false);
   const resultsRef = useRef<ScrollView>(null);
   const inputFont: TextStyle = useFont("Qanelas-Regular");
+  const { span } = useFrameBleed();
   const index: readonly SearchEntry[] = useMemo((): readonly SearchEntry[] => buildSearchIndex(pois), [pois]);
   const typed: number = normalize(query).replace(/ /g, "").length;
   const results: readonly SearchEntry[] = useMemo((): readonly SearchEntry[] => {
@@ -50,7 +51,7 @@ export function SearchPanel({ pois, onPick, onClose }: Props): ReactElement {
 
   return (
     <FrameStage background={colors.primary[800]}>
-      <Image accessible={false} source={background} style={StyleSheet.absoluteFill} contentFit="fill" pointerEvents="none" />
+      <Image accessible={false} source={background} style={[styles.background, span]} contentFit="fill" pointerEvents="none" />
       <GeaText accessibilityRole="header" variant="heading28" color={colors.secondaryGreen[0]} style={styles.title} numberOfLines={1}>RUANG PENCARIAN!</GeaText>
       <Pressable accessibilityRole="button" accessibilityLabel="Kembali ke peta" onPress={onClose}
         style={({ pressed }) => [styles.back, pressed && styles.pressed]}>
@@ -180,6 +181,7 @@ function SearchPhoto({ source, label }: { readonly source: SearchPhotoSource; re
 }
 
 const styles = StyleSheet.create({
+  background: { position: "absolute", top: 0, bottom: 0 },
   title: { position: "absolute", left: 16, right: 76, top: 58, fontSize: 32, lineHeight: 38 },
   back: { position: "absolute", right: 16, top: 54, width: 36, height: 36, borderRadius: 18, backgroundColor: colors.secondaryYellow[0], alignItems: "center", justifyContent: "center" },
   backIcon: { width: 22, height: 22, transform: [{ rotate: "180deg" }] },

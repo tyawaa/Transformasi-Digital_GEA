@@ -1,97 +1,92 @@
 import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
-import { type ReactElement, useEffect, useState } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Image } from "expo-image";
+import { type ReactElement, useEffect, useRef } from "react";
+import { Pressable, type StyleProp, StyleSheet, View, type ViewStyle } from "react-native";
 import { colors } from "../../../design/tokens";
-import { GeaText } from "../../../design/typography";
-import { StoryButton } from "./parts";
 
-function clock(seconds: number): string {
-  const safe: number = Math.max(0, Math.floor(seconds));
-  return `${Math.floor(safe / 60)}:${String(safe % 60).padStart(2, "0")}`;
-}
+const speakerIcon = require("../../../../assets/design/icon-speaker.svg") as number;
+
+export type Narration = {
+  readonly key: string;
+  readonly source: number | { readonly uri: string };
+  readonly seconds: number;
+};
+
+type Props = {
+  readonly narration: Narration;
+  /** true sekali saat "Aktifkan Mode Audio" ditekan dari ringkasan; narasi langsung diputar. */
+  readonly autoPlay: boolean;
+  readonly onAutoPlayed: () => void;
+  /** true saat cerita diistirahatkan (lihat PauseButton); narasi ikut dijeda. */
+  readonly suspend: boolean;
+  readonly style?: StyleProp<ViewStyle>;
+};
 
 /**
- * Narasi audio di panel Story Isi. SEMENTARA: hi-fi belum punya pemutar audio,
- * jadi memakai warna panel dan tombol Story yang sudah ada. Kontrol: putar, jeda, ulang.
+ * Tombol earphone di panel Story Isi: sekali ketuk memutar/menjeda narasi di tempat,
+ * tanpa pindah ke layar lain. Dipertahankan tetap sama lintas halaman Story Isi 1/2
+ * selama narasinya sama, jadi audio tidak mengulang saat pengguna membalik halaman.
  */
-export function StoryAudio(
-  { source, durationSeconds }: { readonly source: number | { readonly uri: string }; readonly durationSeconds: number },
-): ReactElement {
-  const player = useAudioPlayer(source);
+export function NarrationButton({ narration, autoPlay, onAutoPlayed, suspend, style }: Props): ReactElement {
+  const player = useAudioPlayer(narration.source);
   const status = useAudioPlayerStatus(player);
-  const [error, setError] = useState<string | null>(null);
+  const autoPlayedFor = useRef<string | null>(null);
 
   useEffect((): void => {
     setAudioModeAsync({ playsInSilentMode: true }).catch((cause: unknown): void => {
-      console.warn("gea_audio_mode_failed", {
-        error: cause instanceof Error ? cause.message : String(cause),
-      });
+      console.warn("gea_audio_mode_failed", { error: cause instanceof Error ? cause.message : String(cause) });
     });
   }, []);
 
-  const duration: number = status.duration > 0 ? status.duration : durationSeconds;
-  const progress: number = duration > 0 ? Math.min(1, status.currentTime / duration) : 0;
-  const atEnd: boolean = status.currentTime >= duration - 0.25;
+  useEffect((): void => {
+    if (!autoPlay || !status.isLoaded || autoPlayedFor.current === narration.key) return;
+    autoPlayedFor.current = narration.key;
+    player.play();
+    onAutoPlayed();
+    // Hanya bereaksi saat flag/loading berubah; player dan onAutoPlayed stabil secara identitas per narasi.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoPlay, status.isLoaded, narration.key]);
 
-  async function run(action: "toggle" | "restart"): Promise<void> {
-    setError(null);
-    try {
-      if (action === "toggle" && status.playing) {
-        player.pause();
-        return;
-      }
-      if (action === "restart" || atEnd) await player.seekTo(0);
-      player.play();
-    } catch (cause: unknown) {
-      setError("Narasi belum bisa diputar. Coba lagi.");
-      console.error("gea_audio_failed", {
-        source,
-        error: cause instanceof Error ? cause.message : String(cause),
-      });
+  useEffect((): void => {
+    if (suspend && status.playing) player.pause();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [suspend]);
+
+  async function toggle(): Promise<void> {
+    if (!status.isLoaded) return;
+    if (status.playing) {
+      player.pause();
+      return;
     }
+    const duration: number = status.duration > 0 ? status.duration : narration.seconds;
+    if (status.currentTime >= duration - 0.25) await player.seekTo(0);
+    player.play();
   }
 
   return (
-    <View style={styles.root}>
-      <View
-        accessibilityRole="progressbar"
-        accessibilityValue={{ min: 0, max: Math.round(duration), now: Math.round(status.currentTime) }}
-        style={styles.track}
-      >
-        <View style={[styles.fill, { width: `${progress * 100}%` }]} />
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={status.playing ? "Jeda narasi" : "Dengarkan narasi"}
+      hitSlop={8}
+      style={style}
+      onPress={(): void => void toggle()}
+    >
+      <View style={[styles.icon, status.playing && styles.iconActive]}>
+        <Image accessible={false} source={speakerIcon} style={styles.speaker} />
       </View>
-      <View style={styles.times}>
-        <GeaText variant="caption12" color={colors.secondaryYellow[100]}>{clock(status.currentTime)}</GeaText>
-        <GeaText variant="caption12" color={colors.secondaryYellow[100]}>{clock(duration)}</GeaText>
-      </View>
-      <View style={styles.controls}>
-        <StoryButton
-          label={!status.isLoaded ? "Memuat..." : status.playing ? "Jeda" : "Putar"}
-          disabled={!status.isLoaded}
-          onPress={(): void => void run("toggle")}
-        />
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Ulang narasi dari awal"
-          disabled={!status.isLoaded}
-          hitSlop={10}
-          onPress={(): void => void run("restart")}
-        >
-          <GeaText variant="body16" color={colors.secondaryYellow[100]} style={styles.link}>Ulang</GeaText>
-        </Pressable>
-      </View>
-      {error !== null && (
-        <GeaText variant="body14" color={colors.danger[100]} accessibilityRole="alert">{error}</GeaText>
-      )}
-    </View>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { gap: 8 },
-  track: { height: 6, borderRadius: 3, backgroundColor: colors.primary[900], overflow: "hidden" },
-  fill: { height: 6, backgroundColor: colors.secondaryYellow[100] },
-  times: { flexDirection: "row", justifyContent: "space-between" },
-  controls: { flexDirection: "row", alignItems: "center", gap: 24, marginTop: 4 },
-  link: { textDecorationLine: "underline" },
+  icon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.secondaryYellow[100],
+  },
+  iconActive: { backgroundColor: colors.secondaryGreen[300] },
+  speaker: { width: 24, height: 24 },
 });
