@@ -3,13 +3,14 @@
 // Foto editorial memakai URL Storage dari manifest; audio mock masih file dummy.
 // Bentuk setiap objek mengikuti respons API backend (lihat backend/README.md).
 import {
+  type Language,
   type PoiDetail,
   type PoiSummary,
   type Profile,
   type Quest,
 } from "../domain/contracts";
 import { activePois, type MuseumPoi, poiIdFor } from "../data/museum";
-import { questsForPoi } from "../data/quests";
+import { localizedQuestsForPoi, questsForPoi } from "../data/quests";
 import { poiPhotoChallenges, poiStoryPhoto } from "../data/poiMedia";
 import { wrapQr } from "../features/qr/qrPayload";
 import { mockMediaUrl } from "../services/media";
@@ -86,14 +87,25 @@ function firstQuest(poiId: string): Quest {
  * Teks cerita anak (ceritaAnak, dari Konten_Cerita_Anak). Seperti backend, bila belum ada teks anak
  * dipakai versi Umum (dewasa).
  */
-export function mockPoiForProfile(detail: PoiDetail, profile: Profile): PoiDetail {
-  const quests: readonly Quest[] = questsForPoi(detail.id_poi, profile);
+export function mockPoiForProfile(detail: PoiDetail, profile: Profile, language: Language): PoiDetail {
+  const quests: readonly Quest[] = localizedQuestsForPoi(detail.id_poi, profile, language);
   const profiled: PoiDetail = { ...detail, profile, quests: [...quests] };
-  if (profile === "dewasa") return profiled;
   const content = pois.find((poi): boolean => poiIdFor(poi.number) === detail.id_poi)?.content;
+  const [description, audio] = detail.cards;
+  const english = language === "en" ? content?.en?.[profile === "anak" ? "anak" : "umum"] : undefined;
+  if (language === "en" && english === undefined) {
+    throw new RangeError(`Terjemahan cerita belum tersedia: poiId=${detail.id_poi}, profile=${profile}, language=${language}`);
+  }
+  if (english !== undefined) {
+    return {
+      ...profiled,
+      language,
+      quest: quests[0] ?? detail.quest,
+      cards: [{ ...description, text: english.cerita, title: english.judul, fact: english.fakta, highlights: null }, null],
+    };
+  }
   const text: string | undefined = profile === "anak" ? content?.ceritaAnak : undefined;
   if (text === undefined) return profiled;
-  const [description, audio] = detail.cards;
   return { ...profiled, cards: [{ ...description, text }, audio] };
 }
 

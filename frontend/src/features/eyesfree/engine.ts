@@ -23,13 +23,13 @@ let arrived: ReadonlySet<string> = new Set();
 let lastGuidance: Guidance | null = null;
 let player: AudioPlayer | null = null;
 
-function stopNarration(): void {
+export function stopEyesFreeNarration(): void {
   player?.remove();
   player = null;
 }
 
 function narrate(target: EyesFreeTarget): void {
-  stopNarration();
+  stopEyesFreeNarration();
   Vibration.vibrate([...ARRIVAL_VIBRATION]);
   if (target.recording === undefined) return;
   player = createAudioPlayer(target.recording);
@@ -45,7 +45,7 @@ export async function enableEyesFree(): Promise<void> {
 
 export function disableEyesFree(): void {
   enabled = false;
-  stopNarration();
+  stopEyesFreeNarration();
   lastGuidance = null;
 }
 

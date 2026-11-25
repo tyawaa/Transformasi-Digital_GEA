@@ -10,6 +10,7 @@ import { preferencesSchema } from "./src/domain/contracts";
 import { availableBadges, type BadgeContext, type BadgeDef, badgeBonus, badgeProgress, type BadgeId, badges as badgeDefs, earnedBadges, poiStatus, type PoiRef, totalPoints } from "./src/domain/points";
 import { devicePhotoPoints, localActivityPoints, type PoiProgress } from "./src/features/stories/progress";
 import { useQuestDays } from "./src/features/progress/useQuestDays";
+import { LanguageSettingsProvider, useLanguage } from "./src/features/preferences/LanguageSettings";
 import { questKind, questPlan } from "./src/features/stories/questPlan";
 import {
   activePois,
@@ -61,10 +62,10 @@ const storiesSource: StoriesSource = storiesMockEnabled ? new MockStoriesSource(
 const INVALID_QR: string = wrapQr("poi", "P99", "00".repeat(32));
 const mapDummies: readonly DummyScan[] = storiesMockEnabled
   ? [
-    { label: "Uji: QR pintu masuk", payload: MOCK_ENTRANCE_QR },
-    { label: "Uji: QR zona sayap kiri", payload: wrapQr("zone", "ZL", mockZoneToken("ZL")) },
-    ...activePois.filter((poi) => wingEnabled(poi.wing)).map((poi) => ({ label: `Uji: QR koleksi ${poi.code}`, payload: mockPoiQr(poi) })),
-    { label: "Uji: QR tidak dikenal", payload: INVALID_QR },
+    { label: "Uji: QR pintu masuk", englishLabel: "Entrance QR code", payload: MOCK_ENTRANCE_QR },
+    { label: "Uji: QR zona sayap kiri", englishLabel: "Left Wing QR code", payload: wrapQr("zone", "ZL", mockZoneToken("ZL")) },
+    ...activePois.filter((poi) => wingEnabled(poi.wing)).map((poi) => ({ label: `Uji: QR koleksi ${poi.code}`, englishLabel: `Collection QR code ${poi.code}`, payload: mockPoiQr(poi) })),
+    { label: "Uji: QR tidak dikenal", englishLabel: "Unknown QR code", payload: INVALID_QR },
   ]
   : [];
 
@@ -90,8 +91,8 @@ function storyDummies(poiId: string): readonly DummyScan[] {
   if (!storiesMockEnabled) return [];
   const poi = museumPoiById(poiId);
   return [
-    ...(poi === undefined ? [] : [{ label: `Uji: QR koleksi ${poi.code}`, payload: mockPoiQr(poi) }]),
-    { label: "Uji: QR tidak dikenal", payload: INVALID_QR },
+    ...(poi === undefined ? [] : [{ label: `Uji: QR koleksi ${poi.code}`, englishLabel: `Collection QR code ${poi.code}`, payload: mockPoiQr(poi) }]),
+    { label: "Uji: QR tidak dikenal", englishLabel: "Unknown QR code", payload: INVALID_QR },
   ];
 }
 
@@ -104,6 +105,7 @@ type Screen =
   | { readonly name: "story"; readonly poiId: string; readonly token: string | null };
 
 function Home(): ReactElement {
+  const { language, t } = useLanguage();
   useAuthRefresh();
   const onboarding = useOnboarding();
   const preferences = usePreferences();
@@ -385,7 +387,7 @@ function Home(): ReactElement {
     if (visitEnded) { failScan("Kunjungan sudah selesai. Buka ringkasan kunjunganmu."); return; }
     if (scanPending.current) return;
     if (!result.ok) {
-      failScan(qrErrorMessage(result.reason));
+      failScan(qrErrorMessage(result.reason, language));
       return;
     }
     scanPending.current = true;
@@ -402,20 +404,23 @@ function Home(): ReactElement {
         if (visit === null) await beginVisit(result.token);
         const info: ZoneInfo | undefined = zones.find((z: ZoneInfo): boolean => z.code === result.code);
         setQrZoneIntro(info ?? null);
-        setScanNotice(`Kamu di ${info?.name ?? "zona ini"}. Pilih koleksi di peta dan tekan Buka cerita untuk memeriksa GPS, atau scan QR koleksi di sini.`);
+        setScanNotice(t(
+          `Kamu di ${info?.name ?? "zona ini"}. Pilih koleksi di peta dan tekan Buka cerita untuk memeriksa GPS, atau scan QR koleksi di sini.`,
+          `You are in ${info?.en.name ?? "this zone"}. Choose a collection on the map and tap Read story to check your location, or scan a collection QR code here.`,
+        ));
         return;
       }
       // QR koleksi: langsung buka template cerita POI tersebut.
       if (visit === null) {
         if (storiesSource.kind !== "mock") {
-          failScan("Scan QR pintu masuk dulu untuk memulai kunjungan.");
+          failScan(t("Scan QR pintu masuk dulu untuk memulai kunjungan.", "Scan the entrance QR code first to start your visit."));
           return;
         }
         await beginVisit(MOCK_ENTRANCE_TOKEN);
       }
       const target = result.poiId === null ? undefined : museumPoiById(result.poiId);
       if (target !== undefined && !wingEnabled(target.wing)) {
-        failScan("Koleksi ini ada di Sayap Kanan, yang belum dibuka di versi ini.");
+        failScan(t("Koleksi ini ada di Sayap Kanan, yang belum dibuka di versi ini.", "This collection is in the Right Wing, which is not open in this version."));
         return;
       }
       setScreen({ name: "story", poiId: result.poiId ?? "", token: result.token });
@@ -724,7 +729,9 @@ export default function App(): ReactElement {
   return (
     <SafeAreaProvider>
       <GeaFontsProvider>
-        <Home />
+        <LanguageSettingsProvider>
+          <Home />
+        </LanguageSettingsProvider>
       </GeaFontsProvider>
     </SafeAreaProvider>
   );

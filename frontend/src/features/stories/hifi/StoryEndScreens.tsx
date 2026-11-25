@@ -8,6 +8,7 @@ import { Button } from "../../../design/Button";
 import { colors, componentColors, radius, shadows, spacing } from "../../../design/tokens";
 import { GeaText } from "../../../design/typography";
 import { FrameStage, StoryButton, useFrameBleed } from "./parts";
+import { useLanguage } from "../../preferences/LanguageSettings";
 
 const mascot = require("../../../../assets/design/mascot.svg") as number;
 const background = require("../../../../assets/design/finished-bg.svg") as number;
@@ -32,12 +33,15 @@ export function StoryFinishedScreen(
     readonly onSkip: () => void;
   },
 ): ReactElement {
+  const { t } = useLanguage();
   return (
     <MascotSplash
-      title="Kisah selesai. Lanjutkan penjelajahanmu!"
+      title={t("Kisah selesai. Lanjutkan penjelajahanmu!", "Story complete. Keep exploring!")}
       description={hasActivity
-        ? `Selamat explorer, kamu baru saja menamatkan cerita tentang ${poiName}. Ayo hidupkan ceritamu dengan tantangan!`
-        : `Selamat explorer, kamu baru saja menamatkan cerita tentang ${poiName}. Yuk, lanjut ke koleksi berikutnya!`}
+        ? t(`Selamat explorer, kamu baru saja menamatkan cerita tentang ${poiName}. Ayo hidupkan ceritamu dengan tantangan!`,
+          `You finished the story about ${poiName}. Bring it to life with a quest!`)
+        : t(`Selamat explorer, kamu baru saja menamatkan cerita tentang ${poiName}. Yuk, lanjut ke koleksi berikutnya!`,
+          `You finished the story about ${poiName}. Continue to the next collection!`)}
       actionLabel={actionLabel}
       onAction={onAction}
       onSkip={onSkip}
@@ -113,6 +117,7 @@ export function ExplorerResultScreen(
   },
 ): ReactElement {
   // Lembar putih ikut memanjang (penjelasan, lencana baru); halaman digulir bila tidak muat.
+  const { t } = useLanguage();
   const [sheetHeight, setSheetHeight] = useState<number>(0);
   const { bleed, span } = useFrameBleed();
   return (
@@ -123,7 +128,7 @@ export function ExplorerResultScreen(
         style={[result.sheet, span, { paddingHorizontal: spacing[16] + bleed, minHeight: RESULT_BASE - SHEET_TOP }]}
         onLayout={(event): void => setSheetHeight(event.nativeEvent.layout.height)}
       >
-        <View accessibilityLabel={`${stars} dari 3 bintang`} style={result.stars}>
+        <View accessibilityLabel={t(`${stars} dari 3 bintang`, `${stars} out of 3 stars`)} style={result.stars}>
           {[0, 1, 2].map((i: number): ReactElement => (
             <GeaText
               key={i}
@@ -136,12 +141,12 @@ export function ExplorerResultScreen(
           ))}
         </View>
         <GeaText variant="display42" color={colors.primary[800]} style={splash.center}>
-          Selamat Penjelajah!
+          {t("Selamat Penjelajah!", "Well done, Explorer!")}
         </GeaText>
         <GeaText variant="body16" color={componentColors.bodyDark} style={splash.center}>
           {conquered
-            ? `Kamu berhasil menaklukan ${poiName}. Perjalanan selanjutnya masih menunggu!`
-            : `Kamu sudah menjelajahi ${poiName}. Perjalanan selanjutnya masih menunggu!`}
+            ? t(`Kamu berhasil menaklukan ${poiName}. Perjalanan selanjutnya masih menunggu!`, `You conquered ${poiName}. Your next adventure awaits!`)
+            : t(`Kamu sudah menjelajahi ${poiName}. Perjalanan selanjutnya masih menunggu!`, `You explored ${poiName}. Your next adventure awaits!`)}
         </GeaText>
         {explanation !== undefined && (
           <GeaText variant="body14" color={componentColors.cardCaption} style={splash.center}>{explanation}</GeaText>
@@ -149,14 +154,14 @@ export function ExplorerResultScreen(
         <View style={result.divider} />
         {score !== undefined ? (
           <View style={result.scores}>
-            <ScoreBox label="SCORE" value={String(score)} />
-            <ScoreBox label="REWARD" value={String(reward)} unit="POINTS" />
+            <ScoreBox label={t("SKOR", "SCORE")} value={String(score)} />
+            <ScoreBox label={t("HADIAH", "REWARD")} value={String(reward)} unit={t("POIN", "POINTS")} />
           </View>
         ) : (
-          <ScoreBox label="REWARD" value={String(reward)} unit="POINTS" />
+          <ScoreBox label={t("HADIAH", "REWARD")} value={String(reward)} unit={t("POIN", "POINTS")} />
         )}
         <StoryButton
-          label={allCompleted ? "Lihat Ringkasan Akhir" : "Kembali ke Halaman Utama"}
+          label={allCompleted ? t("Lihat Ringkasan Akhir", "View Visit Summary") : t("Kembali ke Halaman Utama", "Back to Map")}
           onPress={onHome}
           style={result.button}
         />

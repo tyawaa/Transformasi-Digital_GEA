@@ -5,6 +5,7 @@ import { type ReactElement, useEffect } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { colors, radius, spacing } from "../../../design/tokens";
 import { GeaText } from "../../../design/typography";
+import { useLanguage } from "../../preferences/LanguageSettings";
 
 const speakerIcon = require("../../../../assets/design/icon-speaker.svg") as number;
 
@@ -14,6 +15,7 @@ function clock(seconds: number): string {
 }
 
 export function QuestAudio({ source }: { readonly source: number }): ReactElement {
+  const { t } = useLanguage();
   const player = useAudioPlayer(source);
   const status = useAudioPlayerStatus(player);
 
@@ -39,7 +41,7 @@ export function QuestAudio({ source }: { readonly source: number }): ReactElemen
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={status.playing ? "Jeda rekaman instruksi" : "Dengarkan instruksi quest"}
+      accessibilityLabel={status.playing ? t("Jeda rekaman instruksi", "Pause quest instructions") : t("Dengarkan instruksi quest", "Listen to quest instructions")}
       disabled={!status.isLoaded}
       onPress={toggle}
       style={({ pressed }) => [styles.root, status.playing && styles.playing, pressed && styles.pressed]}
@@ -49,7 +51,7 @@ export function QuestAudio({ source }: { readonly source: number }): ReactElemen
       </View>
       <View style={styles.body}>
         <GeaText variant="bold16" color={colors.primary[900]}>
-          {!status.isLoaded ? "Memuat rekaman…" : status.playing ? "Jeda" : atEnd ? "Dengarkan lagi" : "Dengarkan instruksi"}
+          {!status.isLoaded ? t("Memuat rekaman…", "Loading audio…") : status.playing ? t("Jeda", "Pause") : atEnd ? t("Dengarkan lagi", "Listen again") : t("Dengarkan instruksi", "Listen to Instructions")}
         </GeaText>
         <View style={styles.track}>
           <View style={[styles.fill, { width: `${progress * 100}%` }]} />

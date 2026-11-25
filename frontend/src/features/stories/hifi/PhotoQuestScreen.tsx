@@ -11,6 +11,7 @@ import { type CapturedPhoto, prepareCapturedPhoto } from "../../../services/phot
 import { StoryBackground } from "./backgrounds";
 import { BackButton, FrameStage, StoryButton } from "./parts";
 import { QuestAudio } from "./QuestAudio";
+import { useLanguage } from "../../preferences/LanguageSettings";
 
 type PhotoRequest = { readonly requestId: string; readonly photo: CapturedPhoto };
 
@@ -21,6 +22,7 @@ export function PhotoQuestScreen({ quest, recording, submit, onBack }: {
   readonly submit: (requestId: string, photo: CapturedPhoto) => Promise<AnswerResult>;
   readonly onBack: () => void;
 }): ReactElement {
+  const { language, t } = useLanguage();
   const [permission, requestPermission] = useCameraPermissions();
   const camera = useRef<CameraView>(null);
   const [pending, setPending] = useState<PhotoRequest | null>(null);
@@ -42,7 +44,7 @@ export function PhotoQuestScreen({ quest, recording, submit, onBack }: {
       setPending({ requestId: randomUUID(), photo });
     } catch (cause: unknown) {
       console.warn("photo_capture_failed", { error: cause instanceof Error ? cause.message : String(cause) });
-      setError("Foto gagal diambil. Coba lagi.");
+      setError(t("Foto gagal diambil. Coba lagi.", "Could not take the photo. Try again."));
     } finally {
       locked.current = false;
       setBusy(false);
@@ -70,40 +72,41 @@ export function PhotoQuestScreen({ quest, recording, submit, onBack }: {
       <StoryBackground />
       {!busy && <BackButton onPress={onBack} />}
       <View style={styles.content} onLayout={(event): void => setHeight(event.nativeEvent.layout.height)}>
-        <GeaText variant="heading28" color={colors.primary[900]}>Cari &amp; Foto</GeaText>
+        <GeaText variant="heading28" color={colors.primary[900]}>{t("Cari & Foto", "Find & Photograph")}</GeaText>
         <View style={styles.card}>
           <GeaText variant="heading24" color={colors.secondaryGreen[900]}>{quest.title ?? quest.instruksi}</GeaText>
           <GeaText variant="body16" color={componentColors.bodyDark}>{quest.pertanyaan}</GeaText>
-          <GeaText variant="body14" color={componentColors.bodyDark}>Yang harus terlihat: {quest.target_foto}</GeaText>
-          {recording !== undefined && <QuestAudio source={recording} />}
+          {quest.target_foto && <GeaText variant="body14" color={componentColors.bodyDark}>{t("Yang harus terlihat", "What to photograph")}: {quest.target_foto}</GeaText>}
+          {recording !== undefined ? <QuestAudio key={recording} source={recording} /> : language === "en" &&
+            <GeaText variant="caption12" color={componentColors.bodyDark}>English audio unavailable.</GeaText>}
         </View>
         <View style={styles.camera}>
           {pending !== null
-            ? <Image source={{ uri: pending.photo.uri }} contentFit="contain" style={styles.fill} accessibilityLabel="Pratinjau foto koleksi" />
+            ? <Image source={{ uri: pending.photo.uri }} contentFit="contain" style={styles.fill} accessibilityLabel={t("Pratinjau foto koleksi", "Collection photo preview")} />
             : permission?.granted === true
             ? <CameraView ref={camera} style={styles.fill} facing="back" />
             : <View style={styles.permission}>
-              <GeaText variant="body16" color={colors.white}>Izinkan kamera untuk memotret koleksi.</GeaText>
-              <StoryButton label={permission?.canAskAgain === false ? "Buka Pengaturan" : "Izinkan Kamera"}
+              <GeaText variant="body16" color={colors.white}>{t("Izinkan kamera untuk memotret koleksi.", "Allow camera access to photograph the collection.")}</GeaText>
+              <StoryButton label={permission?.canAskAgain === false ? t("Buka Pengaturan", "Open Settings") : t("Izinkan Kamera", "Allow Camera Access")}
                 onPress={(): void => { if (permission?.canAskAgain === false) void Linking.openSettings(); else void requestPermission(); }} />
             </View>}
         </View>
         <View style={styles.card}>
-          <GeaText variant="body14" color={componentColors.bodyDark}>Posisikan objek di tengah dan foto dengan jelas. Label nama tidak wajib terlihat. Foto diperiksa langsung di HP tanpa diunggah. Progres foto tersimpan di HP ini.</GeaText>
-          {quest.hint && <GeaText variant="body14" color={componentColors.bodyDark}>Petunjuk: {quest.hint}</GeaText>}
+          <GeaText variant="body14" color={componentColors.bodyDark}>{t("Posisikan objek di tengah dan foto dengan jelas. Label nama tidak wajib terlihat. Foto diperiksa langsung di HP tanpa diunggah. Progres foto tersimpan di HP ini.", "Center the object and take a clear photo. The name label is optional. This device checks the photo and saves your progress locally.")}</GeaText>
+          {quest.hint && <GeaText variant="body14" color={componentColors.bodyDark}>{t("Petunjuk", "Hint")}: {quest.hint}</GeaText>}
         </View>
         {feedback !== null && <GeaText variant="body16" color={colors.primary[900]} accessibilityLiveRegion="polite">{feedback}</GeaText>}
         {error !== null && <GeaText variant="body14" color={colors.danger[100]} accessibilityRole="alert">{error}</GeaText>}
         {busy && <ActivityIndicator color={colors.primary[900]} />}
         {pending === null
-          ? <StoryButton label={busy ? "Menyiapkan Foto…" : "Ambil Foto"} disabled={busy || permission?.granted !== true} onPress={(): void => { void capture(); }} />
+          ? <StoryButton label={busy ? t("Menyiapkan Foto…", "Preparing Photo…") : t("Ambil Foto", "Take Photo")} disabled={busy || permission?.granted !== true} onPress={(): void => { void capture(); }} />
           : <>
-            <StoryButton label={busy ? "Memeriksa Foto…" : "Periksa Foto"} disabled={busy || feedback !== null} onPress={(): void => { void send(); }} />
+            <StoryButton label={busy ? t("Memeriksa Foto…", "Checking Photo…") : t("Periksa Foto", "Check Photo")} disabled={busy || feedback !== null} onPress={(): void => { void send(); }} />
             <Pressable disabled={busy} accessibilityRole="button" onPress={(): void => { setPending(null); setFeedback(null); setError(null); }}>
-              <GeaText variant="label16" color={colors.primary[900]}>Ambil Ulang</GeaText>
+              <GeaText variant="label16" color={colors.primary[900]}>{t("Ambil Ulang", "Retake")}</GeaText>
             </Pressable>
           </>}
-        <StoryButton label="Kembali ke Daftar Quest" disabled={busy} onPress={onBack} />
+        <StoryButton label={t("Kembali ke Daftar Quest", "Back to Quests")} disabled={busy} onPress={onBack} />
       </View>
     </FrameStage>
   );

@@ -14,6 +14,7 @@ import { PhotoQuestScreen } from "./PhotoQuestScreen";
 import { StoryBackground } from "./backgrounds";
 import { BackButton, FrameStage, StoryButton } from "./parts";
 import { QuestAudio } from "./QuestAudio";
+import { useLanguage } from "../../preferences/LanguageSettings";
 
 const icons: readonly [number, number] = [
   require("../../../../assets/design/card-discover.svg") as number,
@@ -22,6 +23,11 @@ const icons: readonly [number, number] = [
 const labels: { readonly [type in QuestType]: string } = {
   foto: "CARI & FOTO", pilgan: "PILIHAN GANDA", isian_singkat: "ISIAN SINGKAT",
   benar_salah: "BENAR / SALAH", cocokkan: "COCOKKAN",
+};
+
+const englishLabels: typeof labels = {
+  foto: "FIND & PHOTOGRAPH", pilgan: "MULTIPLE CHOICE", isian_singkat: "SHORT ANSWER",
+  benar_salah: "TRUE / FALSE", cocokkan: "MATCHING",
 };
 
 /** Daftar quest setelah cerita, memakai kartu miring dan kotak centang seperti referensi. */
@@ -33,6 +39,8 @@ export function QuestListScreen({ poiName, quests, results, onPick, onResult, on
   readonly onResult: () => void;
   readonly onBack: () => void;
 }): ReactElement {
+  const { language, t } = useLanguage();
+  const typeLabels = language === "en" ? englishLabels : labels;
   const completed: number = quests.filter((quest: Quest): boolean => results[quest.idQuest]?.completed === true).length;
   const bottom: number = Math.max(560, 185 + quests.length * 134);
   return (
@@ -40,9 +48,9 @@ export function QuestListScreen({ poiName, quests, results, onPick, onResult, on
       <StoryBackground />
       <BackButton onPress={onBack} />
       <View style={styles.heading}>
-        <GeaText variant="heading28" color={colors.primary[900]}>Tantangan per POI</GeaText>
+        <GeaText variant="heading28" color={colors.primary[900]}>{t("Tantangan per POI", "Collection Quests")}</GeaText>
         <GeaText variant="body16" color={componentColors.bodyDark}>{poiName}</GeaText>
-        <GeaText variant="label16" color={colors.primary[900]}>{completed} dari {quests.length} quest berhasil</GeaText>
+        <GeaText variant="label16" color={colors.primary[900]}>{t(`${completed} dari ${quests.length} quest berhasil`, `${completed} of ${quests.length} quests completed`)}</GeaText>
       </View>
       {quests.map((quest: Quest, index: number): ReactElement => {
         const result: QuestProgress | undefined = results[quest.idQuest];
@@ -51,7 +59,7 @@ export function QuestListScreen({ poiName, quests, results, onPick, onResult, on
           <Pressable
             key={quest.idQuest}
             accessibilityRole="button"
-            accessibilityLabel={`${labels[quest.type]}: ${quest.title ?? quest.instruksi}. ${success ? "Sudah selesai" : result?.failed ? "Kesempatan habis" : "Belum selesai"}`}
+            accessibilityLabel={`${typeLabels[quest.type]}: ${quest.title ?? quest.instruksi}. ${success ? t("Sudah selesai", "Completed") : result?.failed ? t("Kesempatan habis", "No attempts left") : t("Belum selesai", "Incomplete")}`}
             onPress={(): void => onPick(quest)}
             style={({ pressed }) => [styles.questCard, {
               left: index % 2 === 0 ? 26 : 65, top: 215 + index * 134,
@@ -60,10 +68,12 @@ export function QuestListScreen({ poiName, quests, results, onPick, onResult, on
           >
             <Image accessible={false} source={index % 2 === 0 ? icons[0] : icons[1]} style={styles.icon} />
             <View style={styles.cardText}>
-              <GeaText variant="heading20" color={colors.secondaryGreen[900]}>{labels[quest.type]}</GeaText>
+              <GeaText variant="heading20" color={colors.secondaryGreen[900]}>{typeLabels[quest.type]}</GeaText>
               <GeaText variant="body16" color={componentColors.bodyDark} numberOfLines={2}>{quest.title ?? quest.instruksi}</GeaText>
               <GeaText variant="caption12" color={componentColors.bodyDark}>
-                {success ? `Selesai · +${result?.pointsAwarded ?? 0} poin` : result?.failed ? "Kesempatan habis" : `${quest.points ?? 0} poin · ${quest.maxAttempts ?? 3} kesempatan`}
+                {success ? t(`Selesai · +${result?.pointsAwarded ?? 0} poin`, `Completed · +${result?.pointsAwarded ?? 0} pts`)
+                  : result?.failed ? t("Kesempatan habis", "No attempts left")
+                    : t(`${quest.points ?? 0} poin · ${quest.maxAttempts ?? 3} kesempatan`, `${quest.points ?? 0} pts · ${quest.maxAttempts ?? 3} attempts`)}
               </GeaText>
             </View>
             <View style={[styles.check, success && styles.checkDone]}>
@@ -75,9 +85,10 @@ export function QuestListScreen({ poiName, quests, results, onPick, onResult, on
       })}
       <View style={[styles.footer, { top: bottom }]}>
         <GeaText variant="body16" color={componentColors.bodyDark} style={styles.center}>
-          {quests.length === 0 ? "Cerita selesai. Belum ada quest untuk profilmu di POI ini." : "Ketuk kartu untuk mengerjakan tantangannya."}
+          {quests.length === 0 ? t("Cerita selesai. Belum ada quest untuk profilmu di POI ini.", "Story complete. There are no quests for your profile at this stop.")
+            : t("Ketuk kartu untuk mengerjakan tantangannya.", "Tap a card to start a quest.")}
         </GeaText>
-        <StoryButton label="Lihat Hasil" onPress={onResult} />
+        <StoryButton label={t("Lihat Hasil", "View Results")} onPress={onResult} />
       </View>
     </FrameStage>
   );
@@ -93,6 +104,8 @@ export function QuestTaskScreen({ quest, profile, result, submit, submitPhoto, o
   readonly submitPhoto: (requestId: string, photo: CapturedPhoto) => Promise<AnswerResult>;
   readonly onBack: () => void;
 }): ReactElement {
+  const { language, t } = useLanguage();
+  const typeLabels = language === "en" ? englishLabels : labels;
   const [selected, setSelected] = useState<OptionLabel | null>(null);
   const [text, setText] = useState<string>("");
   const [busy, setBusy] = useState<boolean>(false);
@@ -105,7 +118,7 @@ export function QuestTaskScreen({ quest, profile, result, submit, submitPhoto, o
   const limit: number = quest.maxAttempts ?? 3;
   const isText: boolean = quest.type === "isian_singkat";
   const photo: boolean = quest.type === "foto";
-  const recording: number | undefined = quest.code == null ? undefined : questRecording(quest.code, profile);
+  const recording: number | undefined = quest.code == null ? undefined : questRecording(quest.code, profile, language);
 
   if (photo && !finished) return <PhotoQuestScreen quest={quest} recording={recording} submit={submitPhoto} onBack={onBack} />;
 
@@ -136,23 +149,24 @@ export function QuestTaskScreen({ quest, profile, result, submit, submitPhoto, o
       <StoryBackground />
       <BackButton onPress={onBack} />
       <View style={styles.task} onLayout={(event): void => setHeight(event.nativeEvent.layout.height)}>
-        <GeaText variant="heading28" color={colors.primary[900]}>{labels[quest.type]}</GeaText>
+        <GeaText variant="heading28" color={colors.primary[900]}>{typeLabels[quest.type]}</GeaText>
         <View style={styles.question}>
           <GeaText variant="heading24" color={colors.secondaryGreen[900]}>{quest.title ?? quest.instruksi}</GeaText>
           <GeaText variant="body16" color={componentColors.bodyDark}>{quest.pertanyaan}</GeaText>
-          <GeaText variant="caption12" color={componentColors.bodyDark}>{quest.points ?? 0} poin{!photo && ` · Sisa ${Math.max(0, limit - attempts)} dari ${limit} kesempatan`}</GeaText>
-          {recording !== undefined && <QuestAudio source={recording} />}
+          <GeaText variant="caption12" color={componentColors.bodyDark}>{quest.points ?? 0} {t("poin", "pts")}{!photo && t(` · Sisa ${Math.max(0, limit - attempts)} dari ${limit} kesempatan`, ` · ${Math.max(0, limit - attempts)} of ${limit} attempts left`)}</GeaText>
+          {recording !== undefined ? <QuestAudio key={recording} source={recording} /> : language === "en" &&
+            <GeaText variant="caption12" color={componentColors.bodyDark}>English audio unavailable.</GeaText>}
         </View>
         {finished ? (
           <View style={styles.question} accessibilityLiveRegion="polite">
-            <GeaText variant="heading24" color={colors.primary[900]}>{result?.completed ? (photo ? "Foto sesuai!" : "Jawaban benar!") : "Kesempatan habis"}</GeaText>
+            <GeaText variant="heading24" color={colors.primary[900]}>{result?.completed ? (photo ? t("Foto sesuai!", "Photo accepted!") : t("Jawaban benar!", "Correct!")) : t("Kesempatan habis", "No attempts left")}</GeaText>
             <GeaText variant="body16" color={componentColors.bodyDark}>{quest.penjelasan}</GeaText>
-            <GeaText variant="bold16" color={colors.primary[900]}>+{result?.pointsAwarded ?? 0} poin</GeaText>
+            <GeaText variant="bold16" color={colors.primary[900]}>+{result?.pointsAwarded ?? 0} {t("poin", "pts")}</GeaText>
           </View>
         ) : (
           <>
             {isText ? (
-              <TextField label="Jawabanmu" value={text} onChangeText={setText} editable={!busy} autoCapitalize="none" placeholder="Tulis jawaban singkat" />
+              <TextField label={t("Jawabanmu", "Your answer")} value={text} onChangeText={setText} editable={!busy} autoCapitalize="none" placeholder={t("Tulis jawaban singkat", "Enter a short answer")} />
             ) : (
               <View accessibilityRole="radiogroup" style={styles.options}>
                 {quest.options.map((option): ReactElement => (
@@ -170,15 +184,15 @@ export function QuestTaskScreen({ quest, profile, result, submit, submitPhoto, o
               </View>
             )}
             {hint !== null && <View style={styles.question} accessibilityLiveRegion="polite">
-              <GeaText variant="bold16" color={colors.primary[900]}>Belum tepat. Coba lagi!</GeaText>
-              <GeaText variant="body14" color={componentColors.bodyDark}>{hint}</GeaText>
+              <GeaText variant="bold16" color={colors.primary[900]}>{t("Belum tepat. Coba lagi!", "Not quite. Try again!")}</GeaText>
+              <GeaText variant="body14" color={componentColors.bodyDark}>{language === "en" ? quest.hint : hint}</GeaText>
             </View>}
             {busy && <ActivityIndicator color={colors.primary[900]} />}
-            <StoryButton label={busy ? "Memeriksa jawaban…" : "Kirim Jawaban"} disabled={busy || (isText ? text.trim() === "" : selected === null)} onPress={(): void => { void send(); }} />
+            <StoryButton label={busy ? t("Memeriksa jawaban…", "Checking answer…") : t("Kirim Jawaban", "Submit Answer")} disabled={busy || (isText ? text.trim() === "" : selected === null)} onPress={(): void => { void send(); }} />
           </>
         )}
         {error !== null && <GeaText variant="body14" color={colors.danger[100]} accessibilityRole="alert">{error}</GeaText>}
-        <StoryButton label="Kembali ke Daftar Quest" onPress={onBack} disabled={busy} />
+        <StoryButton label={t("Kembali ke Daftar Quest", "Back to Quests")} onPress={onBack} disabled={busy} />
       </View>
     </FrameStage>
   );

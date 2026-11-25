@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { questsForPoi } from "../src/data/quests.ts";
+import { localizedQuestsForPoi, normalizeLocalQuestAnswer, questCatalog, questsForPoi } from "../src/data/quests.ts";
 import { earnedBadges } from "../src/domain/points.ts";
 import { devicePhotoPoints, emptyProgress, mergeServerProgress, recordQuestAnswer, restoreServerVisit } from "../src/features/stories/progress.ts";
 import { withDevicePhotoQuests } from "../src/services/devicePhotoPlan.ts";
@@ -12,6 +12,33 @@ const response = {
   idPoi: poiId, idQuest: pg.idQuest, completed: true, answerCorrect: true,
   failed: false, attemptCount: 1, pointsAwarded: 10, hint: null,
 };
+
+test("bahasa Inggris mempertahankan identitas quest, penilaian, dan aturan profil", () => {
+  for (const id of new Set(questCatalog.map((quest) => quest.idPoi))) {
+    for (const profile of ["anak", "dewasa"]) {
+      const original = questsForPoi(id, profile);
+      const translated = localizedQuestsForPoi(id, profile, "en");
+      assert.deepEqual(
+        translated.map(({ idQuest, code, type, points, maxAttempts, requiredForBadge, isDisabled, options }) =>
+          ({ idQuest, code, type, points, maxAttempts, requiredForBadge, isDisabled, labels: options.map((option) => option.label_opsi) })),
+        original.map(({ idQuest, code, type, points, maxAttempts, requiredForBadge, isDisabled, options }) =>
+          ({ idQuest, code, type, points, maxAttempts, requiredForBadge, isDisabled, labels: options.map((option) => option.label_opsi) })),
+      );
+      for (const quest of translated.filter((quest) => !quest.isDisabled)) {
+        assert.notEqual(quest.pertanyaan, original.find((item) => item.idQuest === quest.idQuest).pertanyaan);
+      }
+    }
+  }
+});
+
+test("jawaban isian Inggris tetap cocok dengan kunci penilaian katalog", () => {
+  for (const [code, answer] of [["Q-007", " TECTONIC "], ["Q-010", "peridotite"]]) {
+    const quest = questCatalog.find((quest) => quest.code === code);
+    const normalized = normalizeLocalQuestAnswer(code, answer).trim().toLowerCase();
+    assert.ok([quest.answer, ...quest.acceptedAnswers].some((accepted) => accepted.toLowerCase() === normalized));
+  }
+  assert.equal(normalizeLocalQuestAnswer("Q-007", "jawaban salah"), "jawaban salah");
+});
 
 test("POI-02, 09 dan 11 memiliki kartu foto dan PG sesuai sheet", () => {
   for (const number of [2, 9, 11]) {

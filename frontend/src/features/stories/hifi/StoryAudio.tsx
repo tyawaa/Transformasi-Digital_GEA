@@ -3,6 +3,7 @@ import { Image } from "expo-image";
 import { type ReactElement, useEffect, useRef } from "react";
 import { Pressable, type StyleProp, StyleSheet, View, type ViewStyle } from "react-native";
 import { colors } from "../../../design/tokens";
+import { useLanguage } from "../../preferences/LanguageSettings";
 
 const speakerIcon = require("../../../../assets/design/icon-speaker.svg") as number;
 
@@ -28,6 +29,7 @@ type Props = {
  * selama narasinya sama, jadi audio tidak mengulang saat pengguna membalik halaman.
  */
 export function NarrationButton({ narration, autoPlay, onAutoPlayed, suspend, style }: Props): ReactElement {
+  const { t } = useLanguage();
   const player = useAudioPlayer(narration.source);
   const status = useAudioPlayerStatus(player);
   const autoPlayedFor = useRef<string | null>(null);
@@ -66,7 +68,7 @@ export function NarrationButton({ narration, autoPlay, onAutoPlayed, suspend, st
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={status.playing ? "Jeda narasi" : "Dengarkan narasi"}
+      accessibilityLabel={status.playing ? t("Jeda narasi", "Pause narration") : t("Dengarkan narasi", "Listen to narration")}
       hitSlop={8}
       style={style}
       onPress={(): void => void toggle()}

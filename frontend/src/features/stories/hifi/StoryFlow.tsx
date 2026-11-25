@@ -29,8 +29,10 @@ import { type StoriesSource } from "../../../services/stories";
 import type { CapturedPhoto } from "../../../services/photo";
 import { museumPoiById, type StoryContent } from "../../../data/museum";
 import { storyRecording } from "../../../data/poiAudio";
+import { localizedQuestsForPoi, normalizeLocalQuestAnswer } from "../../../data/quests";
 import { audioSource } from "../../../services/media";
 import { SceneLayer } from "../../onboarding/scene";
+import { useLanguage } from "../../preferences/LanguageSettings";
 import { type ParsedQr, qrErrorMessage } from "../../qr/qrPayload";
 import type { PoiProgress } from "../progress";
 import { isiPanelLayer, StoryBackground } from "./backgrounds";
@@ -103,6 +105,7 @@ type Reward = { readonly id: number; readonly points: number; readonly labels: r
 
 /** Alur cerita + notifikasi poin kecil di atas layar. */
 export function StoryFlow(props: Props): ReactElement {
+  const { t } = useLanguage();
   const [reward, setReward] = useState<Reward | null>(null);
   // Ukuran pil mengikuti skala frame 390 × 844 seperti layar lain.
   const { width, height } = useWindowDimensions();
@@ -123,7 +126,7 @@ export function StoryFlow(props: Props): ReactElement {
           {reward !== null ? (
             <Toast
               tone="success"
-              title={`+${reward.points} Poin`}
+              title={`+${reward.points} ${t("Poin", "Points")}`}
               description={reward.labels.join(" · ")}
               countdown={{ id: reward.id, durationMs: 3000 }}
               onClose={(): void => setReward(null)}
@@ -136,6 +139,7 @@ export function StoryFlow(props: Props): ReactElement {
 }
 
 function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { readonly points: number; readonly label: string }[]) => void }): ReactElement {
+  const { language, t } = useLanguage();
   const { source, visit, progressOf, onProgress } = props;
   const [poiId, setPoiId] = useState<string>(props.poiId);
   const [poi, setPoi] = useState<PoiDetail | null>(null);
@@ -180,7 +184,8 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
   const [scanMessage, setScanMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [gpsAttempt, setGpsAttempt] = useState<number>(0);
-  const [gpsLabel, setGpsLabel] = useState<string>("Memeriksa lokasi koleksi...");
+  const [gpsLabel, setGpsLabel] = useState<readonly [string, string] | null>(null);
+  const [gpsError, setGpsError] = useState<readonly [string, string] | null>(null);
   const checkpoint = museumPoiById(poiId);
   const gpsInsidePoi: boolean = checkpoint !== undefined && props.gpsFix !== null &&
     stepGeofence([], props.gpsFix, [{ ...checkpoint, id: poiId }]).inside.includes(poiId);
@@ -200,7 +205,7 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
   useEffect((): (() => void) | undefined => {
     if (step !== "loading") return undefined;
     let active = true;
-    source.poiDetail(poiId, visit.bahasa, visit.profil).then(
+    source.poiDetail(poiId, language, visit.profil).then(
       (detail: PoiDetail): void => {
         if (!active) return;
         setPoi(detail);
@@ -226,21 +231,22 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
     if (step !== "gps") return undefined;
     let active: boolean = true;
     setError(null);
-    setGpsLabel("Memeriksa lokasi koleksi...");
+    setGpsLabel(null);
+    setGpsError(null);
     async function verifyGps(): Promise<void> {
       const reading: LocationReading = props.gpsSimulation === null
-        ? await readVisitorLocation((message: string): void => { if (active) setGpsLabel(message); })
+        ? await readVisitorLocation((message, english): void => { if (active) setGpsLabel([message, english]); })
         : { status: "available", location: props.gpsSimulation };
       if (!active) return;
       if (reading.status !== "available") {
         throw new GeaServiceError(0, "LOCATION_UNAVAILABLE", "Posisi belum dapat dibaca. Periksa izin lokasi dan coba lagi, atau gunakan QR koleksi.");
       }
-      const result: PoiVerification = await source.verifyPoiGps(visit.id_sesi, poiId, reading.location, visit.bahasa, visit.profil);
+      const result: PoiVerification = await source.verifyPoiGps(visit.id_sesi, poiId, reading.location, language, visit.profil);
       if (active) acceptVerification(result);
     }
     void verifyGps().catch((cause: unknown): void => {
       console.warn("gea_poi_gps_failed", { poiId, error: readableError(cause) });
-      if (active) setError(readableError(cause));
+      if (active) setGpsError([readableError(cause), englishGpsError(cause)]);
     });
     return (): void => { active = false; };
     // Pembaruan GPS tidak membatalkan verifikasi yang sedang berjalan.
@@ -248,7 +254,7 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
   }, [step, poiId, gpsAttempt]);
 
   useEffect((): void => {
-    if (step === "gps" && error !== null && gpsInsidePoi) {
+    if (step === "gps" && gpsError !== null && gpsInsidePoi) {
       setGpsAttempt((attempt: number): number => attempt + 1);
     }
     // Coba lagi otomatis hanya saat posisi baru masuk radius, bukan berulang saat layanan gagal.
@@ -257,12 +263,12 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
 
   async function onScan(result: ParsedQr): Promise<void> {
     if (!result.ok) {
-      setScanMessage(qrErrorMessage(result.reason));
+      setScanMessage(qrErrorMessage(result.reason, language));
       setScanState("failed");
       return;
     }
     if (result.kind === "entrance" || result.kind === "zone") {
-      setScanMessage("Ini QR ruangan. Scan QR yang ada di dekat koleksi.");
+      setScanMessage(t("Ini QR ruangan. Scan QR yang ada di dekat koleksi.", "This QR code is for an entrance or zone. Scan the QR code near the collection."));
       setScanState("failed");
       return;
     }
@@ -273,15 +279,15 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
     setScanState("detected");
     setScanMessage(null);
     try {
-      const result: PoiVerification = await source.verifyPoiQr(visit.id_sesi, token, visit.bahasa, visit.profil);
+      const result: PoiVerification = await source.verifyPoiQr(visit.id_sesi, token, language, visit.profil);
       setScanState("scanning");
       acceptVerification(result);
     } catch (cause: unknown) {
       console.warn("gea_poi_qr_failed", { error: readableError(cause) });
       setScanMessage(
         cause instanceof GeaServiceError && cause.code === "POI_QR_INVALID"
-          ? "QR tidak dikenali. Scan QR di dekat koleksi."
-          : readableError(cause),
+          ? t("QR tidak dikenali. Scan QR di dekat koleksi.", "Unrecognized QR code. Scan the QR code near the collection.")
+          : t(readableError(cause), "Could not verify the QR code. Try scanning it again."),
       );
       setScanState("failed");
     }
@@ -315,16 +321,19 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
   }
 
   if (step === "gps") {
+    const message = gpsError ?? gpsLabel;
     return (
       <FrameStage background={colors.primary[300]}>
         <StoryBackground />
-        <BackButton onPress={props.onExit} />
+        <BackButton onPress={props.onExit} label={t("Keluar", "Exit")} />
         <View style={[styles.centerBox, { top: 220, gap: spacing[16] }]}>
-          <GeaText variant="heading28" color={colors.primary[900]} style={styles.center}>Memeriksa lokasi koleksi</GeaText>
-          {error === null && <ActivityIndicator color={colors.primary[900]} />}
-          <GeaText variant="body16" color={colors.primary[900]} accessibilityLiveRegion="polite" style={styles.center}>{error ?? gpsLabel}</GeaText>
-          {error !== null && <StoryButton label="Periksa lokasi lagi" onPress={(): void => setGpsAttempt((attempt: number): number => attempt + 1)} />}
-          <StoryButton label="Gunakan QR koleksi" onPress={(): void => { setError(null); setStep("scan"); }} />
+          <GeaText variant="heading28" color={colors.primary[900]} style={styles.center}>{t("Memeriksa lokasi koleksi", "Checking your location")}</GeaText>
+          {gpsError === null && <ActivityIndicator color={colors.primary[900]} />}
+          <GeaText variant="body16" color={colors.primary[900]} accessibilityLiveRegion="polite" style={styles.center}>
+            {message === null ? t("Memeriksa lokasi koleksi...", "Checking your location…") : t(...message)}
+          </GeaText>
+          {gpsError !== null && <StoryButton label={t("Periksa lokasi lagi", "Check location again")} onPress={(): void => setGpsAttempt((attempt: number): number => attempt + 1)} />}
+          <StoryButton label={t("Gunakan QR koleksi", "Use collection QR code")} onPress={(): void => { setError(null); setStep("scan"); }} />
         </View>
       </FrameStage>
     );
@@ -339,8 +348,11 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
         onRetry={(): void => setScanState("scanning")}
         onBack={props.onExit}
         {...(props.initialToken == null && {
-          title: `Pindai QR koleksi untuk membuka ${museumPoiById(poiId)?.name ?? "ceritanya"}`,
-          helper: "Scan QR di dekat koleksi untuk membuka cerita dan tantangannya.",
+          title: t(
+            `Pindai QR koleksi untuk membuka ${museumPoiById(poiId)?.name ?? "ceritanya"}`,
+            `Scan the collection QR code to open ${museumPoiById(poiId)?.name ?? "the story"}`,
+          ),
+          helper: t("Scan QR di dekat koleksi untuk membuka cerita dan tantangannya.", "Scan the QR code near the collection to unlock the story and quests."),
         })}
         dummies={props.dummyScans}
       />
@@ -361,11 +373,25 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
     );
   }
 
-  const [description, audio] = poi.cards;
+  const [originalDescription, audio] = poi.cards;
   // Data lokal: konten anak dan quest dari sheet (questPlan memakai data lokal di semua mode); judul, fakta,
   // foto kedua, dan koleksi utamanya dari backend (description), data lokal hanya cadangan mode mock.
   const museumPoi = museumPoiById(poi.id_poi);
-  const local: StoryContent | null = source.kind === "mock" ? museumPoi?.content ?? null : null;
+  const local: StoryContent | null = source.kind === "mock" && language === "id" ? museumPoi?.content ?? null : null;
+  const english = language === "en" ? museumPoi?.content?.en?.[visit.profil === "anak" ? "anak" : "umum"] : undefined;
+  const description = english === undefined ? originalDescription : {
+    ...originalDescription, title: english.judul, text: english.cerita, fact: english.fakta, highlights: null,
+  };
+  const missingEnglish = language === "en" && english === undefined && poi.language !== "en";
+  if (missingEnglish) {
+    return <FrameStage background={colors.primary[300]}>
+      <StoryBackground />
+      <BackButton onPress={props.onExit} label="Back" />
+      <View style={styles.centerBox}>
+        <GeaText variant="body16" color={colors.primary[900]} accessibilityRole="alert">English text is not available for this collection.</GeaText>
+      </View>
+    </FrameStage>;
+  }
   const secondPhoto: string = description.secondPhotoUrl;
   // Halaman ke-2 isi cerita ("Story Isi 2"): kartu koleksi yang disorot + fakta menarik.
   const highlights: readonly string[] = splitHighlights(description.highlights ?? undefined);
@@ -373,15 +399,21 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
   // Anak: judul dan fakta dari Konten_Cerita_Anak (teks cerita anak datang dari sumber data sesuai profil).
   const kid: boolean = visit.profil === "anak";
   // Rekaman voice over kelompok didahulukan; audio dari sumber data hanya cadangan.
-  const recording: number | undefined = museumPoi === undefined ? undefined : storyRecording(museumPoi.code, visit.profil);
+  const recording: number | undefined = museumPoi === undefined ? undefined : storyRecording(museumPoi.code, visit.profil, language);
   const narration: { readonly key: string; readonly source: number | { readonly uri: string }; readonly seconds: number } | null =
-    recording !== undefined ? { key: `vo-${museumPoi?.code ?? poiId}-${visit.profil}`, source: recording, seconds: 30 }
-      : audio !== null ? { key: audio.audioUrl, source: audioSource(audio.audioUrl), seconds: audio.durationSeconds } : null;
+    recording !== undefined ? { key: `vo-${museumPoi?.code ?? poiId}-${visit.profil}-${language}`, source: recording, seconds: 30 }
+      : audio !== null && poi.language === language ? { key: `${language}:${audio.audioUrl}`, source: audioSource(audio.audioUrl), seconds: audio.durationSeconds } : null;
   const judul: string | undefined = (kid ? local?.judulAnak : undefined) ?? description.title ?? local?.judul;
   const fakta: string | undefined = (kid ? local?.faktaAnak : undefined) ?? description.fact ?? local?.fakta;
-  const pageTwoTitle: string = fakta !== undefined ? "Fakta Menarik" : "Cari di Ruangan Ini";
+  const pageTwoTitle: string = fakta !== undefined ? t("Fakta Menarik", "Fun Fact") : t("Cari di Ruangan Ini", "Find in This Room");
   const pageTwoText: string = [fakta, highlights.length > 0 ? `Koleksi di ruangan ini: ${highlights.join(", ")}.` : undefined].filter((value: string | undefined): boolean => value !== undefined).join("\n\n");
-  const quests: readonly Quest[] = poi.quests.filter((quest: Quest): boolean => quest.isDisabled !== true);
+  const englishQuests: readonly Quest[] = language === "en" ? localizedQuestsForPoi(poiId, visit.profil, "en") : [];
+  const quests: readonly Quest[] = poi.quests.filter((quest: Quest): boolean => quest.isDisabled !== true).map((quest: Quest): Quest => {
+    const translation = englishQuests.find((entry) => entry.idQuest === quest.idQuest);
+    if (translation === undefined) return quest;
+    const { title, instruksi, pertanyaan, options } = translation;
+    return { ...quest, title, instruksi, pertanyaan, options, hint: null, penjelasan: null, target_foto: null };
+  });
   const selectedQuest: Quest | undefined = quests.find((quest: Quest): boolean => quest.idQuest === selectedQuestId);
 
   function showResult(): void {
@@ -408,7 +440,7 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
 
   if (step === "storyDone") {
     return <StoryFinishedScreen poiName={poi.nama} hasActivity={quests.length > 0}
-      actionLabel={quests.length > 0 ? "Lihat Daftar Quest" : "Lihat Hasil"}
+      actionLabel={quests.length > 0 ? t("Lihat Daftar Quest", "View Quests") : t("Lihat Hasil", "View Results")}
       onAction={(): void => { if (quests.length > 0) setStep("quests"); else showResult(); }}
       onSkip={(): void => setStep("quests")} />;
   }
@@ -435,7 +467,8 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
       submit={async (requestId: string, label: OptionLabel | null, text: string | null): Promise<AnswerResult> => {
         requireQuestVerification();
         try {
-          const answer: AnswerResult = await source.answerQuest(visit.id_sesi, selectedQuest.idQuest, requestId, label, text === null ? {} : { jawabanTeks: text });
+          const answer: AnswerResult = await source.answerQuest(visit.id_sesi, selectedQuest.idQuest, requestId, label,
+            text === null ? {} : { jawabanTeks: language === "en" ? normalizeLocalQuestAnswer(selectedQuest.code, text) : text });
           props.onAnswer(answer);
           return answer;
         } catch (cause: unknown) {
@@ -463,7 +496,10 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
         score={progress.pointsAwarded + (progress.challengePoints ?? 0)}
         reward={props.totalPoints}
         allCompleted={props.allCompleted}
-        explanation={quests.length > 0 ? `${completedCount} dari ${quests.length} quest berhasil. Quest yang belum selesai bisa dilanjutkan dari daftar quest.` : undefined}
+        explanation={quests.length > 0 ? t(
+          `${completedCount} dari ${quests.length} quest berhasil. Quest yang belum selesai bisa dilanjutkan dari daftar quest.`,
+          `${completedCount} of ${quests.length} quests completed. You can resume unfinished quests from the quest list.`,
+        ) : undefined}
         onHome={(): void => {
           if (props.allCompleted) setStep("final");
           else props.onExit();
@@ -492,7 +528,7 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
               {poi.nama}
             </GeaText>
             <GeaText variant="body16Tight" color={componentColors.cardBody} numberOfLines={3}>{description.text}</GeaText>
-            <StoryButton label="Mulai Cerita" onPress={(): void => setStep("story")} style={styles.summaryButton} />
+            <StoryButton label={t("Mulai Cerita", "Start Story")} onPress={(): void => setStep("story")} style={styles.summaryButton} />
           </View>
           {narration !== null && <Pressable
             accessibilityRole="button"
@@ -500,7 +536,7 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
             style={styles.audioMode}
             onPress={(): void => { setAutoPlayNarration(true); setStep("story"); }}
           >
-            <GeaText variant="body16" color={colors.primary[800]}>Aktifkan Mode Audio</GeaText>
+            <GeaText variant="body16" color={colors.primary[800]}>{t("Aktifkan Mode Audio", "Listen to Story")}</GeaText>
             <AudioBadge />
           </Pressable>}
         </>
@@ -509,13 +545,14 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
       {(step === "story" || step === "story2") && (
         <>
           <BackButton onPress={props.onExit} />
-          <PauseButton onPress={(): void => setPaused(true)} />
+          <PauseButton onPress={(): void => setPaused(true)} label={t("Istirahat Dulu", "Take a Break")} />
           <PhotoFrame photoUrl={description.photoUrl} label={poi.nama} left={-21} top={86} box={301.076} size={{ width: 267.756, height: 267.756 }} border={12.551} rotate={-7.66} />
           <PhotoFrame photoUrl={secondPhoto} label={poi.nama} left={136} top={229} box={272.526} size={{ width: 267.756, height: 267.756 }} border={12.551} rotate={1.03} />
           <SceneLayer layer={isiPanelLayer} />
           {/* Panel cokelat diperpanjang ke bawah saat cerita panjang dan halaman digulir. */}
           <View style={[styles.isiFill, span, { height: Math.max(0, ISI_TOP + isiHeight + ISI_BOTTOM - ISI_FILL_TOP) }]} />
           {narration !== null && <NarrationButton
+            key={narration.key}
             narration={narration}
             autoPlay={autoPlayNarration}
             onAutoPlayed={(): void => setAutoPlayNarration(false)}
@@ -536,12 +573,13 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
                 </GeaText>
                 {step === "story" && pageCount === 1 && fakta !== undefined && (
                   <View style={styles.fact}>
-                    <GeaText variant="bold16" color={colors.primary[900]}>Fakta menarik</GeaText>
+                    <GeaText variant="bold16" color={colors.primary[900]}>{t("Fakta menarik", "Fun fact")}</GeaText>
                     <GeaText variant="body14" color={componentColors.bodyDark}>{fakta}</GeaText>
                   </View>
                 )}
               </View>
             </View>
+            {language === "en" && narration === null && <GeaText variant="body14" color={colors.secondaryYellow[0]}>English audio unavailable.</GeaText>}
             {error !== null && <GeaText variant="body14" color={colors.danger[100]} accessibilityRole="alert">{error}</GeaText>}
             <View style={styles.isiNav}>
               <Pressable
@@ -550,10 +588,10 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
                 style={styles.flex}
                 onPress={(): void => setStep(step === "story2" ? "story" : "summary")}
               >
-                <GeaText variant="body16Tight" color={colors.secondaryYellow[100]} style={styles.link}>Kembali</GeaText>
+                <GeaText variant="body16Tight" color={colors.secondaryYellow[100]} style={styles.link}>{t("Kembali", "Back")}</GeaText>
               </Pressable>
               <StoryButton
-                label="Lanjut"
+                label={t("Lanjut", "Continue")}
                 style={styles.shadowed}
                 onPress={(): void => {
                   if (step === "story" && pageCount > 1) setStep("story2");
@@ -568,13 +606,29 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
       <SheetModal
         visible={paused}
         onClose={(): void => setPaused(false)}
-        title="Sudah siap untuk melanjutkan perjalanan?"
-        description="Istirahat dulu nggak masalah. Ketuk Siap kalau kamu sudah mau lanjut membaca dan mengerjakan quest-nya."
-        actionLabel="Siap"
+        title={t("Sudah siap untuk melanjutkan perjalanan?", "Ready to continue your adventure?")}
+        description={t("Istirahat dulu nggak masalah. Ketuk Siap kalau kamu sudah mau lanjut membaca dan mengerjakan quest-nya.", "Take your time. Tap Ready when you want to continue reading and completing quests.")}
+        actionLabel={t("Siap", "Ready")}
         onAction={(): void => setPaused(false)}
       />
     </FrameStage>
   );
+}
+
+function englishGpsError(cause: unknown): string {
+  if (cause instanceof GeaServiceError) {
+    switch (cause.code) {
+      case "GPS_ACCURACY_EXCEEDS_20_METERS":
+        return "Your location is not accurate enough. Check again or scan the collection QR code.";
+      case "OUTSIDE_POI_AREA":
+        return "Move closer to this collection or scan its QR code.";
+      case "POI_NOT_FOUND":
+        return "This collection could not be found.";
+      case "LOCATION_UNAVAILABLE":
+        return "Check location permissions and try again, or scan the collection QR code.";
+    }
+  }
+  return `Could not verify your location: ${readableError(cause)}`;
 }
 
 /** Ikon speaker dekoratif di tombol "Aktifkan Mode Audio" (ringkasan); kontrol sebenarnya ada di NarrationButton. */

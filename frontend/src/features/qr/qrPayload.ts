@@ -52,7 +52,12 @@ export function parseQr(raw: string): ParsedQr {
     : { ok: true, token, kind: "poi", code: poi.code, poiId: poiIdFor(poi.number) };
 }
 
-export function qrErrorMessage(reason: "not_gea" | "unknown_code"): string {
+export function qrErrorMessage(reason: "not_gea" | "unknown_code", language: "id" | "en"): string {
+  if (language === "en") {
+    return reason === "not_gea"
+      ? "Unrecognized QR code. Scan an official GEA QR code."
+      : "Unrecognized QR code. This collection is not listed in the museum.";
+  }
   return reason === "not_gea"
     ? "QR tidak dikenali. Arahkan kamera ke QR resmi GEA."
     : "QR tidak dikenali. Kode koleksi ini tidak ada di daftar museum.";
