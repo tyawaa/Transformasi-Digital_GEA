@@ -430,6 +430,11 @@ function Home(): ReactElement {
         <OnboardingScreen
           checkingLocation={busy === "location"}
           onCheckLocation={(): void => {
+            // Demo memakai QR uji lokal; onboarding tidak perlu menghubungi server GPS.
+            if (storiesMockEnabled) {
+              onboarding.complete();
+              return;
+            }
             void session.checkLocation();
           }}
         />

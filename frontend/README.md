@@ -1,5 +1,9 @@
 # Aplikasi GEA untuk Expo Go
 
+Untuk download dan setup di laptop baru, mulai dari [panduan utama](../README.md).
+Panduan tersebut mencakup `.env`, backend cloud/lokal, file yang tidak masuk Git,
+serta build APK dengan model foto.
+
 Proyek Expo SDK 57 dan TypeScript, mengikuti SDK Expo Go yang tersedia saat
 setup. Folder ini terpisah dari backend Deno/Supabase. Tidak ada secret admin
 dalam aplikasi.
@@ -9,8 +13,8 @@ dalam aplikasi.
 ```powershell
 cd frontend
 npm ci
-# .env sudah diisi untuk project GEA pada mesin ini.
-# Untuk checkout baru: salin .env.example ke .env dan isi publishable key.
+# Hanya saat setup awal; isi URL project dan publishable key sebelum menjalankan.
+Copy-Item .env.example .env
 npm start
 ```
 
