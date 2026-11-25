@@ -34,7 +34,7 @@ import { SceneLayer } from "../../onboarding/scene";
 import { type ParsedQr, qrErrorMessage } from "../../qr/qrPayload";
 import type { PoiProgress } from "../progress";
 import { isiPanelLayer, StoryBackground } from "./backgrounds";
-import { BackButton, FRAME_H, FrameStage, PauseButton, PhotoFrame, StoryButton } from "./parts";
+import { BackButton, FRAME_H, FrameStage, PauseButton, PhotoFrame, StoryButton, useFrameBleed } from "./parts";
 import { type DummyScan, ScanQrScreen, type ScanState } from "./ScanQrScreen";
 import { NarrationButton } from "./StoryAudio";
 import { QuestListScreen, QuestTaskScreen } from "./QuestScreens";
@@ -139,6 +139,7 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
   const { source, visit, progressOf, onProgress } = props;
   const [poiId, setPoiId] = useState<string>(props.poiId);
   const [poi, setPoi] = useState<PoiDetail | null>(null);
+  const { span } = useFrameBleed();
   const progress: PoiProgress = progressOf(poiId);
   // Poin baru (aktivitas, kuis, tantangan) dibandingkan dengan keadaan sebelumnya → toast.
   const earnedBefore = useRef<{ readonly poiId: string; readonly activities: readonly ActivityId[]; readonly quiz: number; readonly challenge: number } | null>(null);
@@ -513,7 +514,7 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
           <PhotoFrame photoUrl={secondPhoto} label={poi.nama} left={136} top={229} box={272.526} size={{ width: 267.756, height: 267.756 }} border={12.551} rotate={1.03} />
           <SceneLayer layer={isiPanelLayer} />
           {/* Panel cokelat diperpanjang ke bawah saat cerita panjang dan halaman digulir. */}
-          <View style={[styles.isiFill, { height: Math.max(0, ISI_TOP + isiHeight + ISI_BOTTOM - ISI_FILL_TOP) }]} />
+          <View style={[styles.isiFill, span, { height: Math.max(0, ISI_TOP + isiHeight + ISI_BOTTOM - ISI_FILL_TOP) }]} />
           {narration !== null && <NarrationButton
             narration={narration}
             autoPlay={autoPlayNarration}

@@ -18,6 +18,26 @@ import { backArrow } from "./backgrounds";
 export const FRAME_W = 390;
 export const FRAME_H = 844;
 
+// Web: kontainer "hidden" masih digulir browser saat elemen difokus (mis. fokus kembali ke tombol
+// setelah modal ditutup) sehingga layar bergeser ke samping; "clip" tidak bisa digulir.
+const CONTENT_OVERFLOW = (Platform.OS === "web" ? "clip" : "hidden") as "hidden";
+
+/**
+ * Ruang kosong kiri/kanan di luar frame, terjadi bila layar lebih lebar dari rasio 390 × 844.
+ * `bleed` = lebar satu sisi dalam satuan frame; `span` = posisi mendatar untuk latar atau panel
+ * absolut selebar frame agar ikut mengisi ruang itu.
+ */
+export function useFrameBleed(): {
+  readonly bleed: number;
+  readonly span: { readonly left: number; readonly width: number };
+} {
+  const { width, height } = useWindowDimensions();
+  const scale: number = Math.min(width / FRAME_W, height / FRAME_H);
+  // Dibulatkan ke atas agar tidak tersisa garis tipis di tepi layar.
+  const bleed: number = Math.max(0, Math.ceil((width / scale - FRAME_W) / 2));
+  return { bleed, span: { left: -bleed, width: FRAME_W + 2 * bleed } };
+}
+
 /**
  * Frame Figma 390 × 844 yang diskalakan agar muat di layar. Bila isi lebih panjang
  * (frameHeight > 844), seluruh halaman bisa digulir ke bawah, bukan kotak teks kecil.
@@ -63,8 +83,8 @@ export function FrameStage(
         ref={scrollRef}
         scrollEnabled={frameH > FRAME_H}
         showsVerticalScrollIndicator={false}
-        // overflow hidden: hiasan yang menjulur melewati bawah frame tidak ikut bisa digulir.
-        contentContainerStyle={{ height: Math.max(height, offsetTop * 2 + frameH * scale), overflow: "hidden" }}
+        // Hiasan yang menjulur melewati tepi frame dipotong, tidak ikut bisa digulir.
+        contentContainerStyle={{ height: Math.max(height, offsetTop * 2 + frameH * scale), overflow: CONTENT_OVERFLOW }}
       >
         <View
           style={[

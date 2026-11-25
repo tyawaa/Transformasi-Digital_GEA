@@ -15,7 +15,7 @@ import { useHeading } from "../../hooks/useHeading";
 import { estimatePlanBearing, type HeadingAnchor } from "../../domain/heading";
 import type { Route } from "../preferences/recommend";
 import { formatCountdown } from "../preferences/visitTiming";
-import { FrameStage } from "../stories/hifi/parts";
+import { FrameStage, useFrameBleed } from "../stories/hifi/parts";
 import { ENTRANCE, PLAN_PINS, locateOnPlan, routeLegs, walkingPath, type LocationAnchor, type PlanPin, type PlanPoint, type RouteLeg } from "./navigation";
 import { PlanViewport } from "./PlanViewport";
 import { StartMap } from "./StartMap";
@@ -92,6 +92,7 @@ const speakerIcon: number = require("../../../assets/design/icon-speaker.svg") a
 /** Pemilihan pin tidak memberi akses cerita; Buka cerita memulai verifikasi GPS. */
 export function MapScreen(props: Props): ReactElement {
   const orientation = useHeading();
+  const { bleed, span } = useFrameBleed();
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
   const [testsOpen, setTestsOpen] = useState<boolean>(false);
   const [routeOpen, setRouteOpen] = useState<boolean>(false);
@@ -229,9 +230,9 @@ export function MapScreen(props: Props): ReactElement {
           <GeaText variant="caption12" color={colors.primary[800]} numberOfLines={1}>{signal}</GeaText>
         </Pressable>
       </View>}
-      <View style={styles.card}>
+      <View style={[styles.card, span]}>
         <View style={styles.sheetHandle} />
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.cardContent}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.cardContent, { paddingHorizontal: 16 + bleed }]}>
         {props.loading ? (
           <View style={styles.row}><ActivityIndicator color={colors.primary[800]} /><GeaText variant="body14" color={colors.primary[800]}>Memuat koleksi…</GeaText></View>
         ) : props.error !== null ? (
@@ -432,7 +433,7 @@ const styles = StyleSheet.create({
   eyesFreeOn: { backgroundColor: colors.primary[800] },
   signal: { position: "absolute", left: 16, top: 446, maxWidth: 300, height: 30, borderRadius: 20, paddingHorizontal: 12, backgroundColor: colors.secondaryYellow[0] },
   signalContent: { flex: 1, justifyContent: "center" },
-  card: { position: "absolute", top: CARD_TOP, bottom: 0, left: 0, width: 390, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: "hidden", backgroundColor: colors.secondaryYellow[0] },
+  card: { position: "absolute", top: CARD_TOP, bottom: 0, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: "hidden", backgroundColor: colors.secondaryYellow[0] },
   sheetHandle: { alignSelf: "center", width: 40, height: 4, borderRadius: 2, marginTop: 10, marginBottom: 14, backgroundColor: colors.primary[200] },
   cardContent: { paddingHorizontal: 16, paddingBottom: 24, gap: 16 },
   guidance: { minHeight: 74, borderRadius: 12, paddingHorizontal: 20, paddingVertical: 12, flexDirection: "row", alignItems: "center", gap: 20, backgroundColor: colors.secondaryGreen[100] },

@@ -4,7 +4,7 @@ import { BackHandler, Pressable, StyleSheet, View } from "react-native";
 import { colors, shadows } from "../../design/tokens";
 import { GeaText } from "../../design/typography";
 import type { BadgeDef, BadgeId, BadgeProgress, BadgeProgressMap } from "../../domain/points";
-import { FrameStage } from "../stories/hifi/parts";
+import { FrameStage, useFrameBleed } from "../stories/hifi/parts";
 
 type Props = {
   readonly earned: readonly BadgeId[];
@@ -33,6 +33,7 @@ const badgeIcons: Readonly<Record<BadgeId, number>> = {
 /** Kartu memakai data kunjungan; gambar referensi hanya menyediakan ilustrasi. */
 export function ProgressScreen({ earned, available, progress, onBack, onEndVisit }: Props): ReactElement {
   const [bodyHeight, setBodyHeight] = useState<number>(0);
+  const { span } = useFrameBleed();
   const earnedCount: number = available.filter((badge: BadgeDef): boolean => earned.includes(badge.id)).length;
   const orderedBadges: readonly BadgeDef[] = [
     ...available.filter((badge: BadgeDef): boolean => earned.includes(badge.id)),
@@ -49,7 +50,7 @@ export function ProgressScreen({ earned, available, progress, onBack, onEndVisit
 
   return (
     <FrameStage background={colors.primary[200]} frameHeight={76 + bodyHeight + 32}>
-      <View pointerEvents="none" accessible={false} style={styles.background}>
+      <View pointerEvents="none" accessible={false} style={[styles.background, span]}>
         <Image source={background} style={styles.backgroundImage} contentFit="fill" />
       </View>
       <Pressable accessibilityRole="button" accessibilityLabel="Kembali ke peta"
@@ -141,7 +142,7 @@ function ProgressBar({ current, target, label }: {
 const styles = StyleSheet.create({
   background: { position: "absolute", top: 0, left: 0, width: 390, height: 844, overflow: "hidden" },
   // Strip status bar bawaan PNG disembunyikan; status bar asli disediakan sistem operasi.
-  backgroundImage: { position: "absolute", top: -44, left: 0, width: 390, height: 888 },
+  backgroundImage: { position: "absolute", top: -44, left: 0, width: "100%", height: 888 },
   back: { position: "absolute", top: 30, left: 16, minHeight: 36, justifyContent: "center" },
   pressed: { opacity: 0.7 },
   body: { position: "absolute", top: 76, left: 16, width: 358, gap: 12 },

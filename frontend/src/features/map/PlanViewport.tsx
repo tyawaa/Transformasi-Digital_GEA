@@ -17,6 +17,7 @@ import { colors, shadows } from "../../design/tokens";
 import { GeaText } from "../../design/typography";
 import { headingDelta, headingUpRotation } from "../../domain/heading";
 import type { MapHeading } from "../../hooks/useHeading";
+import { useFrameBleed } from "../stories/hifi/parts";
 import type { MapPoi } from "./MapScreen";
 import {
   ENTRANCE,
@@ -137,6 +138,7 @@ function routeSvg(legs: readonly RouteLeg[]): string {
 export function PlanViewport(props: Props): ReactElement {
   const { width, height } = useWindowDimensions();
   const screenScale: number = Math.min(width / 390, height / 844);
+  const { bleed, span } = useFrameBleed();
   const [camera, setCamera] = useState<Camera>(centeredCamera(props.location ?? ENTRANCE, 0.85));
   const [following, setFollowing] = useState<boolean>(true);
   const [toolsOpen, setToolsOpen] = useState<boolean>(false);
@@ -312,12 +314,13 @@ export function PlanViewport(props: Props): ReactElement {
 
   return (
     <>
-      <View ref={viewportRef} style={[styles.viewport, Platform.OS === "web" && webTouchStyle]} {...panResponder.panHandlers}>
+      <View ref={viewportRef} style={[styles.viewport, span, Platform.OS === "web" && webTouchStyle]} {...panResponder.panHandlers}>
+        {/* Latar dan jendela denah selebar layar; koordinat isinya tetap mengikuti frame 390. */}
         <View style={styles.backgroundClip} pointerEvents="none">
           <Image accessible={false} draggable={false} source={background} style={styles.background} contentFit="fill" />
         </View>
         <View style={styles.mapClip}>
-        <Animated.View style={[styles.mapCanvas, { transformOrigin: [pivotX, pivotY, 0], transform: [{ rotate: rotationStyle }] }]}>
+        <Animated.View style={[styles.mapCanvas, { left: bleed, transformOrigin: [pivotX, pivotY, 0], transform: [{ rotate: rotationStyle }] }]}>
         <View style={[styles.plan, { transform: [{ translateX: camera.x }, { translateY: camera.y }, { scale: camera.zoom }] }]}>
           <View pointerEvents="none" style={StyleSheet.absoluteFill}>
             <Image accessible={false} draggable={false} source={floor} style={styles.floor} contentFit="fill" />
@@ -376,7 +379,7 @@ export function PlanViewport(props: Props): ReactElement {
         </View>
         </Animated.View>
         </View>
-        <View style={styles.controls}>
+        <View style={[styles.controls, { right: 16 + bleed }]}>
           {toolsOpen && <View style={styles.toolsTray}>
             <MapControl label="Lihat seluruh denah" text="▣" onPress={showPlan} active={false} />
             <MapControl label={props.legs.length === 0 ? "Lihat denah lantai 1" : "Lihat jalur menuju tujuan"}
@@ -426,10 +429,10 @@ function MapControl({ label, text, onPress, active }: {
 }
 
 const styles = StyleSheet.create({
-  viewport: { position: "absolute", left: 0, top: 0, width: VIEW_WIDTH, height: MAP_TOP + MAP_HEIGHT, overflow: "hidden", backgroundColor: colors.primary[300] },
+  viewport: { position: "absolute", top: 0, height: MAP_TOP + MAP_HEIGHT, overflow: "hidden", backgroundColor: colors.primary[300] },
   backgroundClip: { position: "absolute", left: 0, top: 0, right: 0, bottom: 0, overflow: "hidden" },
-  background: { position: "absolute", left: 0, top: 0, width: VIEW_WIDTH, height: VIEW_HEIGHT },
-  mapClip: { position: "absolute", left: 0, top: MAP_TOP, width: VIEW_WIDTH, height: MAP_HEIGHT, overflow: "hidden", backgroundColor: colors.primary[0], borderTopWidth: 3, borderBottomWidth: 3, borderColor: colors.primary[800] },
+  background: { position: "absolute", left: 0, top: 0, width: "100%", height: VIEW_HEIGHT },
+  mapClip: { position: "absolute", left: 0, right: 0, top: MAP_TOP, height: MAP_HEIGHT, overflow: "hidden", backgroundColor: colors.primary[0], borderTopWidth: 3, borderBottomWidth: 3, borderColor: colors.primary[800] },
   mapCanvas: { position: "absolute", left: 0, top: -MAP_TOP, width: VIEW_WIDTH, height: VIEW_HEIGHT },
   plan: { position: "absolute", left: 0, top: 0, width: PLAN_WIDTH, height: PLAN_HEIGHT, transformOrigin: "top left" },
   floor: { position: "absolute", left: 0.29, top: 7.86, width: 1917.16, height: 516.851, transform: [{ rotate: "0.62deg" }] },
