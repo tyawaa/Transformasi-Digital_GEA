@@ -7,7 +7,7 @@ import { colors } from "./src/design/tokens";
 import { GeaFontsProvider, GeaText } from "./src/design/typography";
 import type { PoiSummary, Visit } from "./src/domain/contracts";
 import { availableBadges, type BadgeContext, type BadgeDef, badgeBonus, type BadgeId, badges as badgeDefs, earnedBadges, poiStatus, type PoiRef, totalPoints } from "./src/domain/points";
-import { devicePhotoPoints, localActivityPoints } from "./src/features/stories/progress";
+import { devicePhotoPoints, localActivityPoints, type PoiProgress } from "./src/features/stories/progress";
 import { useQuestDays } from "./src/features/progress/useQuestDays";
 import { questKind, questPlan } from "./src/features/stories/questPlan";
 import {
@@ -574,7 +574,11 @@ function Home(): ReactElement {
           : null)}
         hasVisit={visit !== null}
         totalPoints={points}
-        completedCount={mapPois.filter((poi: MapPoi): boolean => poi.id !== null && poi.status === "selesai").length}
+        visitedCount={mapPois.filter((poi: MapPoi): boolean => {
+          if (poi.id === null || (wingsMode === "left" && poi.museum.wing !== "left")) return false;
+          const state: PoiProgress = progressOf(poi.id);
+          return state.checkedIn === true || state.verifiedUntil !== null || state.closed || state.completed || state.failed;
+        }).length}
         zoneIntro={cardZone ?? qrZoneIntro}
         nearby={cardPoi}
         gpsWeak={visit !== null && geofence.weak}
@@ -613,7 +617,6 @@ function Home(): ReactElement {
               .finally((): void => setSavingPlan(false));
           }
         }}
-        onOpenProgress={(): void => setScreen({ name: "progress" })}
         onOpenSummary={(): void => setScreen({ name: "summary" })}
         onOpenPoi={(poiId: string): void => setScreen({ name: "story", poiId, token: null })}
         userFix={geofence.fix}
