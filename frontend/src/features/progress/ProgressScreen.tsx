@@ -109,7 +109,7 @@ export function ProgressScreen({ pois, progressOf, totalPoints, earned, availabl
 
       <Pressable accessibilityRole="button" onPress={onEndVisit} hitSlop={8}>
         <GeaText variant="caption12" color={colors.tertiary[200]} style={styles.link}>
-          Akhiri kunjungan dan hapus progres di HP ini
+          Selesaikan kunjungan
         </GeaText>
       </Pressable>
       </View>

@@ -1,4 +1,4 @@
-import { type ReactElement, useMemo, useState } from "react";
+import { type ReactElement, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { Image } from "expo-image";
 import { Toast } from "../../design/Toast";
@@ -16,9 +16,10 @@ import { estimatePlanBearing, type HeadingAnchor } from "../../domain/heading";
 import type { Route } from "../preferences/recommend";
 import { formatCountdown } from "../preferences/visitTiming";
 import { FrameStage } from "../stories/hifi/parts";
-import { ENTRANCE, PLAN_PINS, locateOnPlan, routeLegs, type LocationAnchor, type PlanPin, type PlanPoint, type RouteLeg } from "./navigation";
+import { ENTRANCE, PLAN_PINS, locateOnPlan, routeLegs, walkingPath, type LocationAnchor, type PlanPin, type PlanPoint, type RouteLeg } from "./navigation";
 import { PlanViewport } from "./PlanViewport";
 import { StartMap } from "./StartMap";
+import { SearchPanel } from "../search/SearchPanel";
 import type { EyesFreeTarget } from "../eyesfree/engine";
 import { useEyesFree } from "../eyesfree/useEyesFree";
 import type { BackgroundResult } from "../eyesfree/background";
@@ -38,6 +39,12 @@ const headingTests: readonly HeadingTest[] = [
   { label: "Hadap barat", degrees: 270 },
 ];
 type Props = {
+  readonly destination: "exit" | "pois";
+  readonly timeTests: readonly { readonly label: string; readonly onPress: () => void }[];
+  readonly visitEnded: boolean;
+  readonly recommendedCode: string | null;
+  readonly visitTimeLabel: string | null;
+  readonly onExtendTime: (() => void) | null;
   readonly onBack: () => void;
   readonly remainingMs: number | null;
   /** Tampilkan toast "Rute Untuk Anda" (baru masuk dari peta awal). */
@@ -65,6 +72,7 @@ type Props = {
   readonly onCheckLocation: () => void;
   readonly onRetry: () => void;
   readonly onOpenSummary?: () => void;
+  readonly onOpenBadges: () => void;
   /** Membuka alur verifikasi geofence POI sebelum mengakses cerita. */
   readonly onOpenPoi: (id: string) => void;
   readonly userFix: Fix | null;
@@ -87,7 +95,7 @@ export function MapScreen(props: Props): ReactElement {
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
   const [testsOpen, setTestsOpen] = useState<boolean>(false);
   const [routeOpen, setRouteOpen] = useState<boolean>(false);
-  const [expiryDismissed, setExpiryDismissed] = useState<boolean>(false);
+  const [searchOpen, setSearchOpen] = useState<boolean>(false);
   const [navigationStopped, setNavigationStopped] = useState<boolean>(false);
   const [eyesFreeToast, setEyesFreeToast] = useState<boolean>(false);
   const anchors: readonly LocationAnchor[] = useMemo((): readonly LocationAnchor[] => props.pois.map((poi: MapPoi): LocationAnchor => ({
@@ -102,12 +110,12 @@ export function MapScreen(props: Props): ReactElement {
     .map((code: string): MapPoi | undefined => props.pois.find((poi: MapPoi): boolean => poi.museum.code === code))
     .filter((poi: MapPoi | undefined): poi is MapPoi => poi !== undefined && poi.id !== null && poi.status !== "selesai"), [props.route, props.pois]);
   const selected: MapPoi | null = props.pois.find((poi: MapPoi): boolean => poi.museum.code === selectedCode) ?? null;
-  const target: MapPoi | null = selected ?? props.nearby ?? remaining[0] ?? null;
+  const target: MapPoi | null = props.visitEnded || props.destination === "exit" ? null : selected ?? props.nearby ?? remaining[0] ?? null;
   const destinationCodes: readonly string[] = useMemo((): readonly string[] => {
-    if (navigationStopped) return [];
+    if (navigationStopped || props.visitEnded || props.destination === "exit") return [];
     const codes: readonly string[] = remaining.map((poi: MapPoi): string => poi.museum.code);
     return target === null || target.id === null ? codes : [target.museum.code, ...codes.filter((code: string): boolean => code !== target.museum.code)];
-  }, [remaining, target, navigationStopped]);
+  }, [remaining, target, navigationStopped, props.visitEnded, props.destination]);
   const eyesFreeStop = (poi: MapPoi): EyesFreeTarget => ({
     code: poi.museum.code, name: poi.museum.name, latitude: poi.museum.latitude, longitude: poi.museum.longitude,
     radiusMeters: poi.museum.radiusMeters, recording: storyRecording(poi.museum.code, props.profile),
@@ -123,11 +131,17 @@ export function MapScreen(props: Props): ReactElement {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [destinationCodes, props.pois, props.profile]);
   const eyesFree = useEyesFree({
-    visitId: props.hasVisit ? "visit" : null, stops: eyesFreeStops, targets: eyesFreeTargets, fix: props.userFix,
+    visitId: props.hasVisit && !props.visitEnded && props.destination === "pois" ? "visit" : null,
+    stops: props.visitEnded || props.destination === "exit" ? [] : eyesFreeStops, targets: eyesFreeTargets, fix: props.userFix,
   });
-  const legs: readonly RouteLeg[] = useMemo((): readonly RouteLeg[] => routeLegs(location ?? ENTRANCE, destinationCodes), [location, destinationCodes]);
+  const legs: readonly RouteLeg[] = useMemo((): readonly RouteLeg[] => props.destination === "exit"
+    ? location === null ? [] : [{ code: "EXIT", points: walkingPath(location, ENTRANCE) }]
+    : routeLegs(location ?? ENTRANCE, destinationCodes), [location, destinationCodes, props.destination]);
 
   const routeCount: number = props.route?.codes.length ?? 0;
+  const searchPois: readonly MuseumPoi[] = useMemo((): readonly MuseumPoi[] => props.pois
+    .filter((poi: MapPoi): boolean => poi.id !== null && (props.wingsMode === "both" || poi.museum.wing === "left"))
+    .map((poi: MapPoi): MuseumPoi => poi.museum), [props.pois, props.wingsMode]);
   const routePois: readonly MapPoi[] = (props.route?.codes ?? []).flatMap((code: string): readonly MapPoi[] => {
     const poi: MapPoi | undefined = props.pois.find((item: MapPoi): boolean => item.museum.code === code);
     return poi === undefined ? [] : [poi];
@@ -145,10 +159,14 @@ export function MapScreen(props: Props): ReactElement {
   const showRouteToast: boolean = props.routeToast === true && props.hasVisit && routeCount > 0;
 
   function choosePoi(code: string): void {
+    if (props.visitEnded || props.destination === "exit") return;
     setSelectedCode(code);
     setNavigationStopped(false);
     if (props.nearby !== null && props.nearby.museum.code !== code) props.onDismissNearby();
   }
+  useEffect((): void => {
+    if (props.recommendedCode !== null && !props.visitEnded) choosePoi(props.recommendedCode);
+  }, [props.recommendedCode, props.visitEnded]);
 
   function stopNavigation(): void {
     setNavigationStopped(true);
@@ -171,7 +189,7 @@ export function MapScreen(props: Props): ReactElement {
 
   return (
     <FrameStage background={colors.primary[0]}>
-      <PlanViewport pois={props.pois} selectedCode={selectedCode} nextCode={target?.museum.code ?? null}
+      <PlanViewport destination={props.destination} pois={props.pois} selectedCode={selectedCode} nextCode={target?.museum.code ?? null}
         routeCodes={props.route?.codes ?? []} legs={legs} location={location} leftOnly={props.wingsMode === "left"}
         onSelect={choosePoi} onLocate={props.onCheckLocation} orientation={orientation} planBearing={planBearing}
         onOpenTests={props.hasVisit && props.gpsTests.length > 0 ? (): void => setTestsOpen(true) : null} />
@@ -185,20 +203,25 @@ export function MapScreen(props: Props): ReactElement {
           <GeaText variant="bold16" color={colors.primary[700]} style={styles.statValue}>{props.totalPoints} poin</GeaText>
           <GeaText variant="caption12" color={colors.primary[700]} style={styles.statCaption}>Terkumpul</GeaText>
         </View>
-        <Pressable accessibilityRole="button" accessibilityLabel="Cari koleksi, segera tersedia"
-          accessibilityState={{ disabled: true }} disabled style={styles.searchButton} />
-        <Pressable accessibilityRole="button" accessibilityLabel="Lencana, segera tersedia"
-          accessibilityState={{ disabled: true }} disabled style={styles.badgeButton}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Cari koleksi, ruang, atau POI"
+          onPress={(): void => setSearchOpen(true)} style={styles.searchButton} />
+        <Pressable accessibilityRole="button" accessibilityLabel="Lihat koleksi lencana"
+          onPress={props.onOpenBadges} style={({ pressed }) => [styles.badgeButton, pressed && styles.dim]}>
           <GeaText variant="label16" color={colors.primary[900]} style={styles.badgeLabel}>Lencana</GeaText>
         </Pressable>
       </View>
-      {props.hasVisit && <View style={styles.exploreMode}>
+      {props.hasVisit && !props.visitEnded && <View style={styles.exploreMode}>
         <Pressable accessibilityRole="switch" accessibilityState={{ checked: eyesFree.enabled }}
           accessibilityLabel="Mode tanpa layar: getar saat mendekat, rekaman cerita diputar saat tiba"
           onPress={(): void => { eyesFree.toggle(); setEyesFreeToast(!eyesFree.enabled); }}
           style={({ pressed }) => [styles.eyesFree, eyesFree.enabled && styles.eyesFreeOn, pressed && styles.dim]}>
           <Image accessible={false} source={speakerIcon} style={styles.toolIcon} tintColor={eyesFree.enabled ? colors.white : colors.primary[800]} />
         </Pressable>
+      </View>}
+      {props.visitTimeLabel !== null && <View style={styles.visitTime} accessibilityLiveRegion="polite">
+        <GeaText variant="caption12" color={colors.primary[900]} style={styles.flex}>{props.visitTimeLabel}</GeaText>
+        {props.onExtendTime !== null && <Pressable accessibilityRole="button" accessibilityLabel="Tambah waktu kunjungan"
+          onPress={props.onExtendTime}><GeaText variant="body14" color={colors.primary[900]}>Tambah waktu</GeaText></Pressable>}
       </View>}
       {props.hasVisit && <View style={styles.signal}>
         <Pressable accessibilityRole="button" accessibilityLabel={`${signal}. Periksa lokasi`}
@@ -213,6 +236,14 @@ export function MapScreen(props: Props): ReactElement {
           <View style={styles.row}><ActivityIndicator color={colors.primary[800]} /><GeaText variant="body14" color={colors.primary[800]}>Memuat koleksi…</GeaText></View>
         ) : props.error !== null ? (
           <><GeaText variant="heading20" color={colors.tertiary[300]}>Koleksi belum bisa dimuat</GeaText><GeaText variant="body14" color={colors.primary[800]}>{props.error}</GeaText><MapButton label="Coba lagi" onPress={props.onRetry} /></>
+        ) : props.destination === "exit" ? (
+          <><GeaText variant="heading28" color={colors.primary[900]}>Menuju pintu keluar</GeaText>
+            <GeaText variant="body16" color={colors.primary[800]}>{location === null ? "Pintu keluar ditandai di denah. Aktifkan lokasi untuk melihat perkiraan jalur dari posisimu." : "Ikuti garis di peta menuju tanda Pintu keluar."}</GeaText>
+            {props.onOpenSummary !== undefined && <MapButton label={props.visitEnded ? "Lihat ringkasan kunjungan" : "Selesaikan kunjungan"} onPress={props.onOpenSummary} />}</>
+        ) : props.visitEnded ? (
+          <><GeaText variant="heading28" color={colors.primary[900]}>Kunjungan sudah selesai</GeaText>
+            <GeaText variant="body16" color={colors.primary[800]}>Terima kasih sudah menjelajah! Progres dan poin yang sudah tercatat tetap tersimpan.</GeaText>
+            {props.onOpenSummary !== undefined && <MapButton label="Lihat ringkasan kunjungan" onPress={props.onOpenSummary} />}</>
         ) : !props.hasVisit ? (
           <StartMap checkingLocation={props.checkingLocation} onScan={props.onScan} onCheckLocation={props.onCheckLocation} notice={props.notice?.description ?? null} />
         ) : (
@@ -253,7 +284,7 @@ export function MapScreen(props: Props): ReactElement {
               <NavigationAction label="Baca cerita" icon={bookIcon} background={colors.primary[0]} disabled={target?.id == null}
                 onPress={(): void => { if (target?.id != null) props.onOpenPoi(target.id); }} />
               <NavigationAction label={"Akhiri\nkunjungan"} icon={flagIcon} background={colors.primary[0]} disabled={props.onOpenSummary === undefined}
-                onPress={(): void => { stopNavigation(); props.onOpenSummary?.(); }} />
+                onPress={(): void => { props.onOpenSummary?.(); }} />
             </View>
             {props.zoneIntro !== null && selected === null && target === null && (
               <Pressable accessibilityRole="button" accessibilityLabel="Tutup informasi sayap" onPress={props.onDismissZone} style={styles.zone}>
@@ -308,22 +339,8 @@ export function MapScreen(props: Props): ReactElement {
             countdown={{ id: "eyes-free", durationMs: 5000 }} onClose={(): void => setEyesFreeToast(false)} />
         ) : null}
       </AnimatedNotification>
-      <AnimatedNotification style={[styles.toast, styles.expiryPosition]}>
-        {!eyesFreeToast && timeExpired && !expiryDismissed ? (
-          <View style={styles.expiryToast} accessibilityRole="alert" accessibilityLiveRegion="polite">
-            <View style={styles.flex}>
-              <GeaText variant="bold16" color={colors.primary[900]}>Waktu rencanamu selesai</GeaText>
-              <GeaText variant="body14" color={colors.primary[800]}>Progresmu tetap tersimpan. Kamu bisa membuka ringkasan kunjungan.</GeaText>
-            </View>
-            <Pressable accessibilityRole="button" accessibilityLabel="Tutup pemberitahuan waktu" style={styles.sheetClose}
-              onPress={(): void => setExpiryDismissed(true)}>
-              <GeaText variant="heading24" color={colors.primary[800]}>×</GeaText>
-            </Pressable>
-          </View>
-        ) : null}
-      </AnimatedNotification>
       <AnimatedNotification style={styles.toast}>
-        {!eyesFreeToast && (!timeExpired || expiryDismissed) && showRouteToast ? (
+        {!eyesFreeToast && !timeExpired && showRouteToast ? (
           <Toast
             tone="success"
             title="Rute Untuk Anda"
@@ -333,6 +350,10 @@ export function MapScreen(props: Props): ReactElement {
           />
         ) : null}
       </AnimatedNotification>
+      <Modal visible={searchOpen} animationType="slide" onRequestClose={(): void => setSearchOpen(false)}>
+        <SearchPanel pois={searchPois} onClose={(): void => setSearchOpen(false)}
+          onPick={(code: string): void => { choosePoi(code); setSearchOpen(false); }} />
+      </Modal>
       {testsOpen && props.hasVisit && props.gpsTests.length > 0 && (
         <View style={styles.testMenu}>
           <ScrollView>
@@ -342,6 +363,11 @@ export function MapScreen(props: Props): ReactElement {
                 <GeaText variant="heading24" color={colors.primary[800]}>×</GeaText>
               </Pressable>
             </View>
+            {props.timeTests.length > 0 && <GeaText variant="bold16" color={colors.primary[800]} style={styles.testHeading}>Uji waktu kunjungan</GeaText>}
+            {props.timeTests.map((test): ReactElement => <Pressable key={test.label} accessibilityRole="button"
+              onPress={(): void => { test.onPress(); setTestsOpen(false); }} style={styles.testItem}>
+              <GeaText variant="body14" color={colors.primary[900]}>{test.label}</GeaText>
+            </Pressable>)}
             <GeaText variant="bold16" color={colors.primary[800]} style={styles.testHeading}>Uji arah hadap</GeaText>
             {headingTests.map((test: HeadingTest): ReactElement => (
               <Pressable key={test.label} accessibilityRole="button"
@@ -390,6 +416,7 @@ function MapButton({ label, onPress }: { readonly label: string; readonly onPres
 }
 
 const styles = StyleSheet.create({
+  visitTime: { position: "absolute", left: 14, right: 14, top: 178, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: colors.secondaryYellow[0], borderWidth: 1, borderColor: colors.primary[300] },
   flex: { flex: 1 },
   overview: { position: "absolute", left: 0, top: 0, width: 390, height: 182 },
   visitedStat: { position: "absolute", left: 64, top: 69, gap: 2 },

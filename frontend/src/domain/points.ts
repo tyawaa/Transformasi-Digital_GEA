@@ -135,6 +135,7 @@ export function availableBadges(ctx: BadgeContext = {}): readonly BadgeDef[] {
 }
 
 export type BadgeState = StoryState & {
+  readonly checkedIn?: boolean;
   readonly challengeDone?: boolean;
   readonly challengeAttempts?: number;
 };
@@ -176,26 +177,34 @@ function firstTry(poi: PoiRef, state: BadgeState | undefined): boolean {
 /** Pernah datang ke POI (check-in): QR/cerita/quest. */
 function visited(state: BadgeState | undefined): boolean {
   return state !== undefined &&
-    (state.closed || state.completed || state.failed || state.attempts > 0 || state.challengeDone === true);
+    (state.checkedIn === true || state.closed || state.completed || state.failed || state.attempts > 0 || state.challengeDone === true);
 }
 
-export function earnedBadges(
+export type BadgeProgress = {
+  readonly current: number;
+  readonly target: number;
+};
+
+export type BadgeProgressMap = { readonly [id in BadgeId]: BadgeProgress };
+
+/** Progres kartu dan pemberian lencana memakai syarat yang sama, termasuk POI yang belum tersedia. */
+export function badgeProgress(
   pois: readonly PoiRef[],
   states: { readonly [poiId: string]: BadgeState | undefined },
-  ctx: BadgeContext = {},
-): readonly BadgeId[] {
-  if (pois.length === 0) return [];
+  ctx: BadgeContext,
+): BadgeProgressMap {
   const byCode = (code: string): PoiRef | undefined => pois.find((poi: PoiRef): boolean => poi.code === code);
   const finished = (poi: PoiRef): boolean => questFinished(poi, states[poi.id]);
-  // Semua POI yang disebut lencana harus ada di versi ini dan questnya sudah selesai.
-  const finishedAll = (codes: readonly string[]): boolean =>
-    codes.every((code: string): boolean => {
+  const forCodes = (codes: readonly string[]): BadgeProgress => ({
+    current: codes.filter((code: string): boolean => {
       const poi = byCode(code);
       return poi !== undefined && finished(poi);
-    });
-  const wingVisited = (wing: "left" | "right"): boolean => {
+    }).length,
+    target: codes.length,
+  });
+  const forWing = (wing: "left" | "right"): BadgeProgress => {
     const inWing: readonly PoiRef[] = pois.filter((poi: PoiRef): boolean => poi.wing === wing);
-    return inWing.length > 0 && inWing.every((poi: PoiRef): boolean => visited(states[poi.id]));
+    return { current: inWing.filter((poi: PoiRef): boolean => visited(states[poi.id])).length, target: inWing.length };
   };
   const withQuest = (kind: "foto" | "kuiz"): readonly PoiRef[] =>
     pois.filter((poi: PoiRef): boolean => poi.quests !== undefined
@@ -207,30 +216,39 @@ export function earnedBadges(
   const questsDone: number = pois.filter((poi: PoiRef): boolean => questOf(poi) !== null && finished(poi)).length;
 
   // Umum: BD-02 Pemburu Foto; anak: BD-14 Fotografer Cilik (quest foto Quest_Anak).
-  const allPhotos: boolean = photos.length > 0 && photos.every((poi: PoiRef): boolean => poi.quests === undefined ? finished(poi)
+  const photoProgress: BadgeProgress = { current: photos.filter((poi: PoiRef): boolean => poi.quests === undefined ? finished(poi)
     : poi.quests.filter((quest): boolean => quest.type === "foto" && quest.requiredForBadge !== false)
-      .every((quest): boolean => states[poi.id]?.quests?.[quest.idQuest]?.completed === true));
+      .every((quest): boolean => states[poi.id]?.quests?.[quest.idQuest]?.completed === true)).length, target: photos.length };
 
-  const earned: { readonly [id in BadgeId]?: boolean } = {
-    "BD-01": wingVisited("left"),
-    "BD-02": allPhotos,
-    "BD-03": quizzes.length > 0 && quizzes.every((poi: PoiRef): boolean => firstTry(poi, states[poi.id])),
+  return {
+    "BD-01": forWing("left"),
+    "BD-02": photoProgress,
+    "BD-03": { current: quizzes.filter((poi: PoiRef): boolean => firstTry(poi, states[poi.id])).length, target: quizzes.length },
     // Selama sayap kanan belum dibuka, "semua POI" = semua POI sayap kiri.
-    "BD-04": scope.length > 0 && scope.every((poi: PoiRef): boolean => done(states[poi.id])),
-    "BD-05": wingVisited("right"),
-    "BD-06": questsDone >= 1,
-    "BD-07": finishedAll(["P03", "P04", "P05", "P08"]),
-    "BD-08": finishedAll(["P12", "P13", "P14", "P15", "P16", "P17"]),
-    "BD-09": finishedAll(["P18", "P19", "P20"]),
-    "BD-10": finishedAll(["P07", "P10", "P11"]),
-    "BD-11": (ctx.questDays ?? 0) >= 3,
-    "BD-12": quizzes.filter((poi: PoiRef): boolean => firstTry(poi, states[poi.id])).length >= 5,
-    "BD-13": finishedAll(["P06", "P10"]),
-    "BD-14": allPhotos,
-    "BD-15": questsDone >= 2,
+    "BD-04": { current: scope.filter((poi: PoiRef): boolean => done(states[poi.id])).length, target: scope.length },
+    "BD-05": forWing("right"),
+    "BD-06": { current: Math.min(questsDone, 1), target: 1 },
+    "BD-07": forCodes(["P03", "P04", "P05", "P08"]),
+    "BD-08": forCodes(["P12", "P13", "P14", "P15", "P16", "P17"]),
+    "BD-09": forCodes(["P18", "P19", "P20"]),
+    "BD-10": forCodes(["P07", "P10", "P11"]),
+    "BD-11": { current: Math.min(ctx.questDays ?? 0, 3), target: 3 },
+    "BD-12": { current: Math.min(quizzes.filter((poi: PoiRef): boolean => firstTry(poi, states[poi.id])).length, 5), target: 5 },
+    "BD-13": forCodes(["P06", "P10"]),
+    "BD-14": photoProgress,
+    "BD-15": { current: Math.min(questsDone, 2), target: 2 },
   };
+}
+
+export function earnedBadges(
+  pois: readonly PoiRef[],
+  states: { readonly [poiId: string]: BadgeState | undefined },
+  ctx: BadgeContext = {},
+): readonly BadgeId[] {
+  if (pois.length === 0) return [];
+  const progress: BadgeProgressMap = badgeProgress(pois, states, ctx);
   return availableBadges(ctx)
-    .filter((badge: BadgeDef): boolean => earned[badge.id] === true)
+    .filter((badge: BadgeDef): boolean => progress[badge.id].target > 0 && progress[badge.id].current >= progress[badge.id].target)
     .map((badge: BadgeDef): BadgeId => badge.id);
 }
 

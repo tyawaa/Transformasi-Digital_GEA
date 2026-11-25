@@ -22,14 +22,18 @@ function durationMinutes(duration: string): number {
 }
 
 /** Batas waktu tetap pada tanggal kunjungan di zona waktu museum (WIB). */
-export function visitWindow(duration: string, startedAtMs: number): VisitWindow {
+export function museumClosingAt(startedAtMs: number): number {
   if (!Number.isFinite(startedAtMs)) throw new RangeError(`Waktu mulai kunjungan tidak valid: ${startedAtMs}`);
   const museumDate: Date = new Date(startedAtMs + MUSEUM_UTC_OFFSET_HOURS * 60 * MINUTE_MS);
   if (!Number.isFinite(museumDate.getTime())) throw new RangeError(`Tanggal kunjungan di luar rentang: ${startedAtMs}`);
-  const closingAtMs: number = Date.UTC(
+  return Date.UTC(
     museumDate.getUTCFullYear(), museumDate.getUTCMonth(), museumDate.getUTCDate(),
     CLOSING_HOUR - MUSEUM_UTC_OFFSET_HOURS,
   );
+}
+
+export function visitWindow(duration: string, startedAtMs: number): VisitWindow {
+  const closingAtMs: number = museumClosingAt(startedAtMs);
   const chosenEndMs: number = startedAtMs + durationMinutes(duration) * MINUTE_MS;
   const endsAtMs: number = Math.max(startedAtMs, Math.min(chosenEndMs, closingAtMs));
   return {

@@ -52,7 +52,7 @@ export const visitSchema = z.object({
   bahasa: z.enum(["id", "en"]),
   profil: storedProfileSchema,
   verification_method: z.enum(["gps", "entrance_qr"]),
-  status: z.literal("aktif"),
+  status: z.enum(["aktif", "selesai"]),
   start_time: z.iso.datetime({ offset: true }).optional(),
   startedAt: z.number().optional(),
   personalization: preferencesSchema.nullable().optional(),
@@ -60,8 +60,13 @@ export const visitSchema = z.object({
   route_minutes: z.number().int().nonnegative().nullable().optional(),
   planned_end_at: z.iso.datetime({ offset: true }).nullable().optional(),
   closing_limited: z.boolean().nullable().optional(),
+  closing_at: z.iso.datetime({ offset: true }).nullable().optional(),
+  end_time: z.iso.datetime({ offset: true }).nullable().optional(),
+  ended_reason: z.enum(["visitor", "closing"]).nullable().optional(),
 });
 export type Visit = z.infer<typeof visitSchema>;
+export const visitStatusSchema = z.object({ visit: visitSchema, serverNow: z.iso.datetime({ offset: true }) });
+export type VisitStatus = z.infer<typeof visitStatusSchema>;
 
 export const poiSchema = z.object({
   id_poi: z.uuid(),

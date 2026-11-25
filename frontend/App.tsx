@@ -6,6 +6,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { colors } from "./src/design/tokens";
 import { GeaFontsProvider, GeaText } from "./src/design/typography";
 import type { PoiSummary, Visit } from "./src/domain/contracts";
+import { preferencesSchema } from "./src/domain/contracts";
 import { availableBadges, type BadgeContext, type BadgeDef, badgeBonus, type BadgeId, badges as badgeDefs, earnedBadges, poiStatus, type PoiRef, totalPoints } from "./src/domain/points";
 import { devicePhotoPoints, localActivityPoints, type PoiProgress } from "./src/features/stories/progress";
 import { useQuestDays } from "./src/features/progress/useQuestDays";
@@ -23,7 +24,10 @@ import { useOnboarding } from "./src/features/onboarding/useOnboarding";
 import { PreferencesScreen } from "./src/features/preferences/PreferencesScreen";
 import { usePreferences } from "./src/features/preferences/usePreferences";
 import type { Preferences } from "./src/features/preferences/usePreferences";
-import { visitWindow } from "./src/features/preferences/visitTiming";
+import { formatCountdown, museumClosingAt, visitWindow } from "./src/features/preferences/visitTiming";
+import { closingTimeLabel, EXIT_BUFFER_MS, extensionOptions, MINUTE_MS, suggestNextPoi, visitPrompt, type VisitPrompt, type VisitSuggestion } from "./src/features/visit/lifecycle";
+import { VisitSheet, type VisitPanel } from "./src/features/visit/VisitSheet";
+import { useVisitLifecycle } from "./src/features/visit/useVisitLifecycle";
 import { profileForAge, recommendRoute, type Route } from "./src/features/preferences/recommend";
 import { ProgressScreen } from "./src/features/progress/ProgressScreen";
 import { wingEnabled, wingsMode } from "./src/config/wings";
@@ -110,10 +114,29 @@ function Home(): ReactElement {
   const profile = profileForAge(effectivePreferences);
   const session = useVisitSession(api, runOperation, profile);
   const startedAtMs: number | null = visit?.startedAt ?? null;
-  const endsAtMs: number | null = storiesSource.kind === "api"
-    ? visit?.planned_end_at == null ? null : Date.parse(visit.planned_end_at)
+  const endsAtMs: number | null = visit?.planned_end_at != null ? Date.parse(visit.planned_end_at)
+    : storiesSource.kind === "api" ? null
     : startedAtMs === null || effectivePreferences === null ? null : visitWindow(effectivePreferences.duration, startedAtMs).endsAtMs;
-  const clock = useVisitClock(startedAtMs, endsAtMs);
+  const [demoOffsetMs, setDemoOffsetMs] = useState<number>(0);
+  const lifecycle = useVisitLifecycle({ api, source: storiesSource.kind, visit, replaceVisit: visitState.replaceVisit, demoOffsetMs });
+  const clock = useVisitClock(startedAtMs, endsAtMs, lifecycle.serverOffsetMs + demoOffsetMs);
+  const closingAtMs: number | null = visit?.closing_at != null ? Date.parse(visit.closing_at)
+    : storiesSource.kind === "mock" && startedAtMs !== null ? museumClosingAt(startedAtMs) : null;
+  const museumClosed: boolean = closingAtMs !== null && clock.nowMs >= closingAtMs;
+  const visitEnded: boolean = visit?.status === "selesai" || museumClosed;
+  const [requestedPanel, setRequestedPanel] = useState<"finish" | "extend" | null>(null);
+  const [recommendedCode, setRecommendedCode] = useState<string | null>(null);
+  const [closedAcknowledged, setClosedAcknowledged] = useState<boolean>(false);
+  const [mapDestination, setMapDestination] = useState<"exit" | "pois">("pois");
+  const automaticFinishAttempt = useRef<string | null>(null);
+  useEffect((): void => {
+    if (!museumClosed) automaticFinishAttempt.current = null;
+    if (visit === null || visit.status === "selesai" || !museumClosed || lifecycle.busy || lifecycle.error !== null) return;
+    if (automaticFinishAttempt.current === visit.id_sesi) return;
+    automaticFinishAttempt.current = visit.id_sesi;
+    if (storiesSource.kind === "api") void lifecycle.refresh();
+    else void lifecycle.finish();
+  }, [visit, museumClosed, lifecycle.busy, lifecycle.error]);
   const [planError, setPlanError] = useState<string | null>(null);
   const [savingPlan, setSavingPlan] = useState<boolean>(false);
   // Pulihkan jawaban dari sesi server; draft perangkat hanya dipakai sebelum sesi memiliki rencana.
@@ -123,7 +146,7 @@ function Home(): ReactElement {
   }, [visit?.personalization, preferences.state]);
   useEffect((): (() => void) | undefined => {
     if (!visitState.ready || storiesSource.kind !== "api" || visit === null ||
-      visit.personalization != null || preferences.preferences === null) return undefined;
+      visit.status !== "aktif" || museumClosed || visit.personalization != null || preferences.preferences === null) return undefined;
     let active: boolean = true;
     setSavingPlan(true);
     setPlanError(null);
@@ -146,6 +169,10 @@ function Home(): ReactElement {
         const updated: Visit = await api.personalizeVisit(visit.id_sesi, value, wingsMode);
         await visitState.replaceVisit(updated);
         setPlanError(null);
+      } else if (visit !== null && startedAtMs !== null) {
+        const deadline: number = JSON.stringify(value) === JSON.stringify(effectivePreferences) && endsAtMs !== null
+          ? endsAtMs : visitWindow(value.duration, startedAtMs).endsAtMs;
+        await visitState.replaceVisit({ ...visit, personalization: preferencesSchema.parse(value), planned_end_at: new Date(deadline).toISOString() });
       }
       preferences.save(value);
     });
@@ -273,7 +300,7 @@ function Home(): ReactElement {
       const match = mapPois.find((poi: MapPoi): boolean => poi.museum.code === code);
       return match !== undefined && match.status === "selesai";
     });
-  const allDone: boolean = (refs.length > 0 && mapPois.every((poi: MapPoi): boolean => poi.id === null || poi.status === "selesai")) || routeDone;
+  const allDone: boolean = refs.length > 0 && mapPois.every((poi: MapPoi): boolean => poi.id === null || poi.status === "selesai");
   // Data layar Well Done.
   const bestBadge: BadgeDef | undefined = badgeDefs
     .filter((badge: BadgeDef): boolean => badges.includes(badge.id))
@@ -285,8 +312,8 @@ function Home(): ReactElement {
     questsTotal: refs.filter((ref: PoiRef): boolean => ref.quest !== null).length,
     totalPoints: points,
     badgeName: bestBadge?.name ?? null,
-    durationText: formatVisitDuration(startedAtMs, clock.nowMs),
-    durationMinutes: Math.max(1, Math.round((clock.nowMs - (startedAtMs ?? clock.nowMs)) / 60_000)),
+    durationText: formatVisitDuration(startedAtMs, visit?.end_time == null ? museumClosed && closingAtMs !== null ? closingAtMs : clock.nowMs : Date.parse(visit.end_time)),
+    durationMinutes: Math.max(1, Math.round(((visit?.end_time == null ? museumClosed && closingAtMs !== null ? closingAtMs : clock.nowMs : Date.parse(visit.end_time)) - (startedAtMs ?? clock.nowMs)) / 60_000)),
   };
 
   // Zona dipantau selama kunjungan; POI hanya diperiksa setelah Buka cerita ditekan.
@@ -300,14 +327,53 @@ function Home(): ReactElement {
       id: poi.museum.code, latitude: poi.museum.latitude, longitude: poi.museum.longitude, radiusMeters: poi.museum.radiusMeters,
     })),
   ], [mapPois, screen]);
-  const geofence = useGeofence({ visitId: visit?.id_sesi ?? null, checkpoints });
+  const geofence = useGeofence({ visitId: visit?.id_sesi ?? null, checkpoints: visitEnded ? [] : checkpoints });
+  const options: readonly number[] = endsAtMs === null || closingAtMs === null || visitEnded ? [] : extensionOptions(endsAtMs, closingAtMs, clock.nowMs);
+  const suggestionBudgetMs: number = endsAtMs === null || closingAtMs === null ? 0
+    : Math.min(endsAtMs, closingAtMs - EXIT_BUFFER_MS) - clock.nowMs;
+  const suggestion: VisitSuggestion | null = suggestNextPoi(
+    mapPois.filter((poi: MapPoi): boolean => poi.id !== null && poi.status !== "selesai").map((poi: MapPoi): typeof poi.museum => poi.museum),
+    effectivePreferences, geofence.currentFix, suggestionBudgetMs,
+  );
+  const automaticPrompt: VisitPrompt | null = endsAtMs === null || closingAtMs === null || visit === null || visitEnded
+    ? null : visitPrompt(clock.nowMs, endsAtMs, closingAtMs, routeDone && suggestion !== null);
+  const promptKey: string | null = automaticPrompt === null ? null
+    : automaticPrompt.startsWith("closing") ? `${automaticPrompt}:${closingAtMs}`
+    : `${automaticPrompt}:${endsAtMs}:${automaticPrompt === "route_done" ? suggestion?.poi.code ?? "" : ""}`;
+  const pendingPrompt: VisitPrompt | null = promptKey !== null && lifecycle.dismissed !== null && !lifecycle.dismissed.includes(promptKey) ? automaticPrompt : null;
+  const panel: VisitPanel | null = visitEnded && !closedAcknowledged ? museumClosed || visit?.ended_reason === "closing" ? "closed" : "finished"
+    : pendingPrompt === "closing_prepare" || pendingPrompt === "closing_soon" ? pendingPrompt : requestedPanel ?? pendingPrompt;
+
+  async function dismissVisitPanel(): Promise<void> {
+    if (promptKey !== null) await lifecycle.dismiss(promptKey);
+    setRequestedPanel(null);
+  }
+  async function extendVisit(minutes: number): Promise<void> {
+    if (endsAtMs === null || closingAtMs === null) return;
+    if (await lifecycle.extend(minutes, endsAtMs, closingAtMs)) {
+      await dismissVisitPanel();
+    }
+  }
+  async function finishVisit(): Promise<void> {
+    if (await lifecycle.finish()) {
+      setRequestedPanel(null);
+      setClosedAcknowledged(true);
+      setScreen({ name: "summary" });
+    }
+  }
   const cardZone: ZoneInfo | null = zones.find((z: ZoneInfo): boolean => z.code === geofence.card) ?? null;
   const cardPoi: MapPoi | null = mapPois.find((poi: MapPoi): boolean => poi.museum.code === geofence.card) ?? null;
 
   async function beginVisit(token: string): Promise<Visit> {
     const created: Visit = await storiesSource.startQrVisit(randomUUID(), token, profile);
-    visitState.startVisit(created);
-    return created;
+    const start: number = created.startedAt ?? Date.now();
+    const planned: Visit = storiesSource.kind === "mock" && effectivePreferences !== null ? {
+      ...created, startedAt: start, personalization: preferencesSchema.parse(effectivePreferences),
+      planned_end_at: new Date(visitWindow(effectivePreferences.duration, start).endsAtMs).toISOString(),
+      closing_at: new Date(museumClosingAt(start)).toISOString(),
+    } : created;
+    visitState.startVisit(planned);
+    return planned;
   }
 
   function failScan(message: string): void {
@@ -316,6 +382,7 @@ function Home(): ReactElement {
   }
 
   async function handleScan(result: ParsedQr): Promise<void> {
+    if (visitEnded) { failScan("Kunjungan sudah selesai. Buka ringkasan kunjunganmu."); return; }
     if (scanPending.current) return;
     if (!result.ok) {
       failScan(qrErrorMessage(result.reason));
@@ -442,7 +509,7 @@ function Home(): ReactElement {
     );
   }
   // Setelah onboarding: preferensi (usia → waktu → minat), baru masuk peta.
-  if (preferences.state === "show") {
+  if (preferences.state === "show" && !visitEnded) {
     return (
       <>
         <StatusBar style="light" />
@@ -461,7 +528,18 @@ function Home(): ReactElement {
     );
   }
 
-  if (screen.name === "story" && visit !== null) {
+  const visitSheet: ReactElement | null = closingAtMs !== null && visit !== null ? <VisitSheet key={`${panel}:${endsAtMs}`}
+        panel={panel} closingAtMs={closingAtMs} options={options} suggestion={suggestion}
+        busy={lifecycle.busy} error={lifecycle.error}
+        onDismiss={(): void => { void dismissVisitPanel(); }}
+        onChooseExtension={(): void => { setRequestedPanel("extend"); }}
+        onExtend={(minutes: number): void => { void extendVisit(minutes); }}
+        onSuggest={(): void => { if (suggestion !== null) setRecommendedCode(suggestion.poi.code); void dismissVisitPanel(); }}
+        onFinish={(): void => { void finishVisit(); }}
+        onExitDirections={(): void => { setMapDestination("exit"); setClosedAcknowledged(visitEnded); setScreen({ name: "map" }); void dismissVisitPanel(); }}
+        onSummary={(): void => { setClosedAcknowledged(true); setScreen({ name: "summary" }); }} /> : null;
+
+  if (screen.name === "story" && visit !== null && !visitEnded) {
     return (
       <>
         <StatusBar style="dark" />
@@ -488,11 +566,12 @@ function Home(): ReactElement {
             setScreen({ name: "map" });
           }}
         />
+        {(panel === "closing_soon" || panel === "closing_prepare") && visitSheet}
       </>
     );
   }
 
-  if (screen.name === "scan") {
+  if (screen.name === "scan" && !visitEnded) {
     return (
       <>
         <StatusBar style="light" />
@@ -505,6 +584,7 @@ function Home(): ReactElement {
           onBack={(): void => setScreen({ name: "map" })}
           dummies={mapDummies}
         />
+        {(panel === "closing_soon" || panel === "closing_prepare") && visitSheet}
       </>
     );
   }
@@ -546,9 +626,7 @@ function Home(): ReactElement {
           available={availableBadges(badgeContext)}
           durationText={adventure.durationText}
           onBack={(): void => setScreen({ name: "map" })}
-          onEndVisit={(): void => {
-            setScreen({ name: "summary" });
-          }}
+          onEndVisit={(): void => { setRequestedPanel("finish"); setScreen({ name: "map" }); }}
         />
       </>
     );
@@ -562,7 +640,22 @@ function Home(): ReactElement {
     <>
       <StatusBar style="dark" />
       <MapScreen
-        onBack={preferences.reopen}
+        destination={mapDestination}
+        onBack={visitEnded ? (): void => setScreen({ name: "summary" }) : preferences.reopen}
+        visitEnded={visitEnded}
+        recommendedCode={recommendedCode}
+        timeTests={storiesSource.kind !== "mock" || endsAtMs === null || closingAtMs === null ? [] : [
+          { label: "Waktu uji: durasi tinggal 4 menit", onPress: (): void => setDemoOffsetMs(endsAtMs - 4 * MINUTE_MS - Date.now()) },
+          { label: "Waktu uji: durasi habis", onPress: (): void => setDemoOffsetMs(endsAtMs + 1000 - Date.now()) },
+          { label: "Waktu uji: museum tutup 14 menit lagi", onPress: (): void => setDemoOffsetMs(closingAtMs - 14 * MINUTE_MS - Date.now()) },
+          { label: "Waktu uji: museum tutup 4 menit lagi", onPress: (): void => setDemoOffsetMs(closingAtMs - 4 * MINUTE_MS - Date.now()) },
+          { label: "Waktu uji: museum sudah tutup", onPress: (): void => setDemoOffsetMs(closingAtMs + 1000 - Date.now()) },
+          { label: "Waktu uji: kembali ke jam asli", onPress: (): void => setDemoOffsetMs(0) },
+        ]}
+        visitTimeLabel={visit === null || endsAtMs === null || closingAtMs === null ? null : visitEnded ? "Kunjungan selesai"
+          : closingAtMs - clock.nowMs <= 15 * MINUTE_MS ? `Museum tutup dalam ${formatCountdown(Math.max(0, closingAtMs - clock.nowMs))}`
+          : `Rencana ${formatCountdown(clock.remainingMs ?? 0)} · tutup ${closingTimeLabel(closingAtMs)}`}
+        onExtendTime={options.length === 0 ? null : (): void => setRequestedPanel("extend")}
         remainingMs={clock.remainingMs}
         routeToast={routeToast}
         onCloseRouteToast={(): void => setRouteToast(false)}
@@ -617,12 +710,14 @@ function Home(): ReactElement {
               .finally((): void => setSavingPlan(false));
           }
         }}
-        onOpenSummary={(): void => setScreen({ name: "summary" })}
+        onOpenSummary={(): void => { if (visitEnded) setScreen({ name: "summary" }); else setRequestedPanel("finish"); }}
+        onOpenBadges={(): void => setScreen({ name: "progress" })}
         onOpenPoi={(poiId: string): void => setScreen({ name: "story", poiId, token: null })}
         userFix={geofence.fix}
         route={route}
         profile={visit?.profil ?? profile}
       />
+      {visitSheet}
     </>
   );
 }

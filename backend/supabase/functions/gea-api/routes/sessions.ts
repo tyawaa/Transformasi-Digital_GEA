@@ -10,6 +10,7 @@ import {
   language,
   object,
   type Profile,
+  finiteNumber,
   profile,
   qrToken,
   text,
@@ -24,6 +25,23 @@ export async function routeSessions(
   userId: string,
   headers: Headers,
 ): Promise<Response | null> {
+  const lifecycle: RegExpMatchArray | null = path.match(/^\/sessions\/([^/]+)\/(status|extend|finish)$/);
+  if (lifecycle !== null) {
+    const idSesi: string = uuid(lifecycle[1], "idSesi");
+    if (request.method === "GET" && lifecycle[2] === "status") {
+      return success(await gateway.rpc("status_kunjungan", { p_user_id: userId, p_id_sesi: idSesi }), 200, headers);
+    }
+    if (request.method === "POST" && lifecycle[2] === "finish") {
+      return success(await gateway.rpc("selesaikan_kunjungan", { p_user_id: userId, p_id_sesi: idSesi }), 200, headers);
+    }
+    if (request.method === "POST" && lifecycle[2] === "extend") {
+      const body: JsonObject = await jsonBody(request);
+      return success(await gateway.rpc("tambah_waktu_kunjungan", {
+        p_user_id: userId, p_id_sesi: idSesi,
+        p_request_id: uuid(body.requestId, "requestId"), p_minutes: finiteNumber(body.minutes, "minutes"),
+      }), 200, headers);
+    }
+  }
   const personalization: RegExpMatchArray | null = path.match(
     /^\/sessions\/([^/]+)\/personalization$/,
   );
@@ -81,6 +99,7 @@ export async function routeSessions(
   }
   const progress: RegExpMatchArray | null = path.match(/^\/sessions\/([^/]+)\/progress$/);
   if (request.method === "GET" && progress !== null) {
+    await gateway.rpc("status_kunjungan", { p_user_id: userId, p_id_sesi: uuid(progress[1], "idSesi") });
     return success(
       await gateway.rpc("progres_kunjungan", {
         p_user_id: userId,

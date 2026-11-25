@@ -54,6 +54,7 @@ type GestureStart = {
   readonly offset: PlanPoint;
 };
 type Props = {
+  readonly destination: "exit" | "pois";
   readonly pois: readonly MapPoi[];
   readonly selectedCode: string | null;
   readonly nextCode: string | null;
@@ -291,6 +292,14 @@ export function PlanViewport(props: Props): ReactElement {
     void props.orientation.enable();
   }
 
+  useEffect((): void => {
+    if (props.destination !== "exit") return;
+    props.orientation.disable();
+    setFollowing(false);
+    if (props.legs.length > 0) showRoute();
+    else setCamera(centeredCamera(ENTRANCE, 0.5));
+  }, [props.destination]);
+
   const pivotX: number = rotationAnchor.current === null ? VIEW_WIDTH / 2 : camera.x + rotationAnchor.current.x * camera.zoom;
   const pivotY: number = rotationAnchor.current === null ? VIEW_HEIGHT / 2 : camera.y + rotationAnchor.current.y * camera.zoom;
   const headingHint: string = props.orientation.state.status === "simulated" && compassActive
@@ -354,6 +363,10 @@ export function PlanViewport(props: Props): ReactElement {
             <Image draggable={false} source={pinImage} style={styles.pinImage} />
             <View style={styles.pinLabel}><GeaText variant="heading24" color={colors.primary[900]}>S</GeaText></View>
           </Animated.View>
+          {props.destination === "exit" && <View accessibilityLabel="Pintu keluar museum" pointerEvents="none"
+            style={{ position: "absolute", left: ENTRANCE.x - 110, top: ENTRANCE.y - 45, width: 220, padding: 14, borderRadius: 12, backgroundColor: colors.secondaryGreen[100], borderWidth: 3, borderColor: colors.primary[800] }}>
+            <GeaText variant="heading24" color={colors.primary[900]} style={{ textAlign: "center" }}>Pintu keluar ↓</GeaText>
+          </View>}
           {props.location !== null && (
             <Animated.View accessibilityLabel="Perkiraan posisimu dari GPS" pointerEvents="none" style={[styles.you, { left: dot.x, top: dot.y, transform: [{ rotate: counterRotationStyle }] }]}>
               {compassActive && following && <View style={styles.youDirection} />}

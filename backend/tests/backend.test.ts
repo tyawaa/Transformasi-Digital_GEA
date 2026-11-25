@@ -583,6 +583,7 @@ Deno.test("integrasi SQL: migrasi, enam POI, hak akses, QR, jawaban, idempotensi
       deepStrictEqual(repeated, visit);
     });
     await test.step("personalisasi sesi: rute server, batas WIB, pemilik dan progres tetap tersimpan", async (): Promise<void> => {
+      const visitDate: string = new Date(Date.now() + 48 * 60 * 60_000).toISOString().slice(0, 10);
       const preferences: JsonObject = {
         age: "18-24 Tahun",
         duration: "< 30 menit",
@@ -598,7 +599,7 @@ Deno.test("integrasi SQL: migrasi, enam POI, hak akses, QR, jawaban, idempotensi
       try {
         await database.exec("update public.poi set kode_poi='POI-' || right(id_poi::text,2)");
         await database.query(
-          "update public.sesi_kunjungan set start_time='2026-11-24T10:00:00+07:00' where id_sesi=$1",
+          `update public.sesi_kunjungan set personalization=null,planned_end_at=null,start_time='${visitDate}T10:00:00+07:00' where id_sesi=$1`,
           [visitId],
         );
         await database.query(
@@ -609,7 +610,7 @@ Deno.test("integrasi SQL: migrasi, enam POI, hak akses, QR, jawaban, idempotensi
         deepStrictEqual(plan.personalization, preferences);
         deepStrictEqual(plan.route_codes, ["P04", "P03", "P02", "P01", "P06", "P05"]);
         equal(plan.route_minutes, 30);
-        equal(Date.parse(String(plan.planned_end_at)), Date.parse("2026-11-24T10:30:00+07:00"));
+        equal(Date.parse(String(plan.planned_end_at)), Date.parse(`${visitDate}T10:30:00+07:00`));
         equal(plan.closing_limited, false);
         deepStrictEqual(await savePlan(userId, preferences), plan);
         const restored: JsonObject = await resultObject(
@@ -640,14 +641,14 @@ Deno.test("integrasi SQL: migrasi, enam POI, hak akses, QR, jawaban, idempotensi
         await rejects(savePlan(otherUserId, preferences), /SESSION_NOT_FOUND/);
         await database.exec("rollback to savepoint owner_plan");
         await database.query(
-          "update public.sesi_kunjungan set start_time='2026-11-24T15:45:00+07:00' where id_sesi=$1",
+          `update public.sesi_kunjungan set personalization=null,planned_end_at=null,start_time='${visitDate}T15:45:00+07:00' where id_sesi=$1`,
           [visitId],
         );
         const limited: JsonObject = await savePlan(userId, preferences);
         deepStrictEqual(limited.route_codes, ["P04", "P03", "P02"]);
         equal(limited.route_minutes, 15);
         equal(limited.closing_limited, true);
-        equal(Date.parse(String(limited.planned_end_at)), Date.parse("2026-11-24T16:00:00+07:00"));
+        equal(Date.parse(String(limited.planned_end_at)), Date.parse(`${visitDate}T16:00:00+07:00`));
         const child: JsonObject = await savePlan(userId, { ...preferences, age: "7-12 Tahun" });
         deepStrictEqual(child.route_codes, limited.route_codes);
         equal(child.profil, "anak");
@@ -660,15 +661,15 @@ Deno.test("integrasi SQL: migrasi, enam POI, hak akses, QR, jawaban, idempotensi
         });
         equal(
           Date.parse(String(untilClosing.planned_end_at)),
-          Date.parse("2026-11-24T16:00:00+07:00"),
+          Date.parse(`${visitDate}T16:00:00+07:00`),
         );
         await database.query(
-          "update public.sesi_kunjungan set start_time='2026-11-24T17:00:00+07:00' where id_sesi=$1",
+          `update public.sesi_kunjungan set personalization=null,planned_end_at=null,start_time='${visitDate}T17:00:00+07:00' where id_sesi=$1`,
           [visitId],
         );
         const expired: JsonObject = await savePlan(userId, preferences);
         deepStrictEqual(expired.route_codes, []);
-        equal(expired.planned_end_at, expired.start_time);
+        equal(Date.parse(String(expired.planned_end_at)), Date.parse(`${visitDate}T16:00:00+07:00`));
       } finally {
         await database.exec("rollback");
       }

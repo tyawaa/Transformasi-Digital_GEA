@@ -26,21 +26,7 @@ export function SheetContent(
       />
       <View style={styles.handle} />
       <View style={styles.content}>
-        <View style={styles.header}>
-          <View style={styles.statusIcon}>
-            <Image
-              accessible={false}
-              source={require("../../assets/design/modal-skull.svg")}
-              style={styles.skull}
-            />
-          </View>
-          <GeaText variant="heading24" color={colors.primary[900]} style={styles.full}>
-            {title}
-          </GeaText>
-          <GeaText variant="body16Tight" color={colors.greys[300]} style={styles.full}>
-            {description}
-          </GeaText>
-        </View>
+        <SheetHeading title={title} description={description} />
         <Button
           appearance="fill"
           tone="primary"
@@ -49,6 +35,19 @@ export function SheetContent(
           style={styles.end}
         />
       </View>
+    </View>
+  );
+}
+
+/** Judul, tengkorak, dan penjelasan bersama untuk sheet kunjungan GEA. */
+export function SheetHeading({ title, description }: Pick<SheetContentProps, "title" | "description">): ReactElement {
+  return (
+    <View style={styles.header}>
+      <View style={styles.statusIcon}>
+        <Image accessible={false} source={require("../../assets/design/modal-skull.svg")} style={styles.skull} />
+      </View>
+      <GeaText variant="heading24" color={colors.primary[900]} style={styles.full}>{title}</GeaText>
+      <GeaText variant="body16Tight" color={colors.greys[300]} style={styles.full}>{description}</GeaText>
     </View>
   );
 }
