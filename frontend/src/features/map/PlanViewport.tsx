@@ -31,10 +31,13 @@ import {
 const floor: number = require("../../../assets/design/startmap-floor.svg") as number;
 const pinImage: number = require("../../../assets/design/map-pin.svg") as number;
 const pinShadow: number = require("../../../assets/design/map-pin-shadow.svg") as number;
+const background: number = require("../../../assets/design/navigation/background.svg") as number;
+const zoomImage: number = require("../../../assets/design/navigation/zoom.svg") as number;
+const locateImage: number = require("../../../assets/design/navigation/locate.svg") as number;
 const VIEW_WIDTH: number = 390;
 const VIEW_HEIGHT: number = 844;
-const MAP_TOP: number = 100;
-const MAP_HEIGHT: number = 500;
+const MAP_TOP: number = 170;
+const MAP_HEIGHT: number = 316;
 const MAP_CENTER_Y: number = MAP_TOP + MAP_HEIGHT / 2;
 const MIN_ZOOM: number = 0.18;
 const MAX_ZOOM: number = 1.8;
@@ -133,9 +136,10 @@ function routeSvg(legs: readonly RouteLeg[]): string {
 export function PlanViewport(props: Props): ReactElement {
   const { width, height } = useWindowDimensions();
   const screenScale: number = Math.min(width / 390, height / 844);
-  const [camera, setCamera] = useState<Camera>(centeredCamera(props.location ?? ENTRANCE, 0.65));
+  const [camera, setCamera] = useState<Camera>(centeredCamera(props.location ?? ENTRANCE, 0.85));
   const [following, setFollowing] = useState<boolean>(true);
   const [toolsOpen, setToolsOpen] = useState<boolean>(false);
+  const viewportRef = useRef<View>(null);
   const rotation = useRef<Animated.Value>(new Animated.Value(0)).current;
   const rotationTarget = useRef<number>(0);
   const rotationAnchor = useRef<PlanPoint | null>(props.location);
@@ -151,6 +155,17 @@ export function PlanViewport(props: Props): ReactElement {
   const locationX: number | undefined = props.location?.x;
   const locationY: number | undefined = props.location?.y;
   if (following && props.location !== null) rotationAnchor.current = props.location;
+
+  useEffect((): (() => void) | undefined => {
+    if (Platform.OS !== "web") return undefined;
+    const viewport: HTMLElement | null = viewportRef.current as unknown as HTMLElement | null;
+    if (viewport === null) return undefined;
+    const resetScroll = (): void => {
+      if (viewport.scrollTop !== 0 || viewport.scrollLeft !== 0) viewport.scrollTo(0, 0);
+    };
+    viewport.addEventListener("scroll", resetScroll);
+    return (): void => viewport.removeEventListener("scroll", resetScroll);
+  }, []);
 
   useEffect((): void => {
     if (props.orientation.state.status === "requesting" || props.orientation.state.status === "simulated") setFollowing(true);
@@ -262,7 +277,7 @@ export function PlanViewport(props: Props): ReactElement {
   function locate(): void {
     setFollowing(true);
     const point: PlanPoint = props.location ?? ENTRANCE;
-    const zoom: number = Math.max(camera.zoom, 0.65);
+    const zoom: number = Math.max(camera.zoom, 0.85);
     setCamera(compassActive ? headingCamera(point, zoom) : centeredCamera(point, zoom));
     if (props.location === null) props.onLocate();
   }
@@ -288,8 +303,12 @@ export function PlanViewport(props: Props): ReactElement {
 
   return (
     <>
-      <View style={[styles.viewport, Platform.OS === "web" && webTouchStyle]} {...panResponder.panHandlers}>
-        <Animated.View style={[StyleSheet.absoluteFill, { transformOrigin: [pivotX, pivotY, 0], transform: [{ rotate: rotationStyle }] }]}>
+      <View ref={viewportRef} style={[styles.viewport, Platform.OS === "web" && webTouchStyle]} {...panResponder.panHandlers}>
+        <View style={styles.backgroundClip} pointerEvents="none">
+          <Image accessible={false} draggable={false} source={background} style={styles.background} contentFit="fill" />
+        </View>
+        <View style={styles.mapClip}>
+        <Animated.View style={[styles.mapCanvas, { transformOrigin: [pivotX, pivotY, 0], transform: [{ rotate: rotationStyle }] }]}>
         <View style={[styles.plan, { transform: [{ translateX: camera.x }, { translateY: camera.y }, { scale: camera.zoom }] }]}>
           <View pointerEvents="none" style={StyleSheet.absoluteFill}>
             <Image accessible={false} draggable={false} source={floor} style={styles.floor} contentFit="fill" />
@@ -339,18 +358,13 @@ export function PlanViewport(props: Props): ReactElement {
             <Animated.View accessibilityLabel="Perkiraan posisimu dari GPS" pointerEvents="none" style={[styles.you, { left: dot.x, top: dot.y, transform: [{ rotate: counterRotationStyle }] }]}>
               {compassActive && following && <View style={styles.youDirection} />}
               <View style={styles.youHalo}><View style={styles.youDot} /></View>
-              <View style={styles.youLabel}><GeaText variant="caption12" color={colors.white}>Kamu</GeaText></View>
             </Animated.View>
           )}
         </View>
         </Animated.View>
+        </View>
         <View style={styles.controls}>
           {toolsOpen && <View style={styles.toolsTray}>
-            <View style={styles.zoomGroup}>
-              <MapControl label="Perbesar peta" text="+" onPress={(): void => zoomBy(1.3)} active={false} />
-              <View style={styles.controlDivider} />
-              <MapControl label="Perkecil peta" text="−" onPress={(): void => zoomBy(1 / 1.3)} active={false} />
-            </View>
             <MapControl label="Lihat seluruh denah" text="▣" onPress={showPlan} active={false} />
             <MapControl label={props.legs.length === 0 ? "Lihat denah lantai 1" : "Lihat jalur menuju tujuan"}
               text="↗" onPress={props.legs.length === 0 ? showPlan : showRoute} active={false} />
@@ -366,9 +380,19 @@ export function PlanViewport(props: Props): ReactElement {
               <GeaText variant="caption12" color={colors.primary[800]}>{props.orientation.state.message ?? headingHint}</GeaText>
             </View>
           </View>}
-          <MapControl label={following ? "Mengikuti lokasimu" : "Ikuti lokasi saya"} text="◎" onPress={locate} active={following} />
-          <MapControl label={toolsOpen ? "Tutup kontrol peta" : "Buka kontrol peta"} text="⋯"
-            onPress={(): void => setToolsOpen(!toolsOpen)} active={toolsOpen} />
+          <View style={styles.zoomGroup}>
+            <Image accessible={false} source={zoomImage} style={StyleSheet.absoluteFill} contentFit="fill" pointerEvents="none" />
+            <Pressable accessibilityRole="button" accessibilityLabel="Perbesar peta" onPress={(): void => zoomBy(1.3)} style={styles.zoomHit} />
+            <Pressable accessibilityRole="button" accessibilityLabel="Perkecil peta" onPress={(): void => zoomBy(1 / 1.3)} style={styles.zoomHit} />
+          </View>
+          <Pressable accessibilityRole="button" accessibilityLabel={following ? "Mengikuti lokasimu" : "Ikuti lokasi saya"}
+            accessibilityState={{ selected: following }} onPress={locate} style={({ pressed }) => [styles.locateControl, pressed && styles.pressed]}>
+            <Image accessible={false} source={locateImage} style={StyleSheet.absoluteFill} contentFit="fill" />
+          </Pressable>
+          <View style={styles.moreControl}>
+            <MapControl label={toolsOpen ? "Tutup kontrol peta" : "Buka kontrol peta"} text="⋯"
+              onPress={(): void => setToolsOpen(!toolsOpen)} active={toolsOpen} />
+          </View>
         </View>
       </View>
     </>
@@ -389,7 +413,11 @@ function MapControl({ label, text, onPress, active }: {
 }
 
 const styles = StyleSheet.create({
-  viewport: { position: "absolute", left: 0, top: 0, width: VIEW_WIDTH, height: VIEW_HEIGHT, overflow: "hidden", backgroundColor: colors.primary[0] },
+  viewport: { position: "absolute", left: 0, top: 0, width: VIEW_WIDTH, height: MAP_TOP + MAP_HEIGHT, overflow: "hidden", backgroundColor: colors.primary[300] },
+  backgroundClip: { position: "absolute", left: 0, top: 0, right: 0, bottom: 0, overflow: "hidden" },
+  background: { position: "absolute", left: 0, top: 0, width: VIEW_WIDTH, height: VIEW_HEIGHT },
+  mapClip: { position: "absolute", left: 0, top: MAP_TOP, width: VIEW_WIDTH, height: MAP_HEIGHT, overflow: "hidden", backgroundColor: colors.primary[0], borderTopWidth: 3, borderBottomWidth: 3, borderColor: colors.primary[800] },
+  mapCanvas: { position: "absolute", left: 0, top: -MAP_TOP, width: VIEW_WIDTH, height: VIEW_HEIGHT },
   plan: { position: "absolute", left: 0, top: 0, width: PLAN_WIDTH, height: PLAN_HEIGHT, transformOrigin: "top left" },
   floor: { position: "absolute", left: 0.29, top: 7.86, width: 1917.16, height: 516.851, transform: [{ rotate: "0.62deg" }] },
   route: { position: "absolute", left: 0, top: 0, width: PLAN_WIDTH, height: PLAN_HEIGHT },
@@ -403,18 +431,19 @@ const styles = StyleSheet.create({
   order: { position: "absolute", right: -5, top: -10, minWidth: 24, height: 24, paddingHorizontal: 4, alignItems: "center", justifyContent: "center", borderRadius: 12, borderWidth: 2, borderColor: colors.primary[0], backgroundColor: colors.primary[700] },
   nextOrder: { backgroundColor: colors.secondaryGreen[800] },
   unavailable: { opacity: 0.5 },
-  you: { position: "absolute", width: 54, marginLeft: -27, marginTop: -18, alignItems: "center", zIndex: 4, transformOrigin: [27, 18, 0] },
-  youDirection: { position: "absolute", top: -7, width: 0, height: 0, borderLeftWidth: 6, borderRightWidth: 6, borderBottomWidth: 10, borderLeftColor: "transparent", borderRightColor: "transparent", borderBottomColor: colors.primary[800] },
-  youHalo: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.secondaryGreen[200], alignItems: "center", justifyContent: "center" },
-  youDot: { width: 19, height: 19, borderRadius: 10, borderWidth: 3, borderColor: colors.white, backgroundColor: colors.secondaryGreen[700] },
-  youLabel: { backgroundColor: colors.primary[800], borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
-  controls: { position: "absolute", right: 16, bottom: 260, gap: 8 },
-  toolsTray: { gap: 8 },
+  you: { position: "absolute", width: 64, marginLeft: -32, marginTop: -32, alignItems: "center", zIndex: 4, transformOrigin: [32, 32, 0] },
+  youDirection: { position: "absolute", top: -10, width: 0, height: 0, borderLeftWidth: 8, borderRightWidth: 8, borderBottomWidth: 14, borderLeftColor: "transparent", borderRightColor: "transparent", borderBottomColor: colors.secondaryGreen[600] },
+  youHalo: { width: 64, height: 64, borderRadius: 32, backgroundColor: colors.secondaryYellow[100], alignItems: "center", justifyContent: "center" },
+  youDot: { width: 32, height: 32, borderRadius: 16, borderWidth: 3, borderColor: colors.secondaryYellow[0], backgroundColor: colors.secondaryGreen[400] },
+  controls: { position: "absolute", right: 16, top: 286, gap: 12 },
+  moreControl: { position: "absolute", right: 56, top: 108 },
+  toolsTray: { position: "absolute", right: 56, bottom: 56, gap: 8, padding: 8, borderRadius: 24, backgroundColor: colors.secondaryYellow[0], boxShadow: shadows.drop },
   toolsHint: { position: "absolute", right: 56, top: 0, width: 180, padding: 12, borderRadius: 12, backgroundColor: colors.secondaryYellow[0], boxShadow: shadows.drop },
-  zoomGroup: { borderRadius: 12, overflow: "hidden", backgroundColor: colors.white },
+  zoomGroup: { width: 44, height: 96 },
+  zoomHit: { width: 44, height: 48 },
+  locateControl: { width: 44, height: 44 },
   control: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.secondaryYellow[0], alignItems: "center", justifyContent: "center", boxShadow: shadows.drop },
   controlText: { fontSize: 23, lineHeight: 27 },
-  controlDivider: { height: 1, marginHorizontal: 10, backgroundColor: colors.primary[100] },
   controlActive: { backgroundColor: colors.primary[700] },
   pressed: { opacity: 0.7 },
 });

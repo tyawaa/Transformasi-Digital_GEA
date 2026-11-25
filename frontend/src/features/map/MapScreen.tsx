@@ -3,12 +3,12 @@ import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, View } fro
 import { Image } from "expo-image";
 import { Toast } from "../../design/Toast";
 import { AnimatedNotification } from "../../design/AnimatedNotification";
-import { colors, shadows, spacing } from "../../design/tokens";
+import { colors, shadows } from "../../design/tokens";
 import { GeaText } from "../../design/typography";
 import type { MuseumPoi, ZoneInfo } from "../../data/museum";
 import { storyRecording } from "../../data/poiAudio";
 import type { Profile } from "../../domain/contracts";
-import type { Fix } from "../../domain/geofence";
+import { distanceMeters, type Fix } from "../../domain/geofence";
 import type { PoiStatus } from "../../domain/points";
 import type { GeofenceStatus } from "../../hooks/useGeofence";
 import { useHeading } from "../../hooks/useHeading";
@@ -19,7 +19,6 @@ import { FrameStage } from "../stories/hifi/parts";
 import { ENTRANCE, PLAN_PINS, locateOnPlan, routeLegs, type LocationAnchor, type PlanPin, type PlanPoint, type RouteLeg } from "./navigation";
 import { PlanViewport } from "./PlanViewport";
 import { StartMap } from "./StartMap";
-import { SearchPanel } from "../search/SearchPanel";
 import type { EyesFreeTarget } from "../eyesfree/engine";
 import { useEyesFree } from "../eyesfree/useEyesFree";
 import type { BackgroundResult } from "../eyesfree/background";
@@ -50,7 +49,7 @@ type Props = {
   readonly error: string | null;
   readonly hasVisit: boolean;
   readonly totalPoints: number;
-  readonly completedCount: number;
+  readonly visitedCount: number;
   readonly zoneIntro: ZoneInfo | null;
   readonly notice: Notice | null;
   readonly checkingLocation: boolean;
@@ -65,7 +64,6 @@ type Props = {
   readonly onScan: () => void;
   readonly onCheckLocation: () => void;
   readonly onRetry: () => void;
-  readonly onOpenProgress: () => void;
   readonly onOpenSummary?: () => void;
   /** Membuka alur verifikasi geofence POI sebelum mengakses cerita. */
   readonly onOpenPoi: (id: string) => void;
@@ -75,7 +73,13 @@ type Props = {
   readonly profile: Profile;
 };
 
-const CARD_TOP: number = 600;
+const CARD_TOP: number = 486;
+const overviewImage: number = require("../../../assets/design/navigation/overview.svg") as number;
+const directionIcon: number = require("../../../assets/design/navigation/direction.svg") as number;
+const scanIcon: number = require("../../../assets/design/navigation/scan.svg") as number;
+const bookIcon: number = require("../../../assets/design/navigation/book.svg") as number;
+const flagIcon: number = require("../../../assets/design/navigation/flag.svg") as number;
+const speakerIcon: number = require("../../../assets/design/icon-speaker.svg") as number;
 
 /** Pemilihan pin tidak memberi akses cerita; Buka cerita memulai verifikasi GPS. */
 export function MapScreen(props: Props): ReactElement {
@@ -84,7 +88,7 @@ export function MapScreen(props: Props): ReactElement {
   const [testsOpen, setTestsOpen] = useState<boolean>(false);
   const [routeOpen, setRouteOpen] = useState<boolean>(false);
   const [expiryDismissed, setExpiryDismissed] = useState<boolean>(false);
-  const [searchOpen, setSearchOpen] = useState<boolean>(false);
+  const [navigationStopped, setNavigationStopped] = useState<boolean>(false);
   const [eyesFreeToast, setEyesFreeToast] = useState<boolean>(false);
   const anchors: readonly LocationAnchor[] = useMemo((): readonly LocationAnchor[] => props.pois.map((poi: MapPoi): LocationAnchor => ({
     code: poi.museum.code, latitude: poi.museum.latitude, longitude: poi.museum.longitude,
@@ -100,9 +104,10 @@ export function MapScreen(props: Props): ReactElement {
   const selected: MapPoi | null = props.pois.find((poi: MapPoi): boolean => poi.museum.code === selectedCode) ?? null;
   const target: MapPoi | null = selected ?? props.nearby ?? remaining[0] ?? null;
   const destinationCodes: readonly string[] = useMemo((): readonly string[] => {
+    if (navigationStopped) return [];
     const codes: readonly string[] = remaining.map((poi: MapPoi): string => poi.museum.code);
     return target === null || target.id === null ? codes : [target.museum.code, ...codes.filter((code: string): boolean => code !== target.museum.code)];
-  }, [remaining, target]);
+  }, [remaining, target, navigationStopped]);
   const eyesFreeStop = (poi: MapPoi): EyesFreeTarget => ({
     code: poi.museum.code, name: poi.museum.name, latitude: poi.museum.latitude, longitude: poi.museum.longitude,
     radiusMeters: poi.museum.radiusMeters, recording: storyRecording(poi.museum.code, props.profile),
@@ -120,9 +125,6 @@ export function MapScreen(props: Props): ReactElement {
   const eyesFree = useEyesFree({
     visitId: props.hasVisit ? "visit" : null, stops: eyesFreeStops, targets: eyesFreeTargets, fix: props.userFix,
   });
-  const searchPois: readonly MuseumPoi[] = useMemo((): readonly MuseumPoi[] => props.pois
-    .map((poi: MapPoi): MuseumPoi => poi.museum)
-    .filter((poi: MuseumPoi): boolean => props.wingsMode === "both" || poi.wing === "left"), [props.pois, props.wingsMode]);
   const legs: readonly RouteLeg[] = useMemo((): readonly RouteLeg[] => routeLegs(location ?? ENTRANCE, destinationCodes), [location, destinationCodes]);
 
   const routeCount: number = props.route?.codes.length ?? 0;
@@ -130,13 +132,32 @@ export function MapScreen(props: Props): ReactElement {
     const poi: MapPoi | undefined = props.pois.find((item: MapPoi): boolean => item.museum.code === code);
     return poi === undefined ? [] : [poi];
   });
-  const routeCompleted: number = routePois.filter((poi: MapPoi): boolean => poi.status === "selesai").length;
+  const availableCount: number = props.pois.filter((poi: MapPoi): boolean => poi.id !== null && (props.wingsMode === "both" || poi.museum.wing === "left")).length;
+  const targetLabel: string = target === null ? "" : `POI ${Number(target.museum.code.slice(1))}`;
+  const targetDistance: number | null = location !== null && props.userFix !== null && target !== null
+    ? distanceMeters(props.userFix, target.museum) : null;
+  const directionTitle: string = navigationStopped ? "Navigasi dihentikan"
+    : target === null ? "Pilih tujuan di peta"
+    : targetDistance === null ? "Ikuti jalur di peta"
+    : targetDistance < 2 ? "Kamu dekat tujuan"
+    : `Tujuan sekitar ${Math.round(targetDistance)} meter`;
   const timeExpired: boolean = props.remainingMs !== null && props.remainingMs === 0;
   const showRouteToast: boolean = props.routeToast === true && props.hasVisit && routeCount > 0;
 
   function choosePoi(code: string): void {
     setSelectedCode(code);
+    setNavigationStopped(false);
     if (props.nearby !== null && props.nearby.museum.code !== code) props.onDismissNearby();
+  }
+
+  function stopNavigation(): void {
+    setNavigationStopped(true);
+    if (eyesFree.enabled) eyesFree.toggle();
+    setEyesFreeToast(false);
+  }
+
+  function startNavigation(): void {
+    setNavigationStopped(false);
   }
 
   const signal: string = props.gpsStatus === "simulated" ? `Mode uji lokasi${props.gpsWeak ? " · GPS belum akurat" : ""}`
@@ -144,12 +165,9 @@ export function MapScreen(props: Props): ReactElement {
     : props.gpsStatus === "no_permission" ? "Izinkan lokasi untuk mengikuti posisimu"
     : props.gpsError !== null ? "Lokasi belum tersedia · pindai QR bila perlu"
     : props.gpsWeak ? "GPS belum akurat · pindai QR bila perlu"
-    : location !== null && props.userFix !== null ? `Perkiraan lokasi · akurasi ±${Math.round(props.userFix.accuracyMeters)} m`
+    : location !== null && props.userFix !== null ? `Akurasi GPS ± ${Math.round(props.userFix.accuracyMeters)} meter`
     : props.hasVisit && props.userFix !== null ? "Posisi di luar jangkauan denah"
     : props.hasVisit ? "Menunggu lokasi GPS…" : "Aktifkan lokasi untuk mulai menjelajah";
-  const locationNeedsAttention: boolean = props.hasVisit && (
-    props.checkingLocation || props.gpsStatus === "no_permission" || props.gpsError !== null || props.gpsWeak
-  );
 
   return (
     <FrameStage background={colors.primary[0]}>
@@ -157,29 +175,24 @@ export function MapScreen(props: Props): ReactElement {
         routeCodes={props.route?.codes ?? []} legs={legs} location={location} leftOnly={props.wingsMode === "left"}
         onSelect={choosePoi} onLocate={props.onCheckLocation} orientation={orientation} planBearing={planBearing}
         onOpenTests={props.hasVisit && props.gpsTests.length > 0 ? (): void => setTestsOpen(true) : null} />
-      <View style={styles.header}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Kembali ke personalisasi"
-          onPress={props.onBack} hitSlop={8} style={({ pressed }) => [styles.backButton, pressed && styles.dim]}>
-          <GeaText variant="heading28" color={colors.primary[900]}>‹</GeaText>
-        </Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel={`${routeCount > 0 ? `${routeCompleted} dari ${routeCount} koleksi rute selesai` : "Rute belum tersedia"}. ${props.totalPoints} poin. Lihat progres dan lencana`}
-          onPress={props.onOpenProgress} style={styles.statPill}>
-          <GeaText variant="bold16" color={colors.primary[900]}>{routeCount > 0 ? `${routeCompleted}/${routeCount}` : "—"}</GeaText>
-          <GeaText variant="caption12" color={colors.primary[800]}>koleksi · {props.totalPoints} poin</GeaText>
-        </Pressable>
-        <View style={[styles.statPill, timeExpired && styles.timeExpired]}>
-          <GeaText variant="caption12" color={colors.primary[800]}>Sisa waktu</GeaText>
-          <GeaText variant="bold16" color={timeExpired ? colors.tertiary[200] : colors.primary[900]}>
-            {props.remainingMs === null ? props.hasVisit ? "Menunggu rencana" : "Belum dimulai" : formatCountdown(props.remainingMs)}
-          </GeaText>
+      <View style={styles.overview} pointerEvents="box-none">
+        <Image accessible={false} source={overviewImage} style={StyleSheet.absoluteFill} contentFit="fill" />
+        <View style={styles.visitedStat} accessibilityLabel={`${props.visitedCount} dari ${availableCount} POI dikunjungi`}>
+          <GeaText variant="bold16" color={colors.primary[700]} style={styles.statValue}>{props.visitedCount}/{availableCount} POI</GeaText>
+          <GeaText variant="caption12" color={colors.primary[700]} style={styles.statCaption}>Dikunjungi</GeaText>
         </View>
-      </View>
-      {props.hasVisit && <View style={styles.tools}>
-        <Pressable accessibilityRole="search" accessibilityLabel="Cari ruang atau koleksi" onPress={(): void => setSearchOpen(true)}
-          style={({ pressed }) => [styles.searchBar, pressed && styles.dim]}>
-          <GeaText variant="body14" color={colors.primary[700]} style={styles.flex} numberOfLines={1}>Cari ruang atau koleksi…</GeaText>
-          <Image accessible={false} source={searchIcon} style={styles.toolIcon} />
+        <View style={styles.pointsStat} accessibilityLabel={`${props.totalPoints} poin terkumpul`}>
+          <GeaText variant="bold16" color={colors.primary[700]} style={styles.statValue}>{props.totalPoints} poin</GeaText>
+          <GeaText variant="caption12" color={colors.primary[700]} style={styles.statCaption}>Terkumpul</GeaText>
+        </View>
+        <Pressable accessibilityRole="button" accessibilityLabel="Cari koleksi, segera tersedia"
+          accessibilityState={{ disabled: true }} disabled style={styles.searchButton} />
+        <Pressable accessibilityRole="button" accessibilityLabel="Lencana, segera tersedia"
+          accessibilityState={{ disabled: true }} disabled style={styles.badgeButton}>
+          <GeaText variant="label16" color={colors.primary[900]} style={styles.badgeLabel}>Lencana</GeaText>
         </Pressable>
+      </View>
+      {props.hasVisit && <View style={styles.exploreMode}>
         <Pressable accessibilityRole="switch" accessibilityState={{ checked: eyesFree.enabled }}
           accessibilityLabel="Mode tanpa layar: getar saat mendekat, rekaman cerita diputar saat tiba"
           onPress={(): void => { eyesFree.toggle(); setEyesFreeToast(!eyesFree.enabled); }}
@@ -187,14 +200,14 @@ export function MapScreen(props: Props): ReactElement {
           <Image accessible={false} source={speakerIcon} style={styles.toolIcon} tintColor={eyesFree.enabled ? colors.white : colors.primary[800]} />
         </Pressable>
       </View>}
-      {locationNeedsAttention && <View style={styles.signal}>
+      {props.hasVisit && <View style={styles.signal}>
         <Pressable accessibilityRole="button" accessibilityLabel={`${signal}. Periksa lokasi`}
           onPress={props.onCheckLocation} disabled={props.checkingLocation} style={styles.signalContent}>
-          <GeaText variant="caption12" color={colors.primary[800]} style={styles.flex} numberOfLines={1}>{signal}</GeaText>
-          <GeaText variant="caption12" color={colors.primary[800]}>Periksa ›</GeaText>
+          <GeaText variant="caption12" color={colors.primary[800]} numberOfLines={1}>{signal}</GeaText>
         </Pressable>
       </View>}
       <View style={styles.card}>
+        <View style={styles.sheetHandle} />
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.cardContent}>
         {props.loading ? (
           <View style={styles.row}><ActivityIndicator color={colors.primary[800]} /><GeaText variant="body14" color={colors.primary[800]}>Memuat koleksi…</GeaText></View>
@@ -206,37 +219,41 @@ export function MapScreen(props: Props): ReactElement {
           <>
             {target !== null ? (
               <>
-                <View style={styles.cardHeading}>
-                  <GeaText variant="caption12" color={colors.primary[700]} style={styles.flex}>
-                    {selected !== null ? "Tujuan pilihanmu" : "Tujuan berikutnya"} · {target.museum.code}
-                  </GeaText>
-                  {routeCount > 0 && <Pressable accessibilityRole="button" accessibilityLabel={`Lihat rute ${routeCount} koleksi`}
-                    accessibilityState={{ expanded: routeOpen }} onPress={(): void => setRouteOpen(true)} style={styles.routeLink}>
-                    <GeaText variant="body14" color={colors.primary[800]}>Lihat rute ›</GeaText>
-                  </Pressable>}
+                <View style={styles.guidance} accessibilityLiveRegion="polite">
+                  <Image accessible={false} source={directionIcon} style={styles.directionIcon} />
+                  <View style={styles.guidanceText}>
+                    <GeaText variant="bold16" color={colors.primary[800]} style={styles.directionTitle} numberOfLines={1}>{directionTitle}</GeaText>
+                    <GeaText variant="body14" color={colors.primary[800]} style={styles.directionCaption} numberOfLines={1}>
+                      {navigationStopped ? "Lanjutkan saat kamu siap menjelajah" : `Ikuti garis menuju ${targetLabel}`}
+                    </GeaText>
+                  </View>
                 </View>
-                <GeaText variant="bold16" color={colors.primary[900]} numberOfLines={2} style={styles.poiTitle}>{target.museum.name}</GeaText>
-                {target.id === null && <GeaText variant="body14" color={colors.primary[800]}>Cerita koleksi ini segera hadir.</GeaText>}
+                <View style={styles.destination}>
+                  <Pressable accessibilityRole="button" accessibilityLabel={`Lihat rute. Tujuan ${targetLabel}, ${target.museum.name}`}
+                    onPress={(): void => setRouteOpen(true)} style={styles.destinationText}>
+                    <GeaText variant="caption12" color={colors.primary[900]} style={styles.destinationCaption}>
+                      {selected !== null ? "TUJUAN PILIHANMU" : "TUJUAN SELANJUTNYA"}
+                    </GeaText>
+                    <GeaText variant="display42" color={colors.tertiary[300]}>{targetLabel}</GeaText>
+                  </Pressable>
+                  <Pressable accessibilityRole="button" onPress={navigationStopped ? startNavigation : stopNavigation}
+                    style={({ pressed }) => [styles.stopButton, pressed && styles.dim]}>
+                    <GeaText variant="bold16" color={colors.primary[800]}>{navigationStopped ? "Mulai Navigasi" : "Stop Navigasi"}</GeaText>
+                  </Pressable>
+                </View>
+                <GeaText variant="body16" color={colors.primary[800]} style={styles.invitation}>
+                  {target.id === null ? "Cerita koleksi ini segera hadir." : `Yuk, kunjungi ${targetLabel} untuk mendengarkan cerita menariknya`}
+                </GeaText>
               </>
             ) : (
               <><GeaText variant="heading20" color={colors.tertiary[300]}>{props.route !== null && props.route.codes.length > 0 ? "Rutemu selesai!" : "Mau jelajah ke mana?"}</GeaText><GeaText variant="body14" color={colors.primary[800]}>Ketuk pin koleksi di peta untuk melihat tujuanmu.</GeaText></>
             )}
-            {target?.id != null && <GeaText variant="body14" color={colors.primary[800]}>Mulai saat kamu di dekat koleksi.</GeaText>}
             <View style={styles.actions}>
-              {target !== null && target.id !== null && (
-                <View style={styles.flex}>
-                  <MapButton label="Mulai cerita" onPress={(): void => { if (target.id !== null) props.onOpenPoi(target.id); }} />
-                </View>
-              )}
-              {target === null && props.completedCount > 0 && props.onOpenSummary !== undefined && (
-                <View style={styles.flex}>
-                  <MapButton label="Lihat Ringkasan Akhir" onPress={props.onOpenSummary} />
-                </View>
-              )}
-              <Pressable accessibilityRole="button" accessibilityLabel="Lokasi belum sesuai? Pindai QR"
-                onPress={props.onScan} style={styles.qrButton}>
-                <GeaText variant="body14" color={colors.primary[800]}>Pindai QR</GeaText>
-              </Pressable>
+              <NavigationAction label="Scan QR" icon={scanIcon} background={colors.secondaryGreen[100]} disabled={false} onPress={props.onScan} />
+              <NavigationAction label="Baca cerita" icon={bookIcon} background={colors.primary[0]} disabled={target?.id == null}
+                onPress={(): void => { if (target?.id != null) props.onOpenPoi(target.id); }} />
+              <NavigationAction label={"Akhiri\nkunjungan"} icon={flagIcon} background={colors.primary[0]} disabled={props.onOpenSummary === undefined}
+                onPress={(): void => { stopNavigation(); props.onOpenSummary?.(); }} />
             </View>
             {props.zoneIntro !== null && selected === null && target === null && (
               <Pressable accessibilityRole="button" accessibilityLabel="Tutup informasi sayap" onPress={props.onDismissZone} style={styles.zone}>
@@ -258,6 +275,10 @@ export function MapScreen(props: Props): ReactElement {
               </Pressable>
             </View>
             <GeaText variant="body14" color={colors.primary[800]}>{routeCount} koleksi · {props.route?.totalMinutes ?? 0} menit · {props.totalPoints} poin</GeaText>
+            <GeaText variant="body14" color={colors.primary[800]}>Sisa waktu: {props.remainingMs === null ? "Belum tersedia" : formatCountdown(props.remainingMs)}</GeaText>
+            <Pressable accessibilityRole="button" onPress={props.onBack} style={styles.routeLink}>
+              <GeaText variant="body14" color={colors.primary[800]}>Ubah rencana kunjungan ›</GeaText>
+            </Pressable>
             <ScrollView contentContainerStyle={styles.routeList}>
               {routePois.map((poi: MapPoi, index: number): ReactElement => (
                 <Pressable key={poi.museum.code} accessibilityRole="button"
@@ -312,13 +333,6 @@ export function MapScreen(props: Props): ReactElement {
           />
         ) : null}
       </AnimatedNotification>
-      <Modal visible={searchOpen} transparent animationType="slide" onRequestClose={(): void => setSearchOpen(false)}>
-        <FrameStage background="rgba(31, 26, 22, 0.45)">
-          <Pressable accessibilityRole="button" accessibilityLabel="Tutup pencarian" style={StyleSheet.absoluteFill} onPress={(): void => setSearchOpen(false)} />
-          <SearchPanel pois={searchPois} onClose={(): void => setSearchOpen(false)}
-            onPick={(code: string): void => { choosePoi(code); setSearchOpen(false); }} />
-        </FrameStage>
-      </Modal>
       {testsOpen && props.hasVisit && props.gpsTests.length > 0 && (
         <View style={styles.testMenu}>
           <ScrollView>
@@ -348,8 +362,22 @@ export function MapScreen(props: Props): ReactElement {
   );
 }
 
-const searchIcon = require("../../../assets/design/search-normal.svg") as number;
-const speakerIcon = require("../../../assets/design/icon-speaker.svg") as number;
+function NavigationAction({ label, icon, background, disabled, onPress }: {
+  readonly label: string;
+  readonly icon: number;
+  readonly background: string;
+  readonly disabled: boolean;
+  readonly onPress: () => void;
+}): ReactElement {
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={label.replace("\n", " ")}
+      accessibilityState={{ disabled }} disabled={disabled} onPress={onPress}
+      style={({ pressed }) => [styles.actionButton, { backgroundColor: background }, (pressed || disabled) && styles.dim]}>
+      <Image accessible={false} source={icon} style={styles.actionIcon} />
+      <GeaText variant="label16" color={colors.primary[900]} style={styles.actionLabel}>{label}</GeaText>
+    </Pressable>
+  );
+}
 
 function eyesFreeNote(background: BackgroundResult | null): string {
   if (background === "running") return "Rekaman cerita diputar saat tiba, layar boleh dikunci";
@@ -363,27 +391,41 @@ function MapButton({ label, onPress }: { readonly label: string; readonly onPres
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  header: { position: "absolute", left: 16, right: 16, top: 32, height: 52, flexDirection: "row", alignItems: "center", gap: 12 },
-  backButton: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: colors.secondaryYellow[0], boxShadow: shadows.drop },
-  statPill: { flex: 1, minHeight: 52, justifyContent: "center", alignItems: "center", paddingHorizontal: 10, borderRadius: 26, backgroundColor: colors.secondaryYellow[0], boxShadow: shadows.drop },
-  timeExpired: { backgroundColor: colors.warning[100], borderColor: colors.tertiary[100] },
-  tools: { position: "absolute", left: 16, right: 16, top: 96, height: 48, flexDirection: "row", alignItems: "center", gap: 8 },
-  searchBar: { flex: 1, height: 44, flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 16, borderRadius: 12, borderWidth: 1, borderColor: colors.primary[400], backgroundColor: colors.secondaryYellow[0], boxShadow: shadows.drop },
+  overview: { position: "absolute", left: 0, top: 0, width: 390, height: 182 },
+  visitedStat: { position: "absolute", left: 64, top: 69, gap: 2 },
+  pointsStat: { position: "absolute", left: 250, top: 69, gap: 2 },
+  statValue: { lineHeight: 20 },
+  statCaption: { lineHeight: 14 },
+  searchButton: { position: "absolute", left: 16, top: 127, width: 44, height: 44 },
+  badgeButton: { position: "absolute", left: 254, top: 127, width: 124, height: 44, justifyContent: "center", paddingLeft: 44 },
+  badgeLabel: { fontSize: 14 },
+  exploreMode: { position: "absolute", left: 72, top: 127 },
   toolIcon: { width: 22, height: 22 },
-  eyesFree: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: colors.secondaryYellow[0], boxShadow: shadows.drop },
+  eyesFree: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: colors.primary[900], alignItems: "center", justifyContent: "center", backgroundColor: colors.secondaryYellow[0] },
   eyesFreeOn: { backgroundColor: colors.primary[800] },
-  signal: { position: "absolute", left: 16, right: 16, top: 152, minHeight: 44, borderRadius: 12, paddingHorizontal: 12, backgroundColor: colors.secondaryYellow[0], boxShadow: shadows.drop },
-  signalContent: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8, minHeight: 44 },
-  card: { position: "absolute", top: CARD_TOP, bottom: 24, left: 16, width: 358, borderRadius: 20, overflow: "hidden", backgroundColor: colors.secondaryYellow[0], boxShadow: shadows.drop },
-  cardContent: { padding: spacing[16], gap: 8 },
-  cardHeading: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, minHeight: 44 },
+  signal: { position: "absolute", left: 16, top: 446, maxWidth: 300, height: 30, borderRadius: 20, paddingHorizontal: 12, backgroundColor: colors.secondaryYellow[0] },
+  signalContent: { flex: 1, justifyContent: "center" },
+  card: { position: "absolute", top: CARD_TOP, bottom: 0, left: 0, width: 390, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: "hidden", backgroundColor: colors.secondaryYellow[0] },
+  sheetHandle: { alignSelf: "center", width: 40, height: 4, borderRadius: 2, marginTop: 10, marginBottom: 14, backgroundColor: colors.primary[200] },
+  cardContent: { paddingHorizontal: 16, paddingBottom: 24, gap: 16 },
+  guidance: { minHeight: 74, borderRadius: 12, paddingHorizontal: 20, paddingVertical: 12, flexDirection: "row", alignItems: "center", gap: 20, backgroundColor: colors.secondaryGreen[100] },
+  directionIcon: { width: 24, height: 26 },
+  guidanceText: { flex: 1, gap: 4 },
+  directionTitle: { fontSize: 20, lineHeight: 24 },
+  directionCaption: { lineHeight: 20 },
+  destination: { flexDirection: "row", alignItems: "center", gap: 12 },
+  destinationText: { flex: 1, gap: 8 },
+  destinationCaption: { fontSize: 10, lineHeight: 14, fontWeight: "700" },
+  stopButton: { width: 164, minHeight: 44, borderRadius: 8, alignItems: "center", justifyContent: "center", backgroundColor: colors.primary[100] },
+  invitation: { lineHeight: 24, minHeight: 48 },
   row: { flexDirection: "row", alignItems: "center", gap: 10 },
   poiCode: { width: 44, height: 44, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: colors.primary[0] },
-  poiTitle: { fontSize: 20, lineHeight: 26 },
   button: { alignSelf: "stretch", alignItems: "center", minHeight: 48, justifyContent: "center", paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, backgroundColor: colors.primary[800] },
   dim: { opacity: 0.6 },
-  actions: { flexDirection: "row", alignItems: "center", gap: 8 },
-  qrButton: { minHeight: 48, alignItems: "center", justifyContent: "center", paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: colors.primary[200] },
+  actions: { flexDirection: "row", alignItems: "stretch", gap: 8 },
+  actionButton: { flex: 1, minHeight: 72, paddingVertical: 6, paddingHorizontal: 4, borderRadius: 12, alignItems: "center", justifyContent: "center", gap: 4, boxShadow: shadows.card },
+  actionIcon: { width: 24, height: 24 },
+  actionLabel: { textAlign: "center", lineHeight: 16 },
   routeLink: { minHeight: 44, flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 },
   expiryPosition: { top: 152 },
   expiryToast: { padding: 16, borderRadius: 20, flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1, borderColor: colors.primary[600], backgroundColor: colors.secondaryYellow[0], boxShadow: shadows.drop },
