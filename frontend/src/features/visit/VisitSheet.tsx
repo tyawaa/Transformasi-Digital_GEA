@@ -12,7 +12,7 @@ import photoHunt from "../../../assets/daftar_pencarian/photo-hunt/catalog.json"
 import { FrameStage } from "../stories/hifi/parts";
 import { closingTimeLabel, type VisitPrompt, type VisitSuggestion } from "./lifecycle";
 
-export type VisitPanel = VisitPrompt | "finish" | "extend" | "closed" | "finished";
+export type VisitPanel = VisitPrompt | "finish" | "extend" | "closed" | "finished" | "paused";
 type Props = {
   readonly panel: VisitPanel | null;
   readonly closingAtMs: number;
@@ -27,6 +27,8 @@ type Props = {
   readonly onFinish: () => void;
   readonly onSummary: () => void;
   readonly onExitDirections: () => void;
+  /** "Istirahat dulu": melanjutkan hitung mundur rencana kunjungan. */
+  readonly onResume: () => void;
 };
 type Copy = { readonly title: string; readonly description: string };
 
@@ -42,6 +44,7 @@ function sheetCopy(panel: VisitPanel, closingAtMs: number): Copy {
     extend: { title: "Mau tambah berapa lama?", description: `Tambahan waktu melanjutkan rencana kunjunganmu. Museum tutup pukul ${closing} WIB; 5 menit terakhir disisihkan untuk bersiap keluar.` },
     closed: { title: "Museum sudah tutup", description: "Kunjunganmu hari ini telah selesai. Terima kasih sudah menjelajah bersama GEA! Progres yang sudah tercatat tetap tersimpan." },
     finished: { title: "Perjalananmu sudah selesai", description: "Terima kasih sudah menjelajah bersama GEA! Kamu bisa membuka kembali ringkasan, progres, dan poin kunjungan ini." },
+    paused: { title: "Sudah siap untuk melanjutkan perjalanan?", description: "Hitung mundur rencana kunjunganmu akan jalan lagi begitu kamu lanjut menjelajah." },
   };
   return copy[panel];
 }
@@ -52,12 +55,15 @@ export function VisitSheet(props: Props): ReactElement | null {
   if (props.panel === null) return null;
   const copy: Copy = sheetCopy(props.panel, props.closingAtMs);
   const completed: boolean = props.panel === "closed" || props.panel === "finished";
+  // Dikunci saat dijeda: error prevention, pengunjung tidak bisa diam-diam lanjut menjelajah tanpa sadar membatalkan istirahat.
+  const paused: boolean = props.panel === "paused";
+  const blockDismiss: boolean = completed || paused;
   const canSuggest: boolean = props.suggestion !== null && (props.panel === "finish" || props.panel === "route_done");
   const showExtension: boolean = props.options.length > 0 && ["time_soon", "time_up", "route_done", "finish"].includes(props.panel);
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={completed ? props.onSummary : props.onDismiss}>
+    <Modal visible transparent animationType="slide" onRequestClose={completed ? props.onSummary : paused ? props.onResume : props.onDismiss}>
       <FrameStage background="rgba(31,26,22,0.42)">
-        {!completed && <Pressable accessibilityRole="button" accessibilityLabel="Tutup pemberitahuan kunjungan"
+        {!blockDismiss && <Pressable accessibilityRole="button" accessibilityLabel="Tutup pemberitahuan kunjungan"
           style={StyleSheet.absoluteFill} onPress={props.busy ? undefined : props.onDismiss} />}
         <View style={styles.sheet} accessibilityViewIsModal>
           <Svg width={390} height={54} viewBox="0 0 390 54" style={styles.curve} accessible={false}>
@@ -80,7 +86,8 @@ export function VisitSheet(props: Props): ReactElement | null {
             <View style={styles.actions}>
               {(props.panel === "closing_prepare" || props.panel === "closed") && <Button label="Arah ke pintu keluar"
                 tone="secondary" appearance="outline" onPress={props.onExitDirections} />}
-              {completed ? <Button label={props.busy ? "Menyimpan kunjungan…" : "Lihat ringkasan kunjungan"}
+              {paused ? <Button label="Lanjutkan Menjelajah" tone="primary" appearance="fill" onPress={props.onResume} />
+                : completed ? <Button label={props.busy ? "Menyimpan kunjungan…" : "Lihat ringkasan kunjungan"}
                 tone="primary" appearance="fill" disabled={props.busy} onPress={props.onSummary} />
                 : props.panel === "extend" ? <>
                   <Button label="Kembali" tone="secondary" appearance="outline" onPress={props.busy ? (): void => undefined : props.onDismiss} />

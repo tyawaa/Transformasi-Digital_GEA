@@ -118,8 +118,20 @@ function Home(): ReactElement {
     : storiesSource.kind === "api" ? null
     : startedAtMs === null || effectivePreferences === null ? null : visitWindow(effectivePreferences.duration, startedAtMs).endsAtMs;
   const [demoOffsetMs, setDemoOffsetMs] = useState<number>(0);
+  // "Istirahat dulu": menjeda hitung mundur kunjungan di perangkat ini saja (tidak dikirim ke server).
+  const [pausedAtMs, setPausedAtMs] = useState<number | null>(null);
+  const [pauseAccumMs, setPauseAccumMs] = useState<number>(0);
+  useEffect((): void => { setPausedAtMs(null); setPauseAccumMs(0); }, [visit?.id_sesi]);
+  const paused: boolean = pausedAtMs !== null;
+  const pausedMs: number = pauseAccumMs + (pausedAtMs === null ? 0 : Date.now() - pausedAtMs);
+  function pauseVisit(): void { if (pausedAtMs === null) setPausedAtMs(Date.now()); }
+  function resumeVisit(): void {
+    if (pausedAtMs === null) return;
+    setPauseAccumMs((total: number): number => total + (Date.now() - pausedAtMs));
+    setPausedAtMs(null);
+  }
   const lifecycle = useVisitLifecycle({ api, source: storiesSource.kind, visit, replaceVisit: visitState.replaceVisit, demoOffsetMs });
-  const clock = useVisitClock(startedAtMs, endsAtMs, lifecycle.serverOffsetMs + demoOffsetMs);
+  const clock = useVisitClock(startedAtMs, endsAtMs, lifecycle.serverOffsetMs + demoOffsetMs, pausedMs);
   const closingAtMs: number | null = visit?.closing_at != null ? Date.parse(visit.closing_at)
     : storiesSource.kind === "mock" && startedAtMs !== null ? museumClosingAt(startedAtMs) : null;
   const museumClosed: boolean = closingAtMs !== null && clock.nowMs >= closingAtMs;
@@ -335,14 +347,17 @@ function Home(): ReactElement {
     mapPois.filter((poi: MapPoi): boolean => poi.id !== null && poi.status !== "selesai").map((poi: MapPoi): typeof poi.museum => poi.museum),
     effectivePreferences, geofence.currentFix, suggestionBudgetMs,
   );
-  const automaticPrompt: VisitPrompt | null = endsAtMs === null || closingAtMs === null || visit === null || visitEnded
-    ? null : visitPrompt(clock.nowMs, endsAtMs, closingAtMs, routeDone && suggestion !== null);
+  const automaticPrompt: VisitPrompt | null = endsAtMs === null || closingAtMs === null || visit === null || visitEnded || paused
+    // Istirahat dulu hanya menjeda rencana kunjungan (endsAtMs); jam tutup museum tetap berjalan nyata.
+    ? null : visitPrompt(clock.nowMs, endsAtMs + pausedMs, closingAtMs, routeDone && suggestion !== null);
   const promptKey: string | null = automaticPrompt === null ? null
     : automaticPrompt.startsWith("closing") ? `${automaticPrompt}:${closingAtMs}`
     : `${automaticPrompt}:${endsAtMs}:${automaticPrompt === "route_done" ? suggestion?.poi.code ?? "" : ""}`;
   const pendingPrompt: VisitPrompt | null = promptKey !== null && lifecycle.dismissed !== null && !lifecycle.dismissed.includes(promptKey) ? automaticPrompt : null;
   const panel: VisitPanel | null = visitEnded && !closedAcknowledged ? museumClosed || visit?.ended_reason === "closing" ? "closed" : "finished"
-    : pendingPrompt === "closing_prepare" || pendingPrompt === "closing_soon" ? pendingPrompt : requestedPanel ?? pendingPrompt;
+    : pendingPrompt === "closing_prepare" || pendingPrompt === "closing_soon" ? pendingPrompt
+    // Dijeda: kunci layar dengan sheet "Lanjutkan Menjelajah", kecuali museum segera tutup (di atas).
+    : paused ? "paused" : requestedPanel ?? pendingPrompt;
 
   async function dismissVisitPanel(): Promise<void> {
     if (promptKey !== null) await lifecycle.dismiss(promptKey);
@@ -391,11 +406,12 @@ function Home(): ReactElement {
     scanPending.current = true;
     setScanState("detected");
     try {
-      // QR pintu masuk / zona: kunjungan dimulai, tetap di layar scan untuk QR koleksi berikutnya.
+      // QR pintu masuk: kunjungan dimulai, langsung ke peta (tidak perlu tap "Kembali" lagi).
+      // QR zona tetap di layar scan, karena biasanya langsung dilanjutkan dengan scan QR koleksi.
       if (result.kind === "entrance" || (result.kind === null && visit === null)) {
         if (visit === null) {
           await beginVisit(result.token);
-          setScanNotice("Kunjungan dimulai! Kembali ke peta atau scan QR koleksi di sini.");
+          setScreen({ name: "map" });
         } else {
           setScanNotice("Kunjunganmu masih aktif. Kembali ke peta atau scan QR koleksi untuk melanjutkan.");
         }
@@ -537,7 +553,8 @@ function Home(): ReactElement {
         onSuggest={(): void => { if (suggestion !== null) setRecommendedCode(suggestion.poi.code); void dismissVisitPanel(); }}
         onFinish={(): void => { void finishVisit(); }}
         onExitDirections={(): void => { setMapDestination("exit"); setClosedAcknowledged(visitEnded); setScreen({ name: "map" }); void dismissVisitPanel(); }}
-        onSummary={(): void => { setClosedAcknowledged(true); setScreen({ name: "summary" }); }} /> : null;
+        onSummary={(): void => { setClosedAcknowledged(true); setScreen({ name: "summary" }); }}
+        onResume={resumeVisit} /> : null;
 
   if (screen.name === "story" && visit !== null && !visitEnded) {
     return (
@@ -566,7 +583,7 @@ function Home(): ReactElement {
             setScreen({ name: "map" });
           }}
         />
-        {(panel === "closing_soon" || panel === "closing_prepare") && visitSheet}
+        {(panel === "closing_soon" || panel === "closing_prepare" || panel === "paused") && visitSheet}
       </>
     );
   }
@@ -584,7 +601,7 @@ function Home(): ReactElement {
           onBack={(): void => setScreen({ name: "map" })}
           dummies={mapDummies}
         />
-        {(panel === "closing_soon" || panel === "closing_prepare") && visitSheet}
+        {(panel === "closing_soon" || panel === "closing_prepare" || panel === "paused") && visitSheet}
       </>
     );
   }
@@ -650,10 +667,13 @@ function Home(): ReactElement {
           { label: "Waktu uji: kembali ke jam asli", onPress: (): void => setDemoOffsetMs(0) },
         ]}
         visitTimeLabel={visit === null || endsAtMs === null || closingAtMs === null ? null : visitEnded ? "Kunjungan selesai"
+          : paused ? `Dijeda · sisa ${formatCountdown(clock.remainingMs ?? 0)}`
           : closingAtMs - clock.nowMs <= 15 * MINUTE_MS ? `Museum tutup dalam ${formatCountdown(Math.max(0, closingAtMs - clock.nowMs))}`
           : `Rencana ${formatCountdown(clock.remainingMs ?? 0)} · tutup ${closingTimeLabel(closingAtMs)}`}
-        onExtendTime={options.length === 0 ? null : (): void => setRequestedPanel("extend")}
+        onExtendTime={options.length === 0 || paused ? null : (): void => setRequestedPanel("extend")}
         remainingMs={clock.remainingMs}
+        paused={paused}
+        onPause={visitEnded ? null : pauseVisit}
         routeToast={routeToast}
         onCloseRouteToast={(): void => setRouteToast(false)}
         wingsMode={wingsMode}

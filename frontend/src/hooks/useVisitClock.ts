@@ -8,7 +8,13 @@ type VisitClock = {
 };
 
 /** Pembaruan waktu bersama; pindah layar tidak mengubah waktu mulai kunjungan yang tersimpan. */
-export function useVisitClock(startedAtMs: number | null, endsAtMs: number | null, serverOffsetMs: number): VisitClock {
+export function useVisitClock(
+  startedAtMs: number | null,
+  endsAtMs: number | null,
+  serverOffsetMs: number,
+  /** Total waktu "Istirahat dulu" sejauh ini; batas waktu bergeser selama itu sehingga hitung mundur berhenti saat dijeda. */
+  pausedMs: number = 0,
+): VisitClock {
   const [nowMs, setNowMs] = useState<number>(Date.now);
   useEffect((): (() => void) | undefined => {
     if (startedAtMs === null) return undefined;
@@ -25,6 +31,6 @@ export function useVisitClock(startedAtMs: number | null, endsAtMs: number | nul
     nowMs: nowMs + serverOffsetMs,
     remainingMs: startedAtMs === null || endsAtMs === null
       ? null
-      : remainingVisitMs(endsAtMs, nowMs + serverOffsetMs),
+      : remainingVisitMs(endsAtMs + pausedMs, nowMs + serverOffsetMs),
   };
 }

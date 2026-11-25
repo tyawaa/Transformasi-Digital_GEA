@@ -88,7 +88,7 @@ export function LocationFailedSplash(
               Cek ulang lokasi
             </GeaText>
           </Pressable>
-          <Pressable accessibilityRole="button" onPress={onScanQr} style={styles.stretch}>
+          <Pressable accessibilityRole="button" onPress={onScanQr} style={styles.linkWrap}>
             <GeaText variant="button16" color={colors.white} style={styles.text}>
               Lokasi belum tersedia? Pindai QR pintu masuk
             </GeaText>
@@ -120,6 +120,8 @@ const styles = StyleSheet.create({
   body: { alignItems: "center", gap: spacing[16] },
   text: { width: 319, textAlign: "center", lineHeight: 24 },
   stretch: { alignSelf: "stretch" },
+  // Pressable penuh lebar: tanpa alignItems "center", teks lebarnya 319 malah menempel di kiri.
+  linkWrap: { alignSelf: "stretch", alignItems: "center" },
   outline: {
     alignSelf: "stretch",
     alignItems: "center",

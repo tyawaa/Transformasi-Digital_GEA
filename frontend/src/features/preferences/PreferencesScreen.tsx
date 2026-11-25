@@ -1,3 +1,4 @@
+import { Image } from "expo-image";
 import { type ReactElement, useEffect, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Toast } from "../../design/Toast";
@@ -10,6 +11,8 @@ import { ageOptions, topics } from "./recommend";
 import { durationOptions } from "./visitTiming";
 import type { Preferences } from "./usePreferences";
 import { type ExploreMode, readExploreMode, saveExploreMode } from "../eyesfree/mode";
+
+const headerTexture: number = require("../../../assets/design/preferences-header-texture.svg") as number;
 
 // Figma "Preferensi - Usia / Waktu / Minat".
 type Question = {
@@ -130,6 +133,7 @@ export function PreferencesScreen(
     <FrameStage background={colors.primary[300]}>
       <StoryBackground />
       <View style={styles.header}>
+        <Image accessible={false} source={headerTexture} style={StyleSheet.absoluteFill} contentFit="fill" />
         <GeaText variant="display42" color={colors.secondaryGreen[100]} style={[styles.center, styles.upper]}>
           {question.title}
         </GeaText>
@@ -196,7 +200,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary[900],
   },
   center: { textAlign: "center" },
-  upper: { textTransform: "uppercase", fontSize: 36, lineHeight: 36 },
+  // lineHeight > fontSize: sama dengan fontSize memotong huruf Ellak di iOS.
+  upper: { textTransform: "uppercase", fontSize: 36, lineHeight: 44 },
   list: { position: "absolute", left: 16, width: 358, gap: 12 },
   option: {
     height: 72,

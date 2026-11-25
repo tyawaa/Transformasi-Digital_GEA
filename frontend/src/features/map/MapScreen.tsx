@@ -47,6 +47,9 @@ type Props = {
   readonly onExtendTime: (() => void) | null;
   readonly onBack: () => void;
   readonly remainingMs: number | null;
+  /** "Istirahat dulu": menjeda hitung mundur rencana kunjungan di layar ini. */
+  readonly paused: boolean;
+  readonly onPause: (() => void) | null;
   /** Tampilkan toast "Rute Untuk Anda" (baru masuk dari peta awal). */
   readonly routeToast?: boolean;
   readonly onCloseRouteToast?: () => void;
@@ -222,6 +225,12 @@ export function MapScreen(props: Props): ReactElement {
         <GeaText variant="caption12" color={colors.primary[900]} style={styles.flex}>{props.visitTimeLabel}</GeaText>
         {props.onExtendTime !== null && <Pressable accessibilityRole="button" accessibilityLabel="Tambah waktu kunjungan"
           onPress={props.onExtendTime}><GeaText variant="body14" color={colors.primary[900]}>Tambah waktu</GeaText></Pressable>}
+        {/* Lanjutkan dilakukan lewat sheet "Dijeda" (lihat VisitSheet), bukan di sini: pengunjung tidak bisa diam-diam menutupnya. */}
+        {!props.paused && props.onPause !== null && (
+          <Pressable accessibilityRole="button" accessibilityLabel="Istirahat dulu, jeda hitung mundur kunjungan" onPress={props.onPause}>
+            <GeaText variant="body14" color={colors.primary[900]}>Istirahat dulu</GeaText>
+          </Pressable>
+        )}
       </View>}
       {props.hasVisit && <View style={styles.signal}>
         <Pressable accessibilityRole="button" accessibilityLabel={`${signal}. Periksa lokasi`}
@@ -230,6 +239,7 @@ export function MapScreen(props: Props): ReactElement {
         </Pressable>
       </View>}
       <View style={styles.card}>
+      <View style={styles.cardInner}>
         <View style={styles.sheetHandle} />
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.cardContent}>
         {props.loading ? (
@@ -294,6 +304,7 @@ export function MapScreen(props: Props): ReactElement {
           </>
         )}
         </ScrollView>
+      </View>
       </View>
       <Modal visible={routeOpen} transparent animationType="slide" onRequestClose={(): void => setRouteOpen(false)}>
         <FrameStage background="rgba(31, 26, 22, 0.45)">
@@ -432,7 +443,9 @@ const styles = StyleSheet.create({
   eyesFreeOn: { backgroundColor: colors.primary[800] },
   signal: { position: "absolute", left: 16, top: 446, maxWidth: 300, height: 30, borderRadius: 20, paddingHorizontal: 12, backgroundColor: colors.secondaryYellow[0] },
   signalContent: { flex: 1, justifyContent: "center" },
-  card: { position: "absolute", top: CARD_TOP, bottom: 0, left: 0, width: 390, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: "hidden", backgroundColor: colors.secondaryYellow[0] },
+  // overflow:hidden (sudut membulat) juga memotong boxShadow, jadi bayangan dipisah ke pembungkus luar.
+  card: { position: "absolute", top: CARD_TOP, bottom: 0, left: 0, width: 390, borderTopLeftRadius: 24, borderTopRightRadius: 24, boxShadow: "0px -4px 16px 0px rgba(0, 0, 0, 0.18)" },
+  cardInner: { flex: 1, overflow: "hidden", borderTopLeftRadius: 24, borderTopRightRadius: 24, backgroundColor: colors.secondaryYellow[0] },
   sheetHandle: { alignSelf: "center", width: 40, height: 4, borderRadius: 2, marginTop: 10, marginBottom: 14, backgroundColor: colors.primary[200] },
   cardContent: { paddingHorizontal: 16, paddingBottom: 24, gap: 16 },
   guidance: { minHeight: 74, borderRadius: 12, paddingHorizontal: 20, paddingVertical: 12, flexDirection: "row", alignItems: "center", gap: 20, backgroundColor: colors.secondaryGreen[100] },
