@@ -49,6 +49,8 @@ type Props = {
   readonly loading: boolean;
   readonly error: string | null;
   readonly hasVisit: boolean;
+  /** id_sesi kunjungan; audio otomatis tiap POI diputar sekali per kunjungan. */
+  readonly visitId: string | null;
   readonly totalPoints: number;
   readonly completedCount: number;
   readonly zoneIntro: ZoneInfo | null;
@@ -118,7 +120,7 @@ export function MapScreen(props: Props): ReactElement {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [destinationCodes, props.pois, props.profile]);
   const eyesFree = useEyesFree({
-    visitId: props.hasVisit ? "visit" : null, stops: eyesFreeStops, targets: eyesFreeTargets, fix: props.userFix,
+    visitId: props.visitId, stops: eyesFreeStops, targets: eyesFreeTargets, fix: props.userFix,
   });
   const searchPois: readonly MuseumPoi[] = useMemo((): readonly MuseumPoi[] => props.pois
     .map((poi: MapPoi): MuseumPoi => poi.museum)

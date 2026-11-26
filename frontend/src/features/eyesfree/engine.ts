@@ -5,6 +5,7 @@ import { type AudioPlayer, createAudioPlayer, setAudioModeAsync } from "expo-aud
 import { Vibration } from "react-native";
 import { ARRIVAL_VIBRATION, type Guidance, GUIDANCE_VIBRATION, shouldAnnounce } from "../../domain/eyesFree";
 import { distanceMeters, type Fix, ACCURACY_LIMIT_METERS } from "../../domain/geofence";
+import { claimAudio, releaseAudio } from "../../services/audioFocus";
 
 export type EyesFreeTarget = {
   readonly code: string;
@@ -17,6 +18,10 @@ export type EyesFreeTarget = {
 };
 
 let enabled = false;
+/** true saat peta tidak tampil (cerita/quest dibuka): audio otomatis ditahan. */
+let suspended = false;
+let visit: string | null = null;
+const AUDIO_ID: unique symbol = Symbol("eyes-free");
 let targets: readonly EyesFreeTarget[] = [];
 let stops: readonly EyesFreeTarget[] = [];
 let arrived: ReadonlySet<string> = new Set();
@@ -26,12 +31,14 @@ let player: AudioPlayer | null = null;
 function stopNarration(): void {
   player?.remove();
   player = null;
+  releaseAudio(AUDIO_ID);
 }
 
 function narrate(target: EyesFreeTarget): void {
   stopNarration();
   Vibration.vibrate([...ARRIVAL_VIBRATION]);
   if (target.recording === undefined) return;
+  claimAudio(AUDIO_ID, stopNarration);
   player = createAudioPlayer(target.recording);
   player.play();
 }
@@ -59,18 +66,34 @@ export function setEyesFreeStops(next: readonly EyesFreeTarget[]): void {
   stops = next;
 }
 
-/** Kunjungan baru: semua POI bisa diumumkan lagi. */
-export function resetEyesFreeVisit(): void {
+/** Kunjungan baru: semua POI bisa diumumkan lagi. Kembali ke peta di kunjungan yang sama tidak mengulang. */
+export function resetEyesFreeVisit(visitId: string | null): void {
+  if (visitId === visit) return;
+  visit = visitId;
   arrived = new Set();
   lastGuidance = null;
 }
 
+/** Cerita POI ini sudah dibuka di layar, jadi rekamannya tidak diputar otomatis lagi di kunjungan ini. */
+export function markEyesFreeHeard(poiCode: string): void {
+  arrived = new Set([...arrived, poiCode]);
+}
+
+/** Cerita atau quest dibuka: audio otomatis dihentikan dan ditahan sampai kembali ke peta. */
+export function setEyesFreeSuspended(value: boolean): void {
+  suspended = value;
+  if (value) stopNarration();
+}
+
 export function handleEyesFreeFix(fix: Fix, nowMs: number = Date.now()): void {
-  if (!enabled || !Number.isFinite(fix.accuracyMeters) || fix.accuracyMeters > ACCURACY_LIMIT_METERS) return;
-  // Radius POI saling tumpang tindih, jadi yang diumumkan POI terdekat.
-  const arrival: EyesFreeTarget | undefined = [...stops, ...targets]
-    .filter((target: EyesFreeTarget): boolean => !arrived.has(target.code) && distanceMeters(fix, target) <= target.radiusMeters)
+  if (!enabled || suspended || !Number.isFinite(fix.accuracyMeters) || fix.accuracyMeters > ACCURACY_LIMIT_METERS) return;
+  // Radius POI saling tumpang tindih: hanya POI terdekat yang dihitung. Bila POI terdekat sudah
+  // diputar, POI tetangga yang radiusnya ikut kena tidak ikut diputar.
+  const nearest: EyesFreeTarget | undefined = [...stops, ...targets]
+    .filter((target: EyesFreeTarget): boolean => distanceMeters(fix, target) <= target.radiusMeters)
     .sort((a: EyesFreeTarget, b: EyesFreeTarget): number => distanceMeters(fix, a) - distanceMeters(fix, b))[0];
+  if (nearest !== undefined && arrived.has(nearest.code)) return;
+  const arrival: EyesFreeTarget | undefined = nearest;
   if (arrival !== undefined) {
     arrived = new Set([...arrived, arrival.code]);
     lastGuidance = null;

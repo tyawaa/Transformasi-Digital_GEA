@@ -568,6 +568,7 @@ function Home(): ReactElement {
           ? "Data koleksi belum tersedia di server. Hubungi tim untuk mengisi data POI."
           : null)}
         hasVisit={visit !== null}
+        visitId={visit?.id_sesi ?? null}
         totalPoints={points}
         completedCount={mapPois.filter((poi: MapPoi): boolean => poi.id !== null && poi.status === "selesai").length}
         zoneIntro={cardZone ?? qrZoneIntro}

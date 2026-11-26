@@ -28,6 +28,8 @@ import { type StoriesSource } from "../../../services/stories";
 import { museumPoiById, type StoryContent } from "../../../data/museum";
 import { storyRecording } from "../../../data/poiAudio";
 import { audioSource } from "../../../services/media";
+import { stopAllAudio } from "../../../services/audioFocus";
+import { markEyesFreeHeard } from "../../eyesfree/engine";
 import { SceneLayer } from "../../onboarding/scene";
 import { type ParsedQr, qrErrorMessage } from "../../qr/qrPayload";
 import type { PoiProgress } from "../progress";
@@ -103,6 +105,11 @@ type Reward = { readonly id: number; readonly points: number; readonly labels: r
 /** Alur cerita + notifikasi poin kecil di atas layar. */
 export function StoryFlow(props: Props): ReactElement {
   const [reward, setReward] = useState<Reward | null>(null);
+  // Masuk atau keluar cerita: audio yang masih bunyi (mis. audio otomatis di peta) dihentikan.
+  useEffect((): (() => void) => {
+    stopAllAudio();
+    return stopAllAudio;
+  }, []);
   // Ukuran pil mengikuti skala frame 390 × 844 seperti layar lain.
   const { width, height } = useWindowDimensions();
   const scale: number = Math.min(width / 390, height / FRAME_H);
@@ -360,6 +367,7 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
   // Data lokal: konten anak dan quest dari sheet (questPlan memakai data lokal di semua mode); judul, fakta,
   // foto kedua, dan koleksi utamanya dari backend (description), data lokal hanya cadangan mode mock.
   const museumPoi = museumPoiById(poi.id_poi);
+  if (museumPoi !== undefined) markEyesFreeHeard(museumPoi.code);
   const local: StoryContent | null = source.kind === "mock" ? museumPoi?.content ?? null : null;
   const secondPhoto: string = description.secondPhotoUrl;
   // Halaman ke-2 isi cerita ("Story Isi 2"): kartu koleksi yang disorot + fakta menarik.

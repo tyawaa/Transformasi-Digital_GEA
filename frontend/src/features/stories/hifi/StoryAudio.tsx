@@ -1,8 +1,9 @@
 import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
-import { type ReactElement, useEffect, useState } from "react";
+import { type ReactElement, useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { colors } from "../../../design/tokens";
 import { GeaText } from "../../../design/typography";
+import { claimAudio, releaseAudio } from "../../../services/audioFocus";
 import { StoryButton } from "./parts";
 
 function clock(seconds: number): string {
@@ -20,6 +21,17 @@ export function StoryAudio(
   const player = useAudioPlayer(source);
   const status = useAudioPlayerStatus(player);
   const [error, setError] = useState<string | null>(null);
+  const id = useRef<symbol>(Symbol("story-audio")).current;
+
+  // Keluar dari narasi/cerita: audio berhenti, tidak terus bunyi di layar lain.
+  useEffect((): (() => void) => (): void => {
+    releaseAudio(id);
+    try {
+      player.pause();
+    } catch {
+      // Pemutar sudah dilepas expo-audio.
+    }
+  }, [id, player]);
 
   useEffect((): void => {
     setAudioModeAsync({ playsInSilentMode: true }).catch((cause: unknown): void => {
@@ -41,6 +53,7 @@ export function StoryAudio(
         return;
       }
       if (action === "restart" || atEnd) await player.seekTo(0);
+      claimAudio(id, (): void => player.pause());
       player.play();
     } catch (cause: unknown) {
       setError("Narasi belum bisa diputar. Coba lagi.");

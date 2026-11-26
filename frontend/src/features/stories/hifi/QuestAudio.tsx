@@ -1,10 +1,11 @@
 // Tombol putar rekaman instruksi quest (voice over kelompok) di layar quest.
 import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import { Image } from "expo-image";
-import { type ReactElement, useEffect } from "react";
+import { type ReactElement, useEffect, useRef } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { colors, radius, spacing } from "../../../design/tokens";
 import { GeaText } from "../../../design/typography";
+import { claimAudio, releaseAudio } from "../../../services/audioFocus";
 
 const speakerIcon = require("../../../../assets/design/icon-speaker.svg") as number;
 
@@ -16,6 +17,16 @@ function clock(seconds: number): string {
 export function QuestAudio({ source }: { readonly source: number }): ReactElement {
   const player = useAudioPlayer(source);
   const status = useAudioPlayerStatus(player);
+  const id = useRef<symbol>(Symbol("quest-audio")).current;
+
+  useEffect((): (() => void) => (): void => {
+    releaseAudio(id);
+    try {
+      player.pause();
+    } catch {
+      // Pemutar sudah dilepas expo-audio.
+    }
+  }, [id, player]);
 
   useEffect((): void => {
     setAudioModeAsync({ playsInSilentMode: true }).catch((cause: unknown): void => {
@@ -33,6 +44,7 @@ export function QuestAudio({ source }: { readonly source: number }): ReactElemen
       return;
     }
     if (atEnd) void player.seekTo(0);
+    claimAudio(id, (): void => player.pause());
     player.play();
   }
 
