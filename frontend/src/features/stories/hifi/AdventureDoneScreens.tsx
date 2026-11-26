@@ -55,10 +55,12 @@ function formatPoints(points: number, language: Language): string {
 }
 
 export function WellDoneScreen(
-  { summary, onShare, onHome }: {
+  { summary, onShare, onHome, onNewSession }: {
     readonly summary: AdventureSummary;
     readonly onShare: () => void;
     readonly onHome: () => void;
+    /** Mulai kunjungan baru: rute, waktu, progres POI, dan audio direset. */
+    readonly onNewSession?: (() => void) | undefined;
   },
 ): ReactElement {
   const { language, t } = useLanguage();
@@ -122,6 +124,13 @@ export function WellDoneScreen(
           >
             <GeaText variant="button16" color={colors.primary[800]}>{t("Kembali ke Halaman Utama", "Back to Home")}</GeaText>
           </Pressable>
+          {onNewSession !== undefined && <Pressable
+            accessibilityRole="button"
+            onPress={onNewSession}
+            style={({ pressed }) => [done.secondary, pressed && done.pressed]}
+          >
+            <GeaText variant="button16" color={colors.primary[800]}>{t("Mulai Kunjungan Baru", "Start a New Visit")}</GeaText>
+          </Pressable>}
         </View>
       </View>
     </FrameStage>

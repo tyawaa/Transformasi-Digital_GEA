@@ -69,6 +69,8 @@ type VisitSessionState = {
   readonly checkConnection: () => Promise<void>;
   readonly checkLocation: () => Promise<void>;
   readonly useEntranceQr: (token: string) => Promise<void>;
+  /** Sesi baru: lupakan kunjungan, keputusan lokasi, dan pemberitahuan sesi sebelumnya. */
+  readonly reset: () => void;
 };
 
 export function useVisitSession(
@@ -180,6 +182,13 @@ export function useVisitSession(
   function closeScanner(): void {
     setScannerOpen(false);
   }
+  function reset(): void {
+    setVisit(null);
+    setDecision(null);
+    setNotice(null);
+    setScannerOpen(false);
+    setLocationIssue(null);
+  }
   return {
     notice: notice === null ? null : { title: localizeCopy(notice.title, language), description: localizeCopy(notice.description, language) },
     decision,
@@ -194,5 +203,6 @@ export function useVisitSession(
     checkConnection,
     checkLocation,
     useEntranceQr,
+    reset,
   };
 }

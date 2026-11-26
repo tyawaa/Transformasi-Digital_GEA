@@ -45,6 +45,7 @@ import { useAuthRefresh } from "./src/hooks/useAuthRefresh";
 import { useVisitSession } from "./src/hooks/useVisitSession";
 import { useGeofence } from "./src/hooks/useGeofence";
 import { useVisitClock } from "./src/hooks/useVisitClock";
+import { stopEyesFreeNarration } from "./src/features/eyesfree/engine";
 import type { Checkpoint, Fix } from "./src/domain/geofence";
 import type { GpsTest } from "./src/features/map/MapScreen";
 import { MOCK_ENTRANCE_QR, MOCK_ENTRANCE_TOKEN, mockPoiQr, mockZoneToken } from "./src/mocks/stories";
@@ -462,6 +463,30 @@ function Home(): ReactElement {
       </View>
     );
   }
+  /**
+   * DF-06 Sesi baru: kunjungan lama selesai, mulai lagi dari peta awal. Rute dan waktu dihitung ulang
+   * dari sesi baru; progres POI, poin, lencana sesi lama dihapus dari perangkat; audio dihentikan.
+   */
+  function startNewSession(): void {
+    stopEyesFreeNarration();
+    visitState.endVisit();
+    session.reset();
+    geofence.simulate(null);
+    setScreen({ name: "map" });
+    setRequestedPanel(null);
+    setRecommendedCode(null);
+    setClosedAcknowledged(false);
+    setMapDestination("pois");
+    setDemoOffsetMs(0);
+    setPlanError(null);
+    setRouteToast(false);
+    setQrZoneIntro(null);
+    setScanMessage(null);
+    setScanNotice(null);
+    setLocationSplash(null);
+    clearError();
+  }
+
   function closeLocationSplash(): void {
     setLocationSplash(null);
     if (onboarding.state === "show") onboarding.complete();
@@ -617,6 +642,7 @@ function Home(): ReactElement {
           summary={adventure}
           onShare={(): void => setScreen({ name: "share" })}
           onHome={(): void => setScreen({ name: "map" })}
+          onNewSession={visitEnded ? startNewSession : undefined}
         />
       </>
     );
@@ -731,6 +757,7 @@ function Home(): ReactElement {
           }
         }}
         onOpenSummary={(): void => { if (visitEnded) setScreen({ name: "summary" }); else setRequestedPanel("finish"); }}
+        onNewSession={visitEnded ? startNewSession : undefined}
         onOpenBadges={(): void => setScreen({ name: "progress" })}
         onOpenPoi={(poiId: string): void => setScreen({ name: "story", poiId, token: null })}
         userFix={geofence.fix}

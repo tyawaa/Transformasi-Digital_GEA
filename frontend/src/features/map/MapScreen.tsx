@@ -77,6 +77,8 @@ type Props = {
   readonly onCheckLocation: () => void;
   readonly onRetry: () => void;
   readonly onOpenSummary?: () => void;
+  /** Kunjungan selesai: mulai sesi baru dari peta awal. */
+  readonly onNewSession?: (() => void) | undefined;
   readonly onOpenBadges: () => void;
   /** Membuka alur verifikasi geofence POI sebelum mengakses cerita. */
   readonly onOpenPoi: (id: string) => void;
@@ -265,7 +267,11 @@ export function MapScreen(props: Props): ReactElement {
         ) : props.visitEnded ? (
           <><GeaText variant="heading28" color={colors.primary[900]}>{t("Kunjungan sudah selesai", "Your visit has ended")}</GeaText>
             <GeaText variant="body16" color={colors.primary[800]}>{t("Terima kasih sudah menjelajah! Progres dan poin yang sudah tercatat tetap tersimpan.", "Thank you for exploring! Your recorded progress and points are saved.")}</GeaText>
-            {props.onOpenSummary !== undefined && <MapButton label={t("Lihat ringkasan kunjungan", "View visit summary")} onPress={props.onOpenSummary} />}</>
+            {props.onOpenSummary !== undefined && <MapButton label={t("Lihat ringkasan kunjungan", "View visit summary")} onPress={props.onOpenSummary} />}
+            {props.onNewSession !== undefined && <Pressable accessibilityRole="button" onPress={props.onNewSession}
+              style={({ pressed }) => [styles.outlineButton, pressed && styles.dim]}>
+              <GeaText variant="bold16" color={colors.primary[800]}>{t("Mulai kunjungan baru", "Start a new visit")}</GeaText>
+            </Pressable>}</>
         ) : !props.hasVisit ? (
           <StartMap checkingLocation={props.checkingLocation} onScan={props.onScan} onCheckLocation={props.onCheckLocation} notice={props.notice?.description ?? null} />
         ) : (
@@ -492,6 +498,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 10 },
   poiCode: { width: 44, height: 44, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: colors.primary[0] },
   button: { alignSelf: "stretch", alignItems: "center", minHeight: 48, justifyContent: "center", paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, backgroundColor: colors.primary[800] },
+  outlineButton: { alignSelf: "stretch", alignItems: "center", minHeight: 48, justifyContent: "center", paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, borderWidth: 2, borderColor: colors.primary[800] },
   dim: { opacity: 0.6 },
   actions: { flexDirection: "row", alignItems: "stretch", gap: 8 },
   actionButton: { flex: 1, minHeight: 72, paddingVertical: 6, paddingHorizontal: 4, borderRadius: 12, alignItems: "center", justifyContent: "center", gap: 4, boxShadow: shadows.card },
