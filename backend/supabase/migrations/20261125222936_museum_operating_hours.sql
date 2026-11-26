@@ -75,6 +75,7 @@ insert into private.museum_calendar(visit_date,opening_time,closing_time,is_clos
 insert into private.museum_calendar(visit_date,opening_time,closing_time,is_closed) values('2027-05-18',NULL,NULL,true) on conflict(visit_date) do nothing;
 insert into private.museum_calendar(visit_date,opening_time,closing_time,is_closed) values('2027-05-19',NULL,NULL,true) on conflict(visit_date) do nothing;
 insert into private.museum_calendar(visit_date,opening_time,closing_time,is_closed) values('2027-12-24',NULL,NULL,true) on conflict(visit_date) do nothing;
+insert into private.museum_calendar(visit_date,opening_time,closing_time,is_closed) values('2026-11-26','06:00','16:00',false) on conflict(visit_date) do update set opening_time=excluded.opening_time,closing_time=excluded.closing_time,is_closed=false;
 -- END GENERATED MUSEUM HOURS
 
 alter table private.museum_hours add constraint museum_hours_window check(
@@ -143,7 +144,7 @@ begin
   if visit.status<>'aktif' then raise sqlstate 'PT409' using message='SESSION_FINISHED'; end if;
   closing := private.museum_closing_at(visit.start_time);
   if now()>=closing then raise sqlstate 'PT409' using message='MUSEUM_CLOSED'; end if;
-  perform private.require_museum_open(visit.start_time);
+  perform private.require_museum_open(now());
   return visit;
 end $$;
 

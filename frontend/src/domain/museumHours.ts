@@ -18,6 +18,13 @@ export function museumDayAt(atMs: number): MuseumDay {
   const year: number = day.getUTCFullYear();
   if (!schedule.calendarYears.includes(year)) throw new RangeError(`Kalender museum tahun ${year} belum tersedia. Hubungi petugas museum.`);
   const date: string = day.toISOString().slice(0, 10);
+  const override = schedule.overrides.find((entry): boolean => entry.date === date);
+  if (override !== undefined) return {
+    date,
+    openingAtMs: Date.parse(`${date}T${override.openingTime}:00+07:00`),
+    closingAtMs: Date.parse(`${date}T${override.closingTime}:00+07:00`),
+    closed: false,
+  };
   const hours = schedule.weekly.find((entry): boolean => entry.weekday === day.getUTCDay());
   if (hours === undefined) throw new RangeError(`Jadwal museum tidak tersedia: date=${date}`);
   const closed: boolean = hours.openingTime === null || hours.closingTime === null ||
@@ -34,7 +41,7 @@ export function museumDayAt(atMs: number): MuseumDay {
   };
 }
 
-/** Batas masuk inklusif pukul 09.00, batas tutup eksklusif, selalu memakai tanggal museum di WIB. */
+/** Batas masuk mengikuti jam buka hari itu secara inklusif; batas tutup eksklusif, tanggal selalu WIB. */
 export function museumAccessAt(atMs: number): MuseumAccess {
   const day: MuseumDay = museumDayAt(atMs);
   if (day.closed) return "closed_day";

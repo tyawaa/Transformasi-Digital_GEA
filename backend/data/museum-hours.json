@@ -7,6 +7,9 @@
     "https://setneg.go.id/baca/index/inilah_skb_3_menteri_libur_nasional_dan_cuti_bersama_2027"
   ],
   "calendarYears": [2026, 2027],
+  "overrides": [
+    { "date": "2026-11-26", "openingTime": "06:00", "closingTime": "16:00", "reason": "Jam buka sementara untuk pengujian pengguna" }
+  ],
   "weekly": [
     { "weekday": 0, "openingTime": "09:00", "closingTime": "14:00" },
     { "weekday": 1, "openingTime": "09:00", "closingTime": "16:00" },

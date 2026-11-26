@@ -668,7 +668,9 @@ Deno.test("integrasi SQL: migrasi, enam POI, hak akses, QR, jawaban, idempotensi
           `update public.sesi_kunjungan set personalization=null,planned_end_at=null,start_time='${visitDate}T17:00:00+07:00' where id_sesi=$1`,
           [visitId],
         );
-        await rejects(savePlan(userId, preferences), /MUSEUM_CLOSED/);
+        const expired: JsonObject = await savePlan(userId, preferences);
+        deepStrictEqual(expired.route_codes, []);
+        equal(Date.parse(String(expired.planned_end_at)), Date.parse(`${visitDate}T16:00:00+07:00`));
       } finally {
         await database.exec("rollback");
       }

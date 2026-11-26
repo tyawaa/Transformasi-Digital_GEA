@@ -46,7 +46,7 @@ export class GeaServiceError extends Error {
 /** Cegah kunjungan dan aktivitas lokal di luar jadwal yang ikut dibundel dalam APK. */
 export function requireMuseumOpen(atMs: number): void {
   const access: MuseumAccess = museumAccessAt(atMs);
-  if (access === "before_opening") throw new GeaServiceError(403, "MUSEUM_NOT_OPEN", "Museum belum buka. Jam kunjungan dimulai pukul 09.00 WIB.");
+  if (access === "before_opening") throw new GeaServiceError(403, "MUSEUM_NOT_OPEN", "Museum belum buka. Silakan mulai kunjungan pada jam operasional.");
   if (access === "closed_day") throw new GeaServiceError(403, "MUSEUM_CLOSED_DAY", "Museum tutup pada hari Jumat, libur nasional, dan cuti bersama.");
   if (access === "after_closing") throw new GeaServiceError(403, "MUSEUM_CLOSED", "Museum sudah tutup. Silakan berkunjung pada jam operasional.");
 }
@@ -370,7 +370,7 @@ export class GeaApi {
 export function readableError(error: unknown): string {
   if (error instanceof GeaServiceError) {
     if (error.code === "MUSEUM_CLOSED") return "Museum sudah tutup. Silakan berkunjung pada jam operasional.";
-    if (error.code === "MUSEUM_NOT_OPEN") return "Museum belum buka. Jam kunjungan dimulai pukul 09.00 WIB.";
+    if (error.code === "MUSEUM_NOT_OPEN") return "Museum belum buka. Silakan mulai kunjungan pada jam operasional.";
     if (error.code === "MUSEUM_CLOSED_DAY") return "Museum tutup pada hari Jumat, libur nasional, dan cuti bersama.";
     if (error.code === "SESSION_FINISHED") return "Kunjungan ini sudah selesai dan tidak dapat dilanjutkan kembali.";
     if (error.code === "VISIT_EXTENSION_TOO_LATE") return "Waktu tambahan sudah tidak cukup sebelum museum tutup. Kembali ke peta untuk bersiap keluar.";

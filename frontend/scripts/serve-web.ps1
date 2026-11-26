@@ -17,4 +17,5 @@ if (-not $NoBuild -or -not (Test-Path "dist/web/index.html")) {
 
 Write-Host ""
 Write-Host "Buka http://localhost:$Port di browser. Tekan Ctrl+C untuk berhenti."
-& python -m http.server $Port --directory dist/web
+& python scripts/serve-preview.py --port $Port --bind 127.0.0.1 --directory (Join-Path $root "dist/web")
+if ($LASTEXITCODE -ne 0) { throw "Server web gagal. Periksa apakah port $Port sedang dipakai." }
