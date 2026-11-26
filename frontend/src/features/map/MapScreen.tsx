@@ -6,9 +6,8 @@ import { AnimatedNotification } from "../../design/AnimatedNotification";
 import { colors, shadows } from "../../design/tokens";
 import { GeaText } from "../../design/typography";
 import type { MuseumPoi, ZoneInfo } from "../../data/museum";
-import { storyRecording } from "../../data/poiAudio";
 import { localizeCopy, localizedGpsTestLabel, localizedPoiName } from "../../data/localizedCopy";
-import type { Profile } from "../../domain/contracts";
+import { hasReachedDestination } from "../../domain/eyesFree";
 import { distanceMeters, type Fix } from "../../domain/geofence";
 import type { PoiStatus } from "../../domain/points";
 import type { GeofenceStatus } from "../../hooks/useGeofence";
@@ -82,8 +81,6 @@ type Props = {
   readonly onOpenPoi: (id: string) => void;
   readonly userFix: Fix | null;
   readonly route: Route | null;
-  /** Profil pengunjung, untuk memilih rekaman cerita umum/anak di mode tanpa layar. */
-  readonly profile: Profile;
 };
 
 const CARD_TOP: number = 486;
@@ -138,24 +135,15 @@ export function MapScreen(props: Props): ReactElement {
     const codes: readonly string[] = remaining.map((poi: MapPoi): string => poi.museum.code);
     return target === null || target.id === null ? codes : [target.museum.code, ...codes.filter((code: string): boolean => code !== target.museum.code)];
   }, [remaining, target, navigationStopped, props.visitEnded, props.destination]);
-  const eyesFreeStop = (poi: MapPoi): EyesFreeTarget => ({
-    code: poi.museum.code, name: poi.museum.name, latitude: poi.museum.latitude, longitude: poi.museum.longitude,
-    radiusMeters: poi.museum.radiusMeters, recording: storyRecording(poi.museum.code, props.profile, language),
-  });
-  const eyesFreeStops: readonly EyesFreeTarget[] = useMemo((): readonly EyesFreeTarget[] => props.pois
-    .filter((poi: MapPoi): boolean => poi.id !== null && (props.wingsMode === "both" || poi.museum.wing === "left"))
-    .map(eyesFreeStop),
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  [props.pois, props.wingsMode, props.profile, language]);
-  const eyesFreeTargets: readonly EyesFreeTarget[] = useMemo((): readonly EyesFreeTarget[] => destinationCodes.flatMap((code: string): readonly EyesFreeTarget[] => {
-    const poi: MapPoi | undefined = props.pois.find((item: MapPoi): boolean => item.museum.code === code);
-    return poi === undefined ? [] : [eyesFreeStop(poi)];
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [destinationCodes, props.pois, props.profile, language]);
+  const eyesFreeTarget = useMemo((): EyesFreeTarget | null => {
+    if (navigationStopped || target === null || target.id === null) return null;
+    const { code, latitude, longitude } = target.museum;
+    return { code, latitude, longitude };
+  }, [navigationStopped, target]);
   const eyesFree = useEyesFree({
     language,
     visitId: props.hasVisit && !props.visitEnded && props.destination === "pois" ? "visit" : null,
-    stops: props.visitEnded || props.destination === "exit" ? [] : eyesFreeStops, targets: eyesFreeTargets, fix: props.userFix,
+    target: eyesFreeTarget, fix: props.userFix,
   });
   const legs: readonly RouteLeg[] = useMemo((): readonly RouteLeg[] => props.destination === "exit"
     ? location === null ? [] : [{ code: "EXIT", points: walkingPath(location, ENTRANCE) }]
@@ -176,7 +164,7 @@ export function MapScreen(props: Props): ReactElement {
   const directionTitle: string = navigationStopped ? t("Navigasi dihentikan", "Navigation stopped")
     : target === null ? t("Pilih tujuan di peta", "Choose a destination on the map")
     : targetDistance === null ? t("Ikuti jalur di peta", "Follow the route on the map")
-    : targetDistance < 2 ? t("Kamu dekat tujuan", "You are near your destination")
+    : hasReachedDestination(targetDistance) ? t("Kamu dekat tujuan", "You are near your destination")
     : t(`Tujuan sekitar ${Math.round(targetDistance)} meter`, `Destination about ${Math.round(targetDistance)} meters away`);
   const timeExpired: boolean = props.remainingMs !== null && props.remainingMs === 0;
   const showRouteToast: boolean = props.routeToast === true && props.hasVisit && routeCount > 0;
@@ -449,9 +437,9 @@ function NavigationAction({ label, icon, background, disabled, onPress }: {
 }
 
 function eyesFreeNote(background: BackgroundResult | null, language: "id" | "en"): string {
-  if (background === "running") return language === "en" ? "Stories play automatically when you arrive. You can lock your screen." : "Rekaman cerita diputar saat tiba, layar boleh dikunci";
+  if (background === "running") return language === "en" ? "Your phone vibrates when you arrive, even with the screen locked." : "HP bergetar saat tiba, termasuk saat layar terkunci.";
   if (background === "denied") return language === "en" ? "Allow background location to keep guidance running with your screen locked." : "Izinkan lokasi \"Selalu\" agar jalan saat layar terkunci";
-  return language === "en" ? "Stories play automatically when you arrive while the app stays open." : "Rekaman cerita diputar saat tiba selama app terbuka";
+  return language === "en" ? "Your device can vibrate when you arrive while the app stays open." : "Perangkat bisa bergetar saat tiba selama aplikasi terbuka.";
 }
 
 function MapButton({ label, onPress }: { readonly label: string; readonly onPress: () => void }): ReactElement {

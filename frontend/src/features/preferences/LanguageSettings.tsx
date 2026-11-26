@@ -5,7 +5,6 @@ import Svg, { Path } from "react-native-svg";
 import { colors, shadows } from "../../design/tokens";
 import { GeaText } from "../../design/typography";
 import type { Language } from "../../domain/contracts";
-import { stopEyesFreeNarration } from "../eyesfree/engine";
 
 const storageKey = "gea.language.v1";
 const options = [
@@ -62,7 +61,6 @@ export function LanguageSettingsProvider({ children }: { readonly children: Reac
     setSaving(true);
     setError(null);
     void AsyncStorage.setItem(storageKey, value).then((): void => {
-      if (value !== language) stopEyesFreeNarration();
       setLanguage(value);
     }).catch((cause: unknown): void => {
       console.error("gea_language_save_failed", { key: storageKey, language: value, error: cause instanceof Error ? cause.message : String(cause) });

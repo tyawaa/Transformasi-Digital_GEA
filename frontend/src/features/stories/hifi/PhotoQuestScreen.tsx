@@ -10,15 +10,16 @@ import { readableError } from "../../../services/api";
 import { type CapturedPhoto, prepareCapturedPhoto } from "../../../services/photo";
 import { StoryBackground } from "./backgrounds";
 import { BackButton, FrameStage, StoryButton } from "./parts";
-import { QuestAudio } from "./QuestAudio";
+import { AudioControls } from "./StoryAudio";
 import { useLanguage } from "../../preferences/LanguageSettings";
 
 type PhotoRequest = { readonly requestId: string; readonly photo: CapturedPhoto };
 
 /** Kamera quest: model APK memeriksa foto di perangkat; hasil tak pasti tanpa penalti. */
-export function PhotoQuestScreen({ quest, recording, submit, onBack }: {
+export function PhotoQuestScreen({ quest, recording, eyesFree, submit, onBack }: {
   readonly quest: Quest;
   readonly recording: number | undefined;
+  readonly eyesFree: boolean;
   readonly submit: (requestId: string, photo: CapturedPhoto) => Promise<AnswerResult>;
   readonly onBack: () => void;
 }): ReactElement {
@@ -77,7 +78,7 @@ export function PhotoQuestScreen({ quest, recording, submit, onBack }: {
           <GeaText variant="heading24" color={colors.secondaryGreen[900]}>{quest.title ?? quest.instruksi}</GeaText>
           <GeaText variant="body16" color={componentColors.bodyDark}>{quest.pertanyaan}</GeaText>
           {quest.target_foto && <GeaText variant="body14" color={componentColors.bodyDark}>{t("Yang harus terlihat", "What to photograph")}: {quest.target_foto}</GeaText>}
-          {recording !== undefined ? <QuestAudio key={recording} source={recording} /> : language === "en" &&
+          {recording !== undefined ? <AudioControls key={recording} source={recording} autoPlay={eyesFree} /> : language === "en" &&
             <GeaText variant="caption12" color={componentColors.bodyDark}>English audio unavailable.</GeaText>}
         </View>
         <View style={styles.camera}>

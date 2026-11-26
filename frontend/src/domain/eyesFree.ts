@@ -2,6 +2,10 @@
 
 export type Guidance = { readonly code: string; readonly meters: number; readonly atMs: number };
 
+export function hasReachedDestination(meters: number): boolean {
+  return meters < 2;
+}
+
 /** Batas jarak yang selalu ditandai saat dilewati. */
 const MILESTONES: readonly number[] = [20, 10];
 const REPEAT_MS = 30_000;

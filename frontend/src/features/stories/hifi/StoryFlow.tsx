@@ -39,7 +39,8 @@ import type { PoiProgress } from "../progress";
 import { isiPanelLayer, StoryBackground } from "./backgrounds";
 import { BackButton, FRAME_H, FrameStage, PauseButton, PhotoFrame, StoryButton, useFrameBleed } from "./parts";
 import { type DummyScan, ScanQrScreen, type ScanState } from "./ScanQrScreen";
-import { NarrationButton } from "./StoryAudio";
+import { AudioControls, type AudioControlsHandle, AudioToggle } from "./StoryAudio";
+import { readExploreMode } from "../../eyesfree/mode";
 import { QuestListScreen, QuestTaskScreen } from "./QuestScreens";
 import { ExplorerResultScreen, StoryFinishedScreen } from "./StoryEndScreens";
 import { type AdventureSummary, ShareResultScreen, WellDoneScreen } from "./AdventureDoneScreens";
@@ -201,6 +202,18 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
   const [paused, setPaused] = useState<boolean>(false);
   // "Aktifkan Mode Audio" dari ringkasan: narasi langsung diputar begitu tiba di Story Isi.
   const [autoPlayNarration, setAutoPlayNarration] = useState<boolean>(false);
+  const [eyesFree, setEyesFree] = useState<boolean>(false);
+  const [audioExpandedOverride, setAudioExpanded] = useState<boolean | null>(null);
+  const audioExpanded: boolean = audioExpandedOverride ?? eyesFree;
+  const audioControls = useRef<AudioControlsHandle>(null);
+
+  useEffect(() => {
+    let active = true;
+    void readExploreMode().then((mode): void => {
+      if (active) setEyesFree(mode === "tanpa-layar");
+    }).catch((cause: unknown): void => console.warn("gea_explore_mode_load_failed", cause));
+    return (): void => { active = false; };
+  }, []);
 
   // Muat ulang cerita yang sudah selesai atau masih terverifikasi.
   useEffect((): (() => void) | undefined => {
@@ -454,7 +467,7 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
   }
 
   if (step === "quest" && selectedQuest !== undefined) {
-    return <QuestTaskScreen key={selectedQuest.idQuest} quest={selectedQuest} profile={visit.profil} result={progress.quests?.[selectedQuest.idQuest]}
+    return <QuestTaskScreen key={selectedQuest.idQuest} quest={selectedQuest} profile={visit.profil} eyesFree={eyesFree} result={progress.quests?.[selectedQuest.idQuest]}
       onBack={(): void => setStep("quests")}
       submitPhoto={async (requestId: string, photo: CapturedPhoto): Promise<AnswerResult> => {
         requireQuestVerification();
@@ -530,13 +543,13 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
               {poiName}
             </GeaText>
             <GeaText variant="body16Tight" color={componentColors.cardBody} numberOfLines={3}>{description.text}</GeaText>
-            <StoryButton label={t("Mulai Cerita", "Start Story")} onPress={(): void => setStep("story")} style={styles.summaryButton} />
+            <StoryButton label={t("Mulai Cerita", "Start Story")} onPress={(): void => { setAudioExpanded(null); setAutoPlayNarration(false); setStep("story"); }} style={styles.summaryButton} />
           </View>
           {narration !== null && <Pressable
             accessibilityRole="button"
             hitSlop={8}
             style={styles.audioMode}
-            onPress={(): void => { setAutoPlayNarration(true); setStep("story"); }}
+            onPress={(): void => { setAudioExpanded(true); setAutoPlayNarration(true); setStep("story"); }}
           >
             <GeaText variant="body16" color={colors.primary[800]}>{t("Aktifkan Mode Audio", "Listen to Story")}</GeaText>
             <AudioBadge />
@@ -553,13 +566,14 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
           <SceneLayer layer={isiPanelLayer} />
           {/* Panel cokelat diperpanjang ke bawah saat cerita panjang dan halaman digulir. */}
           <View style={[styles.isiFill, span, { height: Math.max(0, ISI_TOP + isiHeight + ISI_BOTTOM - ISI_FILL_TOP) }]} />
-          {narration !== null && <NarrationButton
-            key={narration.key}
-            narration={narration}
-            autoPlay={autoPlayNarration}
-            onAutoPlayed={(): void => setAutoPlayNarration(false)}
-            suspend={paused}
+          {narration !== null && <AudioToggle
             style={styles.audioButton}
+            expanded={audioExpanded}
+            onPress={(): void => {
+              if (audioExpanded) setAutoPlayNarration(false);
+              else void audioControls.current?.play();
+              setAudioExpanded(!audioExpanded);
+            }}
           />}
           <View
             style={styles.isiContent}
@@ -569,6 +583,17 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
               <GeaText variant="heading28" color={colors.secondaryYellow[100]} numberOfLines={2}>
                 {step === "story2" ? pageTwoTitle : judul ?? poiName}
               </GeaText>
+              {narration !== null && <AudioControls
+                key={narration.key}
+                ref={audioControls}
+                source={narration.source}
+                durationSeconds={narration.seconds}
+                autoPlay={eyesFree}
+                onAutoPlayed={autoPlayNarration ? (): void => setAutoPlayNarration(false) : undefined}
+                suspend={paused}
+                expanded={audioExpanded}
+                onDark
+              />}
               <View>
                 <GeaText variant="body16Tight" color={colors.secondaryYellow[0]}>
                   {step === "story2" ? pageTwoText : description.text}
@@ -633,7 +658,7 @@ function englishGpsError(cause: unknown): string {
   return `Could not verify your location: ${readableError(cause)}`;
 }
 
-/** Ikon speaker dekoratif di tombol "Aktifkan Mode Audio" (ringkasan); kontrol sebenarnya ada di NarrationButton. */
+/** Ikon speaker dekoratif di tombol "Aktifkan Mode Audio" pada ringkasan. */
 function AudioBadge(): ReactElement {
   return (
     <View style={styles.audioIcon}>

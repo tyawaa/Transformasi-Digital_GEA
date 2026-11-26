@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { shouldAnnounce } from "../src/domain/eyesFree.ts";
+import { hasReachedDestination, shouldAnnounce } from "../src/domain/eyesFree.ts";
+
+test("tanda kedatangan memakai ambang jarak yang sama dengan peta", () => {
+  assert.equal(hasReachedDestination(25), false);
+  assert.equal(hasReachedDestination(2), false);
+  assert.equal(hasReachedDestination(1.9), true);
+});
 
 test("tanda petunjuk tidak diulang terus saat diam", () => {
   const start = { code: "P01", meters: 40, atMs: 0 };

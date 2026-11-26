@@ -71,7 +71,7 @@ const englishCopy: Readonly<Record<string, string>> = {
   "Mode biasa": "Normal mode",
   "Mode tanpa layar": "Eyes free mode",
   "Baca cerita dan kerjakan quest di layar, pindai QR koleksi.": "Read stories, complete quests on screen, and scan collection QR codes.",
-  "HP bergetar dan rekaman cerita diputar otomatis saat tiba. Layar boleh dikunci.": "Your phone vibrates and plays stories when you arrive. Background guidance requires a supported mobile app and location permission.",
+  "HP bergetar untuk memberi petunjuk dan menandai kedatangan.": "Your phone vibrates for guidance and to mark your arrival.",
   "7-12 Tahun": "7–12 years", "13-17 Tahun": "13–17 years", "18-24 Tahun": "18–24 years", ">24 Tahun": "Over 24 years",
   "< 30 menit": "Under 30 minutes", "30-45 Menit": "30–45 minutes", "45 menit-1.5 Jam": "45 minutes–1.5 hours", "> 1.5 jam": "Over 1.5 hours",
   "Gunung Api & Gempa": "Volcanoes & Earthquakes", "Batuan & Mineral": "Rocks & Minerals", "Bentang Alam & Gua": "Landforms & Caves", "Asal-usul Bumi": "Origins of Earth", "Fosil & Hewan Purba": "Fossils & Prehistoric Animals",

@@ -13,7 +13,7 @@ import type { CapturedPhoto } from "../../../services/photo";
 import { PhotoQuestScreen } from "./PhotoQuestScreen";
 import { StoryBackground } from "./backgrounds";
 import { BackButton, FrameStage, StoryButton } from "./parts";
-import { QuestAudio } from "./QuestAudio";
+import { AudioControls } from "./StoryAudio";
 import { useLanguage } from "../../preferences/LanguageSettings";
 
 const icons: readonly [number, number] = [
@@ -95,10 +95,11 @@ export function QuestListScreen({ poiName, quests, results, onPick, onResult, on
 }
 
 /** Quest foto diperiksa model APK; instruksi audio mengikuti profil pengunjung. */
-export function QuestTaskScreen({ quest, profile, result, submit, submitPhoto, onBack }: {
+export function QuestTaskScreen({ quest, profile, eyesFree, result, submit, submitPhoto, onBack }: {
   readonly quest: Quest;
   /** Untuk memilih rekaman instruksi versi umum/anak. */
   readonly profile: Profile;
+  readonly eyesFree: boolean;
   readonly result: QuestProgress | undefined;
   readonly submit: (requestId: string, label: OptionLabel | null, text: string | null) => Promise<AnswerResult>;
   readonly submitPhoto: (requestId: string, photo: CapturedPhoto) => Promise<AnswerResult>;
@@ -120,7 +121,7 @@ export function QuestTaskScreen({ quest, profile, result, submit, submitPhoto, o
   const photo: boolean = quest.type === "foto";
   const recording: number | undefined = quest.code == null ? undefined : questRecording(quest.code, profile, language);
 
-  if (photo && !finished) return <PhotoQuestScreen quest={quest} recording={recording} submit={submitPhoto} onBack={onBack} />;
+  if (photo && !finished) return <PhotoQuestScreen quest={quest} recording={recording} eyesFree={eyesFree} submit={submitPhoto} onBack={onBack} />;
 
   async function send(): Promise<void> {
     if (busy || finished || photo) return;
@@ -154,7 +155,7 @@ export function QuestTaskScreen({ quest, profile, result, submit, submitPhoto, o
           <GeaText variant="heading24" color={colors.secondaryGreen[900]}>{quest.title ?? quest.instruksi}</GeaText>
           <GeaText variant="body16" color={componentColors.bodyDark}>{quest.pertanyaan}</GeaText>
           <GeaText variant="caption12" color={componentColors.bodyDark}>{quest.points ?? 0} {t("poin", "pts")}{!photo && t(` · Sisa ${Math.max(0, limit - attempts)} dari ${limit} kesempatan`, ` · ${Math.max(0, limit - attempts)} of ${limit} attempts left`)}</GeaText>
-          {recording !== undefined ? <QuestAudio key={recording} source={recording} /> : language === "en" &&
+          {recording !== undefined ? <AudioControls key={recording} source={recording} autoPlay={eyesFree && !photo} /> : language === "en" &&
             <GeaText variant="caption12" color={componentColors.bodyDark}>English audio unavailable.</GeaText>}
         </View>
         {finished ? (

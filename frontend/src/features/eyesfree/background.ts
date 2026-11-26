@@ -46,7 +46,7 @@ export async function startBackgroundGuidance(language: Language): Promise<Backg
       showsBackgroundLocationIndicator: true,
       foregroundService: {
         notificationTitle: language === "en" ? "GEA · eyes free mode" : "GEA · mode tanpa layar",
-        notificationBody: language === "en" ? "Guidance continues while your screen is locked." : "Petunjuk arah tetap dibacakan saat layar terkunci.",
+        notificationBody: language === "en" ? "Vibration guidance continues while your screen is locked." : "Petunjuk lewat getaran tetap aktif saat layar terkunci.",
         notificationColor: "#2F5D3A",
       },
     });

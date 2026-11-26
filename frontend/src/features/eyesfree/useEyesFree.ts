@@ -8,8 +8,7 @@ import {
   type EyesFreeTarget,
   handleEyesFreeFix,
   resetEyesFreeVisit,
-  setEyesFreeStops,
-  setEyesFreeTargets,
+  setEyesFreeTarget,
 } from "./engine";
 import { type ExploreMode, readExploreMode, saveExploreMode } from "./mode";
 
@@ -24,12 +23,10 @@ export type EyesFree = {
 };
 
 export function useEyesFree(
-  { visitId, stops, targets, fix, language }: {
+  { visitId, target, fix, language }: {
     readonly language: Language;
     readonly visitId: string | null;
-    /** Semua POI yang dibuka (audio saat tiba). */
-    readonly stops: readonly EyesFreeTarget[];
-    readonly targets: readonly EyesFreeTarget[];
+    readonly target: EyesFreeTarget | null;
     readonly fix: Fix | null;
   },
 ): EyesFree {
@@ -45,8 +42,7 @@ export function useEyesFree(
     const request: number = activation.current + 1;
     activation.current = request;
     requested.current = true;
-    await enableEyesFree();
-    if (activation.current !== request) return;
+    enableEyesFree();
     const result: BackgroundResult = await startBackgroundGuidance(language);
     if (activation.current !== request) {
       if (!requested.current) await stopBackgroundGuidance();
@@ -83,11 +79,10 @@ export function useEyesFree(
   }, [visitId, turnOn, turnOff]);
 
   useEffect((): void => resetEyesFreeVisit(), [visitId]);
-  useEffect((): void => setEyesFreeStops(stops), [stops]);
-  useEffect((): void => setEyesFreeTargets(targets), [targets]);
+  useEffect((): void => setEyesFreeTarget(target), [target]);
   useEffect((): void => {
-    if (fix !== null) handleEyesFreeFix(fix);
-  }, [fix]);
+    if (enabled && fix !== null) handleEyesFreeFix(fix);
+  }, [enabled, fix, target]);
 
   const toggle = useCallback((): void => {
     const next: boolean = selectedMode !== "tanpa-layar";

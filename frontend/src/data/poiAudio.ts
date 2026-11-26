@@ -1,5 +1,5 @@
 // Rekaman voice over (sheet Daftar_Rekaman, Indonesia dan Inggris). Cerita = isi cerita + fakta menarik.
-// Dipakai di narasi cerita dan diputar otomatis saat tiba di POI (mode tanpa layar, PB16).
+// Dipakai di narasi cerita POI.
 // Sumber asli ada di Drive kelompok; rekaman Indonesia dikompres ke mono 64 kbps.
 // P07 dan P10 versi Indonesia: file Cerita dan Fakta direkam terpisah, jadi digabung menjadi satu file.
 import type { Language, Profile } from "../domain/contracts";

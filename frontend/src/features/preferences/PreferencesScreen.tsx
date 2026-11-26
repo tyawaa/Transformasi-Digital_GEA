@@ -28,7 +28,7 @@ type Question = {
 
 const modes: readonly { readonly mode: ExploreMode; readonly label: string; readonly detail: string }[] = [
   { mode: "biasa", label: "Mode biasa", detail: "Baca cerita dan kerjakan quest di layar, pindai QR koleksi." },
-  { mode: "tanpa-layar", label: "Mode tanpa layar", detail: "HP bergetar dan rekaman cerita diputar otomatis saat tiba. Layar boleh dikunci." },
+  { mode: "tanpa-layar", label: "Mode tanpa layar", detail: "HP bergetar untuk memberi petunjuk dan menandai kedatangan." },
 ];
 
 const questions: readonly [Question, Question, Question, Question] = [
