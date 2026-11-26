@@ -686,6 +686,7 @@ function Home(): ReactElement {
           ? t("Data koleksi belum tersedia di server. Hubungi tim untuk mengisi data POI.", "Collection data is not available on the server. Contact the team to add POI data.")
           : null)}
         hasVisit={visit !== null}
+        visitId={visit?.id_sesi ?? null}
         totalPoints={points}
         visitedCount={mapPois.filter((poi: MapPoi): boolean => {
           if (poi.id === null || (wingsMode === "left" && poi.museum.wing !== "left")) return false;

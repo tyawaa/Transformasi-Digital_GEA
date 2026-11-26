@@ -32,6 +32,8 @@ import { storyRecording } from "../../../data/poiAudio";
 import { localizeCopy, localizedPoiName } from "../../../data/localizedCopy";
 import { localizedQuestsForPoi, normalizeLocalQuestAnswer } from "../../../data/quests";
 import { audioSource } from "../../../services/media";
+import { stopAllAudio } from "../../../services/audioFocus";
+import { markEyesFreeHeard } from "../../eyesfree/engine";
 import { SceneLayer } from "../../onboarding/scene";
 import { useLanguage } from "../../preferences/LanguageSettings";
 import { type ParsedQr, qrErrorMessage } from "../../qr/qrPayload";
@@ -108,6 +110,11 @@ type Reward = { readonly id: number; readonly points: number; readonly labels: r
 export function StoryFlow(props: Props): ReactElement {
   const { t } = useLanguage();
   const [reward, setReward] = useState<Reward | null>(null);
+  // Masuk atau keluar cerita: audio yang masih bunyi (mis. audio otomatis di peta) dihentikan.
+  useEffect((): (() => void) => {
+    stopAllAudio();
+    return stopAllAudio;
+  }, []);
   // Ukuran pil mengikuti skala frame 390 × 844 seperti layar lain.
   const { width, height } = useWindowDimensions();
   const scale: number = Math.min(width / 390, height / FRAME_H);
@@ -378,6 +385,7 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
   // Data lokal: konten anak dan quest dari sheet (questPlan memakai data lokal di semua mode); judul, fakta,
   // foto kedua, dan koleksi utamanya dari backend (description), data lokal hanya cadangan mode mock.
   const museumPoi = museumPoiById(poi.id_poi);
+  if (museumPoi !== undefined) markEyesFreeHeard(museumPoi.code);
   const local: StoryContent | null = source.kind === "mock" && language === "id" ? museumPoi?.content ?? null : null;
   const english = language === "en" ? museumPoi?.content?.en?.[visit.profil === "anak" ? "anak" : "umum"] : undefined;
   const description = english === undefined ? originalDescription : {
@@ -553,20 +561,21 @@ function StoryFlowSteps(props: Props & { readonly onRewards: (items: readonly { 
           <SceneLayer layer={isiPanelLayer} />
           {/* Panel cokelat diperpanjang ke bawah saat cerita panjang dan halaman digulir. */}
           <View style={[styles.isiFill, span, { height: Math.max(0, ISI_TOP + isiHeight + ISI_BOTTOM - ISI_FILL_TOP) }]} />
-          {narration !== null && <NarrationButton
-            key={narration.key}
-            narration={narration}
-            autoPlay={autoPlayNarration}
-            onAutoPlayed={(): void => setAutoPlayNarration(false)}
-            suspend={paused}
-            style={styles.audioButton}
-          />}
           <View
             style={styles.isiContent}
             onLayout={(event): void => setIsiHeight(event.nativeEvent.layout.height)}
           >
+            {/* Pemutar narasi di baris sendiri, di atas judul, supaya tidak menutupi teks. */}
+            {narration !== null && <NarrationButton
+              key={narration.key}
+              narration={narration}
+              autoPlay={autoPlayNarration}
+              onAutoPlayed={(): void => setAutoPlayNarration(false)}
+              suspend={paused}
+              style={styles.audioButton}
+            />}
             <View style={styles.isiTexts}>
-              <GeaText variant="heading28" color={colors.secondaryYellow[100]} numberOfLines={2}>
+              <GeaText variant="heading28" color={colors.secondaryYellow[100]}>
                 {step === "story2" ? pageTwoTitle : judul ?? poiName}
               </GeaText>
               <View>
@@ -685,7 +694,8 @@ const styles = StyleSheet.create({
   summaryButton: { alignSelf: "flex-end", paddingHorizontal: spacing[16], boxShadow: shadows.drop },
   shadowed: { paddingHorizontal: spacing[16], boxShadow: shadows.drop },
   audioMode: { position: "absolute", right: 16, top: 764, flexDirection: "row", alignItems: "center", gap: spacing[8] },
-  audioButton: { position: "absolute", left: 330, top: 534 },
+  // Naik ke tepi atas panel (mengisi ruang kosong di bawah foto), beri jarak lebih ke judul.
+  audioButton: { alignSelf: "stretch", marginTop: -40, marginBottom: 8 },
   audioIcon: {
     width: 44,
     height: 44,
