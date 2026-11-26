@@ -139,9 +139,10 @@ function SearchCard({ entry, poi, category, onPick }: {
   readonly onPick: (roomCode: string) => void;
 }): ReactElement {
   const { language, t } = useLanguage();
-  const title: string = entry.kind === "poi" ? `POI ${poi.number}` : entry.label;
+  // Nama koleksi asli, bukan kode "POI X": pengunjung awam tidak tahu arti kata "POI".
+  const title: string = entry.kind === "poi" ? localizedPoiName(poi, language) : entry.label;
   const description: string | null = entry.kind === "koleksi" ? t(`Koleksi di ${poi.name}.`, `Collection in ${entry.roomName}.`)
-    : entry.kind === "poi" ? entry.roomName : language === "en" ? poi.content?.en?.umum.fakta ?? null : poi.content?.fakta ?? null;
+    : language === "en" ? poi.content?.en?.umum.fakta ?? null : poi.content?.fakta ?? null;
   const photo: SearchPhotoSource = entry.kind === "koleksi" ? photoHuntPhoto(poi.code) : { uri: poiStoryPhoto(poi.idPoi, 1) };
   return (
     <View style={styles.card}>

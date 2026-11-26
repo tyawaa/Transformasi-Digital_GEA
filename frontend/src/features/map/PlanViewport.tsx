@@ -24,16 +24,19 @@ import {
   PLAN_HEIGHT,
   PLAN_PINS,
   PLAN_WIDTH,
+  PREVIEW_COLLAPSED_HEIGHT,
   type PlanPin,
   type PlanPoint,
   type RouteLeg,
 } from "./navigation";
 import { useLanguage } from "../preferences/LanguageSettings";
 import { localizedPoiName } from "../../data/localizedCopy";
+import { poiStoryPhoto } from "../../data/poiMedia";
 
 const floor: number = require("../../../assets/design/startmap-floor.svg") as number;
 const pinImage: number = require("../../../assets/design/map-pin.svg") as number;
 const pinShadow: number = require("../../../assets/design/map-pin-shadow.svg") as number;
+const comingSoonImage: number = require("../../../assets/design/poi-coming-soon.svg") as number;
 const background: number = require("../../../assets/design/navigation/background.svg") as number;
 const zoomImage: number = require("../../../assets/design/navigation/zoom.svg") as number;
 const locateImage: number = require("../../../assets/design/navigation/locate.svg") as number;
@@ -41,7 +44,8 @@ const VIEW_WIDTH: number = 390;
 const VIEW_HEIGHT: number = 844;
 const MAP_TOP: number = 170;
 const MAP_HEIGHT: number = 316;
-const MAP_CENTER_Y: number = MAP_TOP + MAP_HEIGHT / 2;
+// Saat kartu info dilipat (lihat MapScreen), denah mengisi ruang yang baru kosong sampai strip pegangan kartu.
+const EXPANDED_MAP_HEIGHT: number = VIEW_HEIGHT - MAP_TOP - PREVIEW_COLLAPSED_HEIGHT;
 const MIN_ZOOM: number = 0.18;
 const MAX_ZOOM: number = 1.8;
 const webTouchStyle: ViewStyle & { readonly touchAction: "none"; readonly userSelect: "none" } = {
@@ -70,39 +74,41 @@ type Props = {
   readonly orientation: MapHeading;
   readonly planBearing: number | null;
   readonly onOpenTests: (() => void) | null;
+  /** Kartu info di MapScreen sedang dilipat: denah mengisi ruang yang kosong sampai ke strip pegangannya. */
+  readonly previewCollapsed: boolean;
 };
 
 function shouldPan(event: GestureResponderEvent, gesture: PanResponderGestureState): boolean {
   return event.nativeEvent.touches.length > 1 || Math.abs(gesture.dx) + Math.abs(gesture.dy) > 6;
 }
 
-function centeredCamera(point: PlanPoint, zoom: number): Camera {
-  return boundCamera({ x: VIEW_WIDTH / 2 - point.x * zoom, y: MAP_CENTER_Y - point.y * zoom, zoom });
+function centeredCamera(point: PlanPoint, zoom: number, mapHeight: number): Camera {
+  return boundCamera({ x: VIEW_WIDTH / 2 - point.x * zoom, y: MAP_TOP + mapHeight / 2 - point.y * zoom, zoom }, mapHeight);
 }
 
-function headingCamera(point: PlanPoint, zoom: number): Camera {
-  return { x: VIEW_WIDTH / 2 - point.x * zoom, y: MAP_TOP + MAP_HEIGHT * 0.65 - point.y * zoom, zoom };
+function headingCamera(point: PlanPoint, zoom: number, mapHeight: number): Camera {
+  return { x: VIEW_WIDTH / 2 - point.x * zoom, y: MAP_TOP + mapHeight * 0.65 - point.y * zoom, zoom };
 }
 
-function boundCamera(camera: Camera): Camera {
+function boundCamera(camera: Camera, mapHeight: number): Camera {
   const bound = (value: number, size: number, viewport: number): number =>
     size <= viewport ? (viewport - size) / 2 : Math.max(viewport - size - 20, Math.min(20, value));
   return {
     x: bound(camera.x, PLAN_WIDTH * camera.zoom, VIEW_WIDTH),
-    y: MAP_TOP + bound(camera.y - MAP_TOP, PLAN_HEIGHT * camera.zoom, MAP_HEIGHT),
+    y: MAP_TOP + bound(camera.y - MAP_TOP, PLAN_HEIGHT * camera.zoom, mapHeight),
     zoom: camera.zoom,
   };
 }
 
 /** Geser manual tetap tersedia saat denah muat, dengan sebagian denah selalu terlihat. */
-function boundDraggedCamera(camera: Camera): Camera {
+function boundDraggedCamera(camera: Camera, mapHeight: number): Camera {
   const bound = (value: number, size: number, viewport: number): number => {
     const visible: number = Math.min(size, viewport) / 2;
     return Math.max(visible - size, Math.min(viewport - visible, value));
   };
   return {
     x: bound(camera.x, PLAN_WIDTH * camera.zoom, VIEW_WIDTH),
-    y: MAP_TOP + bound(camera.y - MAP_TOP, PLAN_HEIGHT * camera.zoom, MAP_HEIGHT),
+    y: MAP_TOP + bound(camera.y - MAP_TOP, PLAN_HEIGHT * camera.zoom, mapHeight),
     zoom: camera.zoom,
   };
 }
@@ -142,7 +148,9 @@ export function PlanViewport(props: Props): ReactElement {
   const { width, height } = useWindowDimensions();
   const screenScale: number = Math.min(width / 390, height / 844);
   const { bleed, span } = useFrameBleed();
-  const [camera, setCamera] = useState<Camera>(centeredCamera(props.location ?? ENTRANCE, 0.85));
+  const mapHeight: number = props.previewCollapsed ? EXPANDED_MAP_HEIGHT : MAP_HEIGHT;
+  const mapCenterY: number = MAP_TOP + mapHeight / 2;
+  const [camera, setCamera] = useState<Camera>(centeredCamera(props.location ?? ENTRANCE, 0.85, mapHeight));
   const [following, setFollowing] = useState<boolean>(true);
   const [toolsOpen, setToolsOpen] = useState<boolean>(false);
   const viewportRef = useRef<View>(null);
@@ -198,16 +206,16 @@ export function PlanViewport(props: Props): ReactElement {
     if (lastLocation.current === null || (compassActive && following)) dot.setValue(point);
     else Animated.timing(dot, { toValue: point, duration: 450, useNativeDriver: false }).start();
     lastLocation.current = point;
-    if (following) setCamera((current: Camera): Camera => compassActive ? headingCamera(point, current.zoom) : centeredCamera(point, current.zoom));
-  }, [locationX, locationY, following, compassActive, dot]);
+    if (following) setCamera((current: Camera): Camera => compassActive ? headingCamera(point, current.zoom, mapHeight) : centeredCamera(point, current.zoom, mapHeight));
+  }, [locationX, locationY, following, compassActive, dot, mapHeight]);
 
   useEffect((): void => {
     const pin: PlanPin | undefined = PLAN_PINS.find((item: PlanPin): boolean => item.code === props.selectedCode);
     if (pin === undefined) return;
     props.orientation.disable();
     setFollowing(false);
-    setCamera((current: Camera): Camera => boundCamera(centeredCamera(pin, Math.max(0.75, current.zoom))));
-  }, [props.selectedCode, props.orientation.disable]);
+    setCamera((current: Camera): Camera => boundCamera(centeredCamera(pin, Math.max(0.75, current.zoom), mapHeight), mapHeight));
+  }, [props.selectedCode, props.orientation.disable, mapHeight]);
 
   const panResponder = useMemo(() => PanResponder.create({
     onStartShouldSetPanResponder: (): boolean => false,
@@ -229,9 +237,9 @@ export function PlanViewport(props: Props): ReactElement {
         const ratio: number = zoom / start.camera.zoom;
         setCamera(boundDraggedCamera({
           x: VIEW_WIDTH / 2 - (VIEW_WIDTH / 2 - start.camera.x) * ratio + (span.midpoint.x - start.span.midpoint.x) / screenScale,
-          y: MAP_CENTER_Y - (MAP_CENTER_Y - start.camera.y) * ratio + (span.midpoint.y - start.span.midpoint.y) / screenScale,
+          y: mapCenterY - (mapCenterY - start.camera.y) * ratio + (span.midpoint.y - start.span.midpoint.y) / screenScale,
           zoom,
-        }));
+        }, mapHeight));
         return;
       }
       if (start.span !== null) return;
@@ -239,21 +247,21 @@ export function PlanViewport(props: Props): ReactElement {
         ...start.camera,
         x: start.camera.x + (gesture.dx - start.offset.x) / screenScale,
         y: start.camera.y + (gesture.dy - start.offset.y) / screenScale,
-      }));
+      }, mapHeight));
     },
     onPanResponderTerminationRequest: (): boolean => false,
-  }), [screenScale]);
+  }), [screenScale, mapHeight, mapCenterY]);
 
   function zoomBy(multiplier: number): void {
     setCamera((current: Camera): Camera => {
       const zoom: number = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, current.zoom * multiplier));
-      if (following && props.location !== null) return compassActive ? headingCamera(props.location, zoom) : centeredCamera(props.location, zoom);
+      if (following && props.location !== null) return compassActive ? headingCamera(props.location, zoom, mapHeight) : centeredCamera(props.location, zoom, mapHeight);
       const ratio: number = zoom / current.zoom;
       return boundDraggedCamera({
         x: VIEW_WIDTH / 2 - (VIEW_WIDTH / 2 - current.x) * ratio,
-        y: MAP_CENTER_Y - (MAP_CENTER_Y - current.y) * ratio,
+        y: mapCenterY - (mapCenterY - current.y) * ratio,
         zoom,
-      });
+      }, mapHeight);
     });
   }
 
@@ -262,7 +270,7 @@ export function PlanViewport(props: Props): ReactElement {
     const planWidth: number = props.leftOnly ? 1145 : PLAN_WIDTH;
     const zoom: number = (VIEW_WIDTH - 32) / planWidth;
     setFollowing(false);
-    setCamera({ x: 16, y: MAP_CENTER_Y - PLAN_HEIGHT * zoom / 2, zoom });
+    setCamera({ x: 16, y: mapCenterY - PLAN_HEIGHT * zoom / 2, zoom });
   }
 
   function showRoute(): void {
@@ -275,16 +283,16 @@ export function PlanViewport(props: Props): ReactElement {
     const maxX: number = Math.max(...points.map((point: PlanPoint): number => point.x));
     const minY: number = Math.min(...points.map((point: PlanPoint): number => point.y));
     const maxY: number = Math.max(...points.map((point: PlanPoint): number => point.y));
-    const zoom: number = Math.max(MIN_ZOOM, Math.min(0.8, (VIEW_WIDTH - 80) / Math.max(1, maxX - minX), (MAP_HEIGHT - 80) / Math.max(1, maxY - minY)));
+    const zoom: number = Math.max(MIN_ZOOM, Math.min(0.8, (VIEW_WIDTH - 80) / Math.max(1, maxX - minX), (mapHeight - 80) / Math.max(1, maxY - minY)));
     setFollowing(false);
-    setCamera(centeredCamera({ x: (minX + maxX) / 2, y: (minY + maxY) / 2 }, zoom));
+    setCamera(centeredCamera({ x: (minX + maxX) / 2, y: (minY + maxY) / 2 }, zoom, mapHeight));
   }
 
   function locate(): void {
     setFollowing(true);
     const point: PlanPoint = props.location ?? ENTRANCE;
     const zoom: number = Math.max(camera.zoom, 0.85);
-    setCamera(compassActive ? headingCamera(point, zoom) : centeredCamera(point, zoom));
+    setCamera(compassActive ? headingCamera(point, zoom, mapHeight) : centeredCamera(point, zoom, mapHeight));
     if (props.location === null) props.onLocate();
   }
 
@@ -302,8 +310,8 @@ export function PlanViewport(props: Props): ReactElement {
     props.orientation.disable();
     setFollowing(false);
     if (props.legs.length > 0) showRoute();
-    else setCamera(centeredCamera(ENTRANCE, 0.5));
-  }, [props.destination]);
+    else setCamera(centeredCamera(ENTRANCE, 0.5, mapHeight));
+  }, [props.destination, mapHeight]);
 
   const pivotX: number = rotationAnchor.current === null ? VIEW_WIDTH / 2 : camera.x + rotationAnchor.current.x * camera.zoom;
   const pivotY: number = rotationAnchor.current === null ? VIEW_HEIGHT / 2 : camera.y + rotationAnchor.current.y * camera.zoom;
@@ -317,12 +325,12 @@ export function PlanViewport(props: Props): ReactElement {
 
   return (
     <>
-      <View ref={viewportRef} style={[styles.viewport, span, Platform.OS === "web" && webTouchStyle]} {...panResponder.panHandlers}>
+      <View ref={viewportRef} style={[styles.viewport, span, { height: MAP_TOP + mapHeight }, Platform.OS === "web" && webTouchStyle]} {...panResponder.panHandlers}>
         {/* Latar dan jendela denah selebar layar; koordinat isinya tetap mengikuti frame 390. */}
         <View style={styles.backgroundClip} pointerEvents="none">
           <Image accessible={false} draggable={false} source={background} style={styles.background} contentFit="fill" />
         </View>
-        <View style={styles.mapClip}>
+        <View style={[styles.mapClip, { height: mapHeight }]}>
         <Animated.View style={[styles.mapCanvas, { left: bleed, transformOrigin: [pivotX, pivotY, 0], transform: [{ rotate: rotationStyle }] }]}>
         <View style={[styles.plan, { transform: [{ translateX: camera.x }, { translateY: camera.y }, { scale: camera.zoom }] }]}>
           <View pointerEvents="none" style={StyleSheet.absoluteFill}>
@@ -352,13 +360,20 @@ export function PlanViewport(props: Props): ReactElement {
                 <Image accessible={false} draggable={false} source={pinShadow} style={styles.pinShadow} />
                 <Image accessible={false} draggable={false} source={pinImage} style={styles.pinImage} />
                 <View style={[styles.pinLabel, poi.status === "selesai" && styles.finished]}>
-                  <GeaText variant="heading20" color={colors.primary[900]}>{pin.code}</GeaText>
+                  <Image accessible={false} draggable={false}
+                    source={poi.id !== null ? { uri: poiStoryPhoto(poi.id, 1) } : comingSoonImage}
+                    style={StyleSheet.absoluteFill} contentFit="cover" />
                 </View>
                 {order >= 0 && (
                   <View style={[styles.order, next && styles.nextOrder]}>
                     <GeaText variant="caption12" color={colors.white}>{poi.status === "selesai" ? "✓" : order + 1}</GeaText>
                   </View>
                 )}
+                <View style={styles.pinNameWrap}>
+                  <View style={styles.pinName}>
+                    <GeaText variant="label14" color={colors.primary[900]} numberOfLines={1}>{localizedPoiName(poi.museum, language)}</GeaText>
+                  </View>
+                </View>
                 </View>
               </Pressable>
               </Animated.View>
@@ -443,7 +458,10 @@ const styles = StyleSheet.create({
   pin: { position: "absolute", width: 58, height: 73, transformOrigin: [27, 64, 0] },
   pinImage: { position: "absolute", left: -3.1, top: -2.9, width: 58.06, height: 69.17 },
   pinShadow: { position: "absolute", left: 11, top: 61, width: 29, height: 11 },
-  pinLabel: { position: "absolute", left: 3.73, top: 4.56, width: 45.73, height: 45.73, borderRadius: 23, alignItems: "center", justifyContent: "center", backgroundColor: colors.primary[0] },
+  pinLabel: { position: "absolute", left: 3.73, top: 4.56, width: 45.73, height: 45.73, borderRadius: 23, overflow: "hidden", alignItems: "center", justifyContent: "center", backgroundColor: colors.primary[0] },
+  // Nama koleksi di bawah pin: lebar boleh melebihi lebar pin (58), tetap center terhadapnya.
+  pinNameWrap: { position: "absolute", top: 76, left: -40, right: -40, alignItems: "center" },
+  pinName: { maxWidth: 150, paddingHorizontal: 4, borderRadius: 4, backgroundColor: colors.white, boxShadow: shadows.card },
   pinHalo: { position: "absolute", left: -10, top: -10, width: 73, height: 73, borderRadius: 37, borderWidth: 3, borderColor: colors.secondaryGreen[700], backgroundColor: colors.secondaryGreen[100] },
   selectedHalo: { borderColor: colors.tertiary[200] },
   finished: { backgroundColor: colors.secondaryGreen[200] },

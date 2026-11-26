@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" fill="none">
+  <!-- Placeholder foto POI yang ceritanya belum tersedia: kotak putus-putus + gembok, bukan foto palsu. -->
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="#FFE4C2"/>
+  <rect x="2" y="2" width="60" height="60" rx="14" stroke="#D3A66B" stroke-width="2.5" stroke-dasharray="5 5"/>
+  <path d="M25 29V25.5C25 21.3579 28.3579 18 32.5 18C36.6421 18 40 21.3579 40 25.5V29" stroke="#98611A" stroke-width="3" stroke-linecap="round"/>
+  <rect x="21" y="29" width="23" height="18" rx="4" fill="#98611A"/>
+  <circle cx="32.5" cy="36.5" r="2.6" fill="#FFE4C2"/>
+  <path d="M32.5 38.5V41.5" stroke="#FFE4C2" stroke-width="2.4" stroke-linecap="round"/>
+</svg>

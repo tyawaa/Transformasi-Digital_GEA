@@ -8,6 +8,7 @@ import { GeaText } from "../../design/typography";
 import type { MuseumPoi, ZoneInfo } from "../../data/museum";
 import { storyRecording } from "../../data/poiAudio";
 import { localizeCopy, localizedGpsTestLabel, localizedPoiName } from "../../data/localizedCopy";
+import { poiStoryPhoto } from "../../data/poiMedia";
 import type { Profile } from "../../domain/contracts";
 import { distanceMeters, type Fix } from "../../domain/geofence";
 import type { PoiStatus } from "../../domain/points";
@@ -17,8 +18,8 @@ import { estimatePlanBearing, type HeadingAnchor } from "../../domain/heading";
 import type { Route } from "../preferences/recommend";
 import { formatCountdown } from "../preferences/visitTiming";
 import { LanguageButton, SettingsPanel, useLanguage } from "../preferences/LanguageSettings";
-import { FrameStage, useFrameBleed } from "../stories/hifi/parts";
-import { ENTRANCE, PLAN_PINS, locateOnPlan, routeLegs, walkingPath, type LocationAnchor, type PlanPin, type PlanPoint, type RouteLeg } from "./navigation";
+import { FRAME_H, FrameStage, useFrameBleed } from "../stories/hifi/parts";
+import { ENTRANCE, PLAN_PINS, PREVIEW_COLLAPSED_HEIGHT, locateOnPlan, routeLegs, walkingPath, type LocationAnchor, type PlanPin, type PlanPoint, type RouteLeg } from "./navigation";
 import { PlanViewport } from "./PlanViewport";
 import { StartMap } from "./StartMap";
 import { SearchPanel } from "../search/SearchPanel";
@@ -96,6 +97,7 @@ const directionIcon: number = require("../../../assets/design/navigation/directi
 const scanIcon: number = require("../../../assets/design/navigation/scan.svg") as number;
 const bookIcon: number = require("../../../assets/design/navigation/book.svg") as number;
 const flagIcon: number = require("../../../assets/design/navigation/flag.svg") as number;
+const comingSoonImage: number = require("../../../assets/design/poi-coming-soon.svg") as number;
 
 /** Pemilihan pin tidak memberi akses cerita; Buka cerita memulai verifikasi GPS. */
 export function MapScreen(props: Props): ReactElement {
@@ -107,6 +109,8 @@ export function MapScreen(props: Props): ReactElement {
   const [routeOpen, setRouteOpen] = useState<boolean>(false);
   const [searchOpen, setSearchOpen] = useState<boolean>(false);
   const [navigationStopped, setNavigationStopped] = useState<boolean>(false);
+  // Lipat kartu info supaya pengunjung bisa pilih lihat peta penuh tanpa perlu menggulir kartu.
+  const [previewCollapsed, setPreviewCollapsed] = useState<boolean>(false);
   const [eyesFreeToast, setEyesFreeToast] = useState<boolean>(false);
   const [settingsOpen, setSettingsOpen] = useState<boolean>(false);
   useEffect(() => {
@@ -174,7 +178,8 @@ export function MapScreen(props: Props): ReactElement {
     return poi === undefined ? [] : [poi];
   });
   const availableCount: number = props.pois.filter((poi: MapPoi): boolean => poi.id !== null && (props.wingsMode === "both" || poi.museum.wing === "left")).length;
-  const targetLabel: string = target === null ? "" : `POI ${Number(target.museum.code.slice(1))}`;
+  // Nama koleksi asli, bukan kode "POI X": pengunjung awam tidak tahu arti kata "POI".
+  const targetName: string = target === null ? "" : localizedPoiName(target.museum, language);
   const targetDistance: number | null = location !== null && props.userFix !== null && target !== null
     ? distanceMeters(props.userFix, target.museum) : null;
   const directionTitle: string = navigationStopped ? t("Navigasi dihentikan", "Navigation stopped")
@@ -219,6 +224,7 @@ export function MapScreen(props: Props): ReactElement {
       <PlanViewport destination={props.destination} pois={props.pois} selectedCode={selectedCode} nextCode={target?.museum.code ?? null}
         routeCodes={props.route?.codes ?? []} legs={legs} location={location} leftOnly={props.wingsMode === "left"}
         onSelect={choosePoi} onLocate={props.onCheckLocation} orientation={orientation} planBearing={planBearing}
+        previewCollapsed={previewCollapsed}
         onOpenTests={props.hasVisit && props.gpsTests.length > 0 ? (): void => setTestsOpen(true) : null} />
       <View style={styles.overview} pointerEvents="box-none">
         <Image accessible={false} source={overviewImage} style={StyleSheet.absoluteFill} contentFit="fill" />
@@ -254,10 +260,14 @@ export function MapScreen(props: Props): ReactElement {
           <GeaText variant="caption12" color={colors.primary[800]} numberOfLines={1}>{signal}</GeaText>
         </Pressable>
       </View>}
-      <View style={[styles.card, span]}>
+      <View style={[styles.card, span, previewCollapsed && styles.cardCollapsed]}>
       <View style={styles.cardInner}>
-        <View style={styles.sheetHandle} />
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.cardContent, { paddingHorizontal: 16 + bleed }]}>
+        <Pressable accessibilityRole="button"
+          accessibilityLabel={previewCollapsed ? t("Tampilkan info koleksi", "Show collection info") : t("Sembunyikan info koleksi, lihat peta penuh", "Hide collection info, view full map")}
+          onPress={(): void => setPreviewCollapsed(!previewCollapsed)} style={styles.sheetHandleArea} hitSlop={12}>
+          <View style={styles.sheetHandle} />
+        </Pressable>
+        {!previewCollapsed && <View style={[styles.cardContent, { paddingHorizontal: 16 + bleed }]}>
         {props.loading ? (
           <View style={styles.row}><ActivityIndicator color={colors.primary[800]} /><GeaText variant="body14" color={colors.primary[800]}>{t("Memuat koleksi…", "Loading collections…")}</GeaText></View>
         ) : props.error !== null ? (
@@ -285,25 +295,30 @@ export function MapScreen(props: Props): ReactElement {
                   <View style={styles.guidanceText}>
                     <GeaText variant="bold16" color={colors.primary[800]} style={styles.directionTitle} numberOfLines={1}>{directionTitle}</GeaText>
                     <GeaText variant="body14" color={colors.primary[800]} style={styles.directionCaption} numberOfLines={1}>
-                      {navigationStopped ? t("Lanjutkan saat kamu siap menjelajah", "Continue when you are ready") : t(`Ikuti garis menuju ${targetLabel}`, `Follow the line to ${targetLabel}`)}
+                      {navigationStopped ? t("Lanjutkan saat kamu siap menjelajah", "Continue when you are ready") : t(`Ikuti garis menuju ${targetName}`, `Follow the line to ${targetName}`)}
                     </GeaText>
                   </View>
                 </View>
                 <View style={styles.destination}>
-                  <Pressable accessibilityRole="button" accessibilityLabel={t(`Lihat rute. Tujuan ${targetLabel}, ${target.museum.name}`, `View route. Destination ${targetLabel}, ${localizedPoiName(target.museum, language)}`)}
+                  <Pressable accessibilityRole="button" accessibilityLabel={t(`Lihat rute. Tujuan ${targetName}`, `View route. Destination ${targetName}`)}
                     onPress={(): void => setRouteOpen(true)} style={styles.destinationText}>
                     <GeaText variant="caption12" color={colors.primary[900]} style={styles.destinationCaption}>
                       {selected !== null ? t("TUJUAN PILIHANMU", "SELECTED DESTINATION") : t("TUJUAN SELANJUTNYA", "NEXT DESTINATION")}
                     </GeaText>
-                    <GeaText variant="display42" color={colors.tertiary[300]}>{targetLabel}</GeaText>
+                    <View style={styles.destinationRow}>
+                      <Image accessible={false} source={target.id !== null ? { uri: poiStoryPhoto(target.id, 1) } : comingSoonImage}
+                        style={styles.destinationPhoto} contentFit="cover" />
+                      {/* Judul koleksi butuh lebar penuh supaya nama panjang tidak terpotong/berdesakan dengan tombol; dibatasi 2 baris supaya kartu tetap muat tanpa digulir. */}
+                      <GeaText variant="heading24" color={colors.tertiary[300]} style={styles.destinationName} numberOfLines={2}>{targetName}</GeaText>
+                    </View>
                   </Pressable>
                   <Pressable accessibilityRole="button" onPress={navigationStopped ? startNavigation : stopNavigation}
                     style={({ pressed }) => [styles.stopButton, pressed && styles.dim]}>
                     <GeaText variant="bold16" color={colors.primary[800]}>{navigationStopped ? t("Mulai Navigasi", "Start Navigation") : t("Stop Navigasi", "Stop Navigation")}</GeaText>
                   </Pressable>
                 </View>
-                <GeaText variant="body16" color={colors.primary[800]} style={styles.invitation}>
-                  {target.id === null ? t("Cerita koleksi ini segera hadir.", "This collection’s story is coming soon.") : t(`Yuk, kunjungi ${targetLabel} untuk mendengarkan cerita menariknya`, `Visit ${targetLabel} to hear its story`)}
+                <GeaText variant="body16" color={colors.primary[800]} style={styles.invitation} numberOfLines={1}>
+                  {target.id === null ? t("Cerita koleksi ini segera hadir.", "This collection’s story is coming soon.") : t(`Yuk, kunjungi ${targetName} untuk mendengarkan cerita menariknya`, `Visit ${targetName} to hear its story`)}
                 </GeaText>
               </>
             ) : (
@@ -323,7 +338,7 @@ export function MapScreen(props: Props): ReactElement {
             )}
           </>
         )}
-        </ScrollView>
+        </View>}
       </View>
       </View>
       <Modal visible={routeOpen} transparent animationType="slide" onRequestClose={(): void => setRouteOpen(false)}>
@@ -484,19 +499,30 @@ const styles = StyleSheet.create({
   signalContent: { flex: 1, justifyContent: "center" },
   // overflow:hidden (sudut membulat) juga memotong boxShadow, jadi bayangan dipisah ke pembungkus luar.
   card: { position: "absolute", top: CARD_TOP, bottom: 0, borderTopLeftRadius: 24, borderTopRightRadius: 24, boxShadow: "0px -4px 16px 0px rgba(0, 0, 0, 0.18)" },
+  // Dilipat: kartu menyusut jadi strip pegangan saja, supaya peta penuh terlihat tanpa menutup layar info.
+  cardCollapsed: { top: FRAME_H - PREVIEW_COLLAPSED_HEIGHT },
   cardInner: { flex: 1, overflow: "hidden", borderTopLeftRadius: 24, borderTopRightRadius: 24, backgroundColor: colors.secondaryYellow[0] },
-  sheetHandle: { alignSelf: "center", width: 40, height: 4, borderRadius: 2, marginTop: 10, marginBottom: 14, backgroundColor: colors.primary[200] },
-  cardContent: { paddingHorizontal: 16, paddingBottom: 24, gap: 16 },
-  guidance: { minHeight: 74, borderRadius: 12, paddingHorizontal: 20, paddingVertical: 12, flexDirection: "row", alignItems: "center", gap: 20, backgroundColor: colors.secondaryGreen[100] },
+  sheetHandleArea: { alignSelf: "stretch", alignItems: "center", paddingTop: 6, paddingBottom: 8 },
+  sheetHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: colors.primary[200] },
+  // Konten kartu tidak digulir (ux: info harus langsung terlihat tanpa interaksi tambahan), jadi semua jarak di sini
+  // dijaga ketat supaya muat dalam tinggi kartu yang tetap, termasuk saat nama koleksi 2 baris.
+  cardContent: { paddingHorizontal: 16, paddingBottom: 12, gap: 10 },
+  guidance: { minHeight: 56, borderRadius: 12, paddingHorizontal: 20, paddingVertical: 6, flexDirection: "row", alignItems: "center", gap: 20, backgroundColor: colors.secondaryGreen[100] },
   directionIcon: { width: 24, height: 26 },
   guidanceText: { flex: 1, gap: 4 },
   directionTitle: { fontSize: 20, lineHeight: 24 },
   directionCaption: { lineHeight: 20 },
-  destination: { flexDirection: "row", alignItems: "center", gap: 12 },
-  destinationText: { flex: 1, gap: 8 },
+  // Tombol di bawah judul (bukan di sebelahnya) supaya judul koleksi selalu penuh lebarnya dan tidak berdesakan.
+  destination: { gap: 8 },
+  destinationText: { gap: 6 },
   destinationCaption: { fontSize: 10, lineHeight: 14, fontWeight: "700" },
-  stopButton: { width: 164, minHeight: 44, borderRadius: 8, alignItems: "center", justifyContent: "center", backgroundColor: colors.primary[100] },
-  invitation: { lineHeight: 24, minHeight: 48 },
+  // Foto koleksi asli menggantikan kode "POI X"; nama koleksinya tetap tampak di sebelahnya.
+  // minWidth:0 diperlukan: tanpa itu flex:1 di RN Web tidak menyusut di bawah lebar teks aslinya.
+  destinationRow: { flexDirection: "row", alignItems: "center", gap: 10, minWidth: 0 },
+  destinationPhoto: { width: 48, height: 48, borderRadius: 12, backgroundColor: colors.primary[0] },
+  destinationName: { flex: 1, minWidth: 0, lineHeight: 28 },
+  stopButton: { alignSelf: "stretch", minHeight: 44, borderRadius: 8, alignItems: "center", justifyContent: "center", backgroundColor: colors.primary[100] },
+  invitation: { lineHeight: 24, minHeight: 24 },
   row: { flexDirection: "row", alignItems: "center", gap: 10 },
   poiCode: { width: 44, height: 44, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: colors.primary[0] },
   button: { alignSelf: "stretch", alignItems: "center", minHeight: 48, justifyContent: "center", paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, backgroundColor: colors.primary[800] },

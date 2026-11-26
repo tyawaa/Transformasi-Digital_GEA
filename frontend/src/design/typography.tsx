@@ -88,6 +88,8 @@ export const textStyles = {
   heading24: { font: "Ellak-Regular", fontSize: 24 },
   heading28: { font: "Ellak-Regular", fontSize: 28, lineHeight: 34 },
   label16: { font: "Qanelas-Medium", fontSize: 16 },
+  // Label pin peta: diminta "Figtree 14 semibold", diganti Qanelas SemiBold biar konsisten dengan sistem font di sini.
+  label14: { font: "Qanelas-SemiBold", fontSize: 14, lineHeight: 17 },
   body16: { font: "Qanelas-Regular", fontSize: 16 },
   body16Tight: { font: "Qanelas-Regular", fontSize: 16, lineHeight: 19 },
   bold16: { font: "Qanelas-Bold", fontSize: 16 },

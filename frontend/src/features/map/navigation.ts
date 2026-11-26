@@ -10,6 +10,8 @@ type MeasuredAnchor = { readonly pin: PlanPin; readonly distance: number };
 export const PLAN_WIDTH: number = 1917.741;
 export const PLAN_HEIGHT: number = 532.568;
 export const ENTRANCE: PlanPoint = { x: 1017, y: 490 };
+/** Tinggi strip kartu info saat dilipat (lihat MapScreen/PlanViewport): dipakai bersama supaya denah tahu berapa banyak ruang yang bisa diisi saat dilipat. */
+export const PREVIEW_COLLAPSED_HEIGHT: number = 40;
 
 /** Titik kaki pin pada aset startmap-floor.svg; semua layer memakai koordinat denah ini. */
 export const PLAN_PINS: readonly PlanPin[] = [
