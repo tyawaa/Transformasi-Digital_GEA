@@ -14,7 +14,7 @@ import { closingTimeLabel, type VisitPrompt, type VisitSuggestion } from "./life
 import { useLanguage } from "../preferences/LanguageSettings";
 import { localizedPoiName, localizedSuggestionReason } from "../../data/localizedCopy";
 
-export type VisitPanel = VisitPrompt | "finish" | "extend" | "closed" | "finished";
+export type VisitPanel = VisitPrompt | "finish" | "extend" | "closed" | "finished" | "paused";
 type Props = {
   readonly panel: VisitPanel | null;
   readonly closingAtMs: number;
@@ -29,6 +29,8 @@ type Props = {
   readonly onFinish: () => void;
   readonly onSummary: () => void;
   readonly onExitDirections: () => void;
+  /** "Istirahat dulu": melanjutkan hitung mundur rencana kunjungan. */
+  readonly onResume: () => void;
 };
 type Copy = { readonly title: string; readonly description: string };
 
@@ -44,6 +46,7 @@ function sheetCopy(panel: VisitPanel, closingAtMs: number, t: (id: string, en: s
     extend: { title: t("Mau tambah berapa lama?", "How much time would you like to add?"), description: t(`Tambahan waktu melanjutkan rencana kunjunganmu. Museum tutup pukul ${closing} WIB; 5 menit terakhir disisihkan untuk bersiap keluar.`, `Extra time extends your current plan. The museum closes at ${closing} WIB; the final five minutes are reserved for leaving.`) },
     closed: { title: t("Museum sudah tutup", "The museum is closed"), description: t("Kunjunganmu hari ini telah selesai. Terima kasih sudah menjelajah bersama GEA! Progres yang sudah tercatat tetap tersimpan.", "Your visit has ended for today. Thank you for exploring with GEA! Your recorded progress is saved.") },
     finished: { title: t("Perjalananmu sudah selesai", "Your visit is complete"), description: t("Terima kasih sudah menjelajah bersama GEA! Kamu bisa membuka kembali ringkasan, progres, dan poin kunjungan ini.", "Thank you for exploring with GEA! You can revisit this visit's summary, progress, and points.") },
+    paused: { title: t("Sudah siap untuk melanjutkan perjalanan?", "Ready to continue your visit?"), description: t("Hitung mundur rencana kunjunganmu akan jalan lagi begitu kamu lanjut menjelajah.", "Your visit countdown will resume once you keep exploring.") },
   };
   return copy[panel];
 }
@@ -56,12 +59,15 @@ export function VisitSheet(props: Props): ReactElement | null {
   if (props.panel === null) return null;
   const copy: Copy = sheetCopy(props.panel, props.closingAtMs, t);
   const completed: boolean = props.panel === "closed" || props.panel === "finished";
+  // Dikunci saat dijeda: error prevention, pengunjung tidak bisa diam-diam lanjut menjelajah tanpa sadar membatalkan istirahat.
+  const paused: boolean = props.panel === "paused";
+  const blockDismiss: boolean = completed || paused;
   const canSuggest: boolean = props.suggestion !== null && (props.panel === "finish" || props.panel === "route_done");
   const showExtension: boolean = props.options.length > 0 && ["time_soon", "time_up", "route_done", "finish"].includes(props.panel);
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={completed ? props.onSummary : props.onDismiss}>
+    <Modal visible transparent animationType="slide" onRequestClose={completed ? props.onSummary : paused ? props.onResume : props.onDismiss}>
       <FrameStage background="rgba(31,26,22,0.42)">
-        {!completed && <Pressable accessibilityRole="button" accessibilityLabel={t("Tutup pemberitahuan kunjungan", "Close visit notification")}
+        {!blockDismiss && <Pressable accessibilityRole="button" accessibilityLabel={t("Tutup pemberitahuan kunjungan", "Close visit notification")}
           style={StyleSheet.absoluteFill} onPress={props.busy ? undefined : props.onDismiss} />}
         <View style={[styles.sheet, span]} accessibilityViewIsModal>
           <Svg width={span.width} height={54} viewBox="0 0 390 54" preserveAspectRatio="none" style={styles.curve} accessible={false}>
@@ -84,7 +90,8 @@ export function VisitSheet(props: Props): ReactElement | null {
             <View style={styles.actions}>
               {(props.panel === "closing_prepare" || props.panel === "closed") && <Button label={t("Arah ke pintu keluar", "Directions to the exit")}
                 tone="secondary" appearance="outline" onPress={props.onExitDirections} />}
-              {completed ? <Button label={props.busy ? t("Menyimpan kunjungan…", "Saving your visit…") : t("Lihat ringkasan kunjungan", "View visit summary")}
+              {paused ? <Button label={t("Lanjutkan Menjelajah", "Keep Exploring")} tone="primary" appearance="fill" onPress={props.onResume} />
+                : completed ? <Button label={props.busy ? t("Menyimpan kunjungan…", "Saving your visit…") : t("Lihat ringkasan kunjungan", "View visit summary")}
                 tone="primary" appearance="fill" disabled={props.busy} onPress={props.onSummary} />
                 : props.panel === "extend" ? <>
                   <Button label={t("Kembali", "Back")} tone="secondary" appearance="outline" onPress={props.busy ? (): void => undefined : props.onDismiss} />
