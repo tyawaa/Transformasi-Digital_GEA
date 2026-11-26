@@ -1,11 +1,8 @@
 import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
-import { Image } from "expo-image";
 import { type ReactElement, useEffect, useRef } from "react";
-import { Pressable, type StyleProp, StyleSheet, View, type ViewStyle } from "react-native";
-import { colors } from "../../../design/tokens";
-import { useLanguage } from "../../preferences/LanguageSettings";
-
-const speakerIcon = require("../../../../assets/design/icon-speaker.svg") as number;
+import { type StyleProp, View, type ViewStyle } from "react-native";
+import { releaseAudio } from "../../../services/audioFocus";
+import { AudioControls, playAudio } from "./AudioControls";
 
 export type Narration = {
   readonly key: string;
@@ -24,15 +21,25 @@ type Props = {
 };
 
 /**
- * Tombol earphone di panel Story Isi: sekali ketuk memutar/menjeda narasi di tempat,
- * tanpa pindah ke layar lain. Dipertahankan tetap sama lintas halaman Story Isi 1/2
- * selama narasinya sama, jadi audio tidak mengulang saat pengguna membalik halaman.
+ * Kontrol narasi di panel Story Isi: mundur 10 detik, putar/jeda, maju 10 detik. Dipertahankan
+ * lintas halaman Story Isi 1/2 selama narasinya sama, jadi audio tidak mengulang saat membalik halaman.
+ * Narasi hanya diputar lewat tombol (termasuk "Aktifkan Mode Audio"), tidak otomatis.
  */
 export function NarrationButton({ narration, autoPlay, onAutoPlayed, suspend, style }: Props): ReactElement {
-  const { t } = useLanguage();
   const player = useAudioPlayer(narration.source);
   const status = useAudioPlayerStatus(player);
   const autoPlayedFor = useRef<string | null>(null);
+  const id = useRef<symbol>(Symbol("story-audio")).current;
+
+  // Keluar dari cerita: audio berhenti, tidak terus bunyi di layar lain.
+  useEffect((): (() => void) => (): void => {
+    releaseAudio(id);
+    try {
+      player.pause();
+    } catch {
+      // Pemutar sudah dilepas expo-audio.
+    }
+  }, [id, player]);
 
   useEffect((): void => {
     setAudioModeAsync({ playsInSilentMode: true }).catch((cause: unknown): void => {
@@ -43,7 +50,7 @@ export function NarrationButton({ narration, autoPlay, onAutoPlayed, suspend, st
   useEffect((): void => {
     if (!autoPlay || !status.isLoaded || autoPlayedFor.current === narration.key) return;
     autoPlayedFor.current = narration.key;
-    player.play();
+    playAudio(player, status, id, narration.seconds);
     onAutoPlayed();
     // Hanya bereaksi saat flag/loading berubah; player dan onAutoPlayed stabil secara identitas per narasi.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -54,41 +61,9 @@ export function NarrationButton({ narration, autoPlay, onAutoPlayed, suspend, st
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [suspend]);
 
-  async function toggle(): Promise<void> {
-    if (!status.isLoaded) return;
-    if (status.playing) {
-      player.pause();
-      return;
-    }
-    const duration: number = status.duration > 0 ? status.duration : narration.seconds;
-    if (status.currentTime >= duration - 0.25) await player.seekTo(0);
-    player.play();
-  }
-
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={status.playing ? t("Jeda narasi", "Pause narration") : t("Dengarkan narasi", "Listen to narration")}
-      hitSlop={8}
-      style={style}
-      onPress={(): void => void toggle()}
-    >
-      <View style={[styles.icon, status.playing && styles.iconActive]}>
-        <Image accessible={false} source={speakerIcon} style={styles.speaker} />
-      </View>
-    </Pressable>
+    <View style={style}>
+      <AudioControls player={player} status={status} id={id} tone="dark" fallbackSeconds={narration.seconds} />
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  icon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.secondaryYellow[100],
-  },
-  iconActive: { backgroundColor: colors.secondaryGreen[300] },
-  speaker: { width: 24, height: 24 },
-});

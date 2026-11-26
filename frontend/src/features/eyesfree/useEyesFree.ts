@@ -9,6 +9,7 @@ import {
   handleEyesFreeFix,
   resetEyesFreeVisit,
   setEyesFreeStops,
+  setEyesFreeSuspended,
   setEyesFreeTargets,
 } from "./engine";
 import { type ExploreMode, readExploreMode, saveExploreMode } from "./mode";
@@ -82,7 +83,12 @@ export function useEyesFree(
     return (): void => { active = false; turnOff(); };
   }, [visitId, turnOn, turnOff]);
 
-  useEffect((): void => resetEyesFreeVisit(), [visitId]);
+  useEffect((): void => resetEyesFreeVisit(visitId), [visitId]);
+  // Hook ini hidup selama peta tampil; saat cerita/quest dibuka audio otomatis ditahan.
+  useEffect((): (() => void) => {
+    setEyesFreeSuspended(false);
+    return (): void => setEyesFreeSuspended(true);
+  }, []);
   useEffect((): void => setEyesFreeStops(stops), [stops]);
   useEffect((): void => setEyesFreeTargets(targets), [targets]);
   useEffect((): void => {
